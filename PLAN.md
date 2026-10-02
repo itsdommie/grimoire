@@ -1,6 +1,8 @@
 # Grimoire: a local-first MTG deck lab
 
-A fast, offline-capable web app that treats the whole Magic card pool as a database you can query and simulate against. No account, no paywall. Uses the local RTX 3090 for the heavy parts. **Commander first.**
+**End goal: an easy-to-install, one-stop desktop application for all things Magic: The Gathering, for Windows and Linux** (no macOS). Double-click installer, no Node/Python/Docker for the user, works offline after the first card-data download, no account, no paywall. It treats the whole card pool as a database you can query and simulate against, and uses a GPU when present but never requires one. **Commander first.**
+
+Until the packaged app exists we develop it as a web app (React + local server); the desktop shell wraps the same code.
 
 ## Features (build order)
 
@@ -14,7 +16,17 @@ A fast, offline-capable web app that treats the whole Magic card pool as a datab
 
 ## Tech
 
-TypeScript throughout. React + Vite frontend, small Fastify server, SQLite (`better-sqlite3`), Vitest. Python only for the embedding job. Docker for deployment (later: Proxmox homelab behind `home.dommie.uk`). Rules logic and the simulator get real tests, including checks against hypergeometric probabilities. Playwright end-to-end tests for the UI. npm (not pnpm), Python venv (no uv/pip installed).
+TypeScript throughout. React + Vite frontend, small Fastify server, SQLite (`better-sqlite3`), Vitest. npm (not pnpm). Rules logic and the simulator get real tests, including checks against hypergeometric probabilities. Playwright end-to-end tests for the UI.
+
+**Desktop packaging (decision pending confirmation): Electron + electron-builder.** It runs the existing Fastify/better-sqlite3 code unchanged in the main process (or a utility process), and produces an NSIS `.exe` installer for Windows and AppImage + `.deb` for Linux. Tauri is the lighter alternative but would mean shipping the Node server as a sidecar or rewriting the backend in Rust, so it's not worth it here.
+
+Consequences for the design:
+- **Data location:** the DB and downloaded Scryfall data live in the per-user app-data directory (`app.getPath('userData')`), not the repo. First run downloads the bulk data with a progress screen; a "check for updates" action re-ingests.
+- **Semantic search (Phase 3):** no Python venv in the shipped app. Run `bge-small` as ONNX through `onnxruntime-node` (CPU by default, CUDA/DirectML optional), with embeddings precomputed or built on first run.
+- **Claude advisor key:** stored via the OS keychain (Electron `safeStorage`), never on disk in plain text or in the repo.
+- **Simulator:** Web Worker in the renderer, so it needs nothing native.
+- **Native modules:** `better-sqlite3` must be rebuilt per platform/Electron version. Windows installers are built on Windows (CI) or via cross-build; Linux on Linux.
+- **Docker/Proxmox** is demoted to an optional self-hosted mode, not the main delivery path.
 
 ## Phases
 
@@ -23,9 +35,12 @@ TypeScript throughout. React + Vite frontend, small Fastify server, SQLite (`bet
 | 0 | Repo scaffold, Scryfall ingest, search |
 | 1 | Deck builder + import/export |
 | 2 | Analysis + simulator |
-| 3 | Semantic search (GPU) |
+| 2.5 | **Desktop shell + installers** (Electron, userData storage, first-run ingest, Windows + Linux builds). Done early to de-risk packaging before more features pile up |
+| 3 | Semantic search (ONNX, optional GPU) |
 | 4 | Collection + prices |
-| 5 | Claude advisor, polish, Docker |
+| 5 | Claude advisor, polish, auto-update, optional Docker mode |
+
+"One stop for everything MTG" beyond the deck lab is a backlog to prioritise later (e.g. rules/comprehensive-rules lookup, life/commander-damage tracker, set and format browser, price watch). Not scheduled yet.
 
 Each phase ends with something usable.
 
@@ -35,7 +50,8 @@ Each phase ends with something usable.
 - **Wizards:** non-commercial, per the Fan Content Policy.
 - **GitHub:** repo is **private** unless Dommie says otherwise. Never push without being asked.
 - **Secrets:** never commit API keys or tokens.
-- **Environment:** Node 26, Python 3.14 (venv, no pip/uv), SQLite 3.53, Git, `gh` logged in as `itsdommie`. Docker needs sudo/daemon fixes before Phase 5.
+- **Environment:** Node 26, SQLite 3.53, Git, `gh` logged in as `itsdommie`. Dev machine is Linux, so Windows installers need CI or a cross-build; testing them locally isn't possible here. Docker needs sudo/daemon fixes if the optional self-hosted mode is built.
+- **Distribution:** Windows and Linux only. Never require end users to install Node, Python or Docker. Don't push to GitHub (needed for CI builds) until asked.
 
 ## Status
 
