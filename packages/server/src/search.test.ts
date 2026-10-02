@@ -1,7 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import type Database from 'better-sqlite3';
 import { SearchError } from '@grimoire/shared';
-import { openDb } from './db.js';
+import { openDb, type Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { searchCards } from './cards.js';
 import type { ScryfallCard } from './scryfall.js';
@@ -24,7 +23,7 @@ const FIXTURE: ScryfallCard[] = [
   card({ name: 'Token Goblin', layout: 'token', type_line: 'Token Creature — Goblin' }),
 ];
 
-let db: Database.Database;
+let db: Db;
 const names = (q: string) => searchCards(db, { query: q }).cards.map((c) => c.name);
 
 beforeAll(async () => {

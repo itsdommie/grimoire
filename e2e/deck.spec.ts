@@ -55,10 +55,11 @@ test.describe.serial('deck builder', () => {
     await expect(page.locator('.deck h3', { hasText: 'Land' })).toBeVisible();
   });
 
-  test('export returns a re-importable list', async ({ page, request }) => {
+  test('download saves a re-importable list', async ({ page }) => {
     await page.goto('/');
-    const href = await page.getByRole('link', { name: 'Download' }).getAttribute('href');
-    const res = await request.get(`http://127.0.0.1:5273${href}`);
-    expect(await res.text()).toBe("Commander\n1 Atraxa, Praetors' Voice\n\nDeck\n30 Forest\n1 Sol Ring\n");
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Download' }).click()]);
+    expect(download.suggestedFilename()).toBe('E2E_Atraxa.txt');
+    const { readFile } = await import('node:fs/promises');
+    expect(await readFile((await download.path())!, 'utf8')).toBe("Commander\n1 Atraxa, Praetors' Voice\n\nDeck\n30 Forest\n1 Sol Ring\n");
   });
 });

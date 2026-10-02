@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Board, Card, DeckDetail, DeckSummary, SearchResponse } from '@grimoire/shared';
 import { api } from './api';
 import { DeckPanel } from './DeckPanel';
+import { DataFooter, DataSetup, useDataStatus } from './DataSetup';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -12,21 +13,19 @@ const ORDERS = [
 
 const EXAMPLES = ['t:creature c:rg cmc<=3 o:"draw a card"', 'f:commander id<=wubg is:commander', 'o:"create a treasure" -c:w', 'kw:flying r:mythic'];
 
-function useSearch(query: string, order: string, commanderIdentity: string | null) {
+function useSearch(query: string, order: string, commanderIdentity: string | null, version: string | null) {
   const [state, setState] = useState<{ data: SearchResponse | null; loading: boolean }>({ data: null, loading: true });
   const q = commanderIdentity ? `${query} f:commander id<=${commanderIdentity}` : query;
   useEffect(() => {
     const ctrl = new AbortController();
     setState((s) => ({ ...s, loading: true }));
     const timer = setTimeout(() => {
-      const params = new URLSearchParams({ q, order, limit: '60' });
-      fetch(`/api/cards/search?${params}`, { signal: ctrl.signal })
-        .then((r) => r.json() as Promise<SearchResponse>)
+      api.search({ q, order, limit: 60 }, ctrl.signal)
         .then((data) => setState({ data, loading: false }))
         .catch((e) => { if (e.name !== 'AbortError') setState({ data: { total: 0, cards: [], error: 'Server unreachable' }, loading: false }); });
     }, 150);
     return () => { clearTimeout(timer); ctrl.abort(); };
-  }, [q, order]);
+  }, [q, order, version]);
   return state;
 }
 
@@ -85,7 +84,8 @@ export function App() {
     return onlyIdentity && cmdrs.length ? maskToLetters(cmdrs.reduce((m, e) => m | e.card.colorIdentity, 0)) : null;
   }, [current, onlyIdentity]);
 
-  const { data, loading } = useSearch(query, order, commanderIdentity);
+  const dataStatus = useDataStatus();
+  const { data, loading } = useSearch(query, order, commanderIdentity, dataStatus.status?.bulkUpdatedAt ?? null);
   const inDeck = useMemo(() => new Map((current?.entries ?? []).map((e) => [e.card.id, e.qty])), [current]);
 
   const changed = (detail: DeckDetail) => { setCurrent(detail); setDecks((ds) => ds.map((d) => (d.id === detail.deck.id ? detail.deck : d))); };
@@ -96,6 +96,13 @@ export function App() {
     const qty = board === 'commander' ? 1 : existing && existing.board === 'main' ? existing.qty + 1 : 1;
     try { changed(await api.setCard(current.deck.id, card.id, board, qty)); } catch (e) { setError((e as Error).message); }
   };
+
+  const ds = dataStatus.status;
+  // First run (or a failed first download): nothing to search yet, so show the setup screen instead of an empty app.
+  if (!ds || (ds.cardCount === 0 && ds.state !== 'ready')) {
+    if (!ds && !dataStatus.unreachable) return <div className="setup" aria-busy="true" />;
+    return <DataSetup status={ds} unreachable={dataStatus.unreachable} onStart={() => dataStatus.start()} />;
+  }
 
   return (
     <div className="layout">
@@ -128,6 +135,7 @@ export function App() {
           <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} onAdd={add} />)}</div>
         </main>
         <footer>
+          <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>. Magic: The Gathering is © Wizards of the Coast.
           Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.
         </footer>

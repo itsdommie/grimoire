@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { DeckDetail, ImportResult, DeckSummary } from '@grimoire/shared';
-import type Database from 'better-sqlite3';
-import { openDb } from './db.js';
+import { openDb, type Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { buildServer } from './server.js';
 import type { ScryfallCard } from './scryfall.js';
@@ -20,7 +19,7 @@ const FIXTURE: ScryfallCard[] = [
 ];
 
 let app: FastifyInstance;
-let db: Database.Database;
+let db: Db;
 async function* fixtureLines() { for (const c of FIXTURE) yield JSON.stringify(c); }
 const ids: Record<string, string> = {};
 
@@ -28,7 +27,7 @@ beforeEach(async () => {
   db = openDb(':memory:');
   await loadJsonl(db, fixtureLines());
   for (const c of FIXTURE) ids[c.name] = c.oracle_id!;
-  app = buildServer(db);
+  app = buildServer({ db, dataDir: '/nonexistent' });
 });
 
 const json = async <T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', url: string, payload?: unknown) => {

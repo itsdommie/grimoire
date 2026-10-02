@@ -48,3 +48,17 @@ export interface ImportResult extends DeckDetail {
   /** Lines whose card name could not be found, as written in the pasted list. */
   unresolved: string[];
 }
+
+// ------------------------------------------------------------- card data
+
+export interface DataStatus {
+  /** empty: nothing downloaded yet. ready: card pool loaded. updating: a download/import is running. error: the last update failed. */
+  state: 'empty' | 'ready' | 'updating' | 'error';
+  cardCount: number;
+  /** Scryfall's `updated_at` for the bulk file currently loaded. */
+  bulkUpdatedAt: string | null;
+  progress?: { phase: 'checking' | 'downloading' | 'importing'; received?: number; total?: number; cards?: number };
+  error?: string;
+  /** Set after an update check: true if Scryfall had nothing newer. */
+  upToDate?: boolean;
+}

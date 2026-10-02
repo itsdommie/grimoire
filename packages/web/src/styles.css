@@ -76,3 +76,15 @@ input.small { flex: none; width: 180px; padding: 4px 8px; }
   .layout { grid-template-columns: 1fr; }
   .deck { position: static; height: auto; border-left: 0; border-top: 1px solid #2a2d3d; }
 }
+
+/* ---- first-run setup ---- */
+.setup { max-width: 520px; margin: 14vh auto; padding: 0 20px; text-align: center; }
+.setup h1 { font-size: 34px; margin-bottom: 4px; }
+.setup .lead { color: var(--muted); margin-top: 0; }
+.setup progress { width: 100%; height: 10px; accent-color: var(--accent); }
+.setup .hint { margin-top: 8px; }
+button.primary { padding: 8px 16px; font: inherit; font-weight: 600; color: #12131a; background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
+button.primary.big { padding: 12px 24px; font-size: 16px; }
+button.primary:disabled { opacity: .5; cursor: default; }
+.datafooter { font-size: 12px; }
+.linklike { padding: 0; font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; text-decoration: underline; }

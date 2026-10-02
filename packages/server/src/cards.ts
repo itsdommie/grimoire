@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type { Db } from './db.js';
 import { compileQuery, type Card, type SearchResponse } from '@grimoire/shared';
 
 export type Order = 'name' | 'cmc' | 'edhrec' | 'usd';
@@ -18,7 +18,7 @@ interface Row {
   image_url: string | null; scryfall_uri: string;
 }
 
-function rowToCard(db: Database.Database, r: Row): Card {
+function rowToCard(db: Db, r: Row): Card {
   const legalities: Record<string, string> = {};
   for (const l of db.prepare('SELECT format, status FROM legality WHERE card_id = ?').all(r.id) as Array<{ format: string; status: string }>) {
     legalities[l.format] = l.status;
@@ -36,23 +36,23 @@ function rowToCard(db: Database.Database, r: Row): Card {
 export interface SearchOptions { query: string; order?: Order; limit?: number; offset?: number }
 
 /** Throws SearchError (from @grimoire/shared) on a malformed query. */
-export function searchCards(db: Database.Database, opts: SearchOptions): SearchResponse {
+export function searchCards(db: Db, opts: SearchOptions): SearchResponse {
   const { where, params } = compileQuery(opts.query);
   const limit = Math.min(Math.max(opts.limit ?? 60, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
   const order = ORDER_SQL[opts.order ?? 'name'];
 
   const total = (db.prepare(`SELECT count(*) AS n FROM cards WHERE ${where}`).get(...params) as { n: number }).n;
-  const rows = db.prepare(`SELECT * FROM cards WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, limit, offset) as Row[];
+  const rows = db.prepare(`SELECT * FROM cards WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, limit, offset) as unknown as Row[];
   return { total, cards: rows.map((r) => rowToCard(db, r)) };
 }
 
-export function getCardByName(db: Database.Database, name: string): Card | null {
+export function getCardByName(db: Db, name: string): Card | null {
   const row = db.prepare('SELECT * FROM cards WHERE name = ? COLLATE NOCASE').get(name) as Row | undefined;
   return row ? rowToCard(db, row) : null;
 }
 
-export function getCardsByIds(db: Database.Database, ids: readonly string[]): Map<string, Card> {
+export function getCardsByIds(db: Db, ids: readonly string[]): Map<string, Card> {
   const out = new Map<string, Card>();
   const stmt = db.prepare('SELECT * FROM cards WHERE id = ?');
   for (const id of ids) {
@@ -66,7 +66,7 @@ export function getCardsByIds(db: Database.Database, ids: readonly string[]): Ma
  * Resolve a card name from a pasted list. Case-insensitive; accepts a bare front-face
  * name for multi-faced cards ("Fire" for "Fire // Ice") and "A / B" as "A // B".
  */
-export function resolveCardName(db: Database.Database, name: string): Card | null {
+export function resolveCardName(db: Db, name: string): Card | null {
   const norm = name.replace(/\s*\/{1,2}\s*/g, ' // ').trim();
   const exact = db.prepare('SELECT * FROM cards WHERE name = ? COLLATE NOCASE').get(norm) as Row | undefined;
   const row = exact ?? (db.prepare("SELECT * FROM cards WHERE name LIKE ? ESCAPE '\\' ORDER BY length(name) LIMIT 1").get(`${norm.replace(/[\\%_]/g, (m) => `\\${m}`)} // %`) as Row | undefined);

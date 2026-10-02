@@ -1,11 +1,14 @@
-import Database from 'better-sqlite3';
+import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-export const DATA_DIR = process.env.GRIMOIRE_DATA_DIR ?? resolve(root, 'data');
-export const DB_PATH = process.env.GRIMOIRE_DB ?? resolve(DATA_DIR, 'grimoire.db');
+export type Db = DatabaseSync;
+
+/** Development default: <repo>/data. The desktop app passes the per-user app-data directory instead. */
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
+export const DEFAULT_DATA_DIR = process.env.GRIMOIRE_DATA_DIR ?? resolve(repoRoot, 'data');
+export const dbPathFor = (dataDir: string) => resolve(dataDir, 'grimoire.db');
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS cards (
@@ -68,13 +71,26 @@ CREATE TABLE IF NOT EXISTS deck_cards (
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
-export function openDb(path = DB_PATH, opts: { readonly?: boolean } = {}): Database.Database {
+export function openDb(path = dbPathFor(DEFAULT_DATA_DIR), opts: { readonly?: boolean } = {}): Db {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
-  const db = new Database(path, { readonly: opts.readonly ?? false });
+  const db = new DatabaseSync(path, { readOnly: opts.readonly ?? false });
   if (!opts.readonly) {
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
+    if (path !== ':memory:') db.exec('PRAGMA journal_mode = WAL');
+    db.exec('PRAGMA foreign_keys = ON');
     db.exec(SCHEMA);
   }
   return db;
+}
+
+/** Run `fn` in a transaction (node:sqlite has no built-in helper). Not re-entrant. */
+export function transaction<T>(db: Db, fn: () => T): T {
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    const result = fn();
+    db.exec('COMMIT');
+    return result;
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
 }

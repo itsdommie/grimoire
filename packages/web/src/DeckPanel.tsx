@@ -40,9 +40,21 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
   };
 
   const copy = async () => {
-    await navigator.clipboard.writeText(await api.exportText(deck!.id, 'sectioned'));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(await api.exportText(deck!.id, 'sectioned'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch (e) { onError((e as Error).message); }
+  };
+
+  const download = async () => {
+    try {
+      const text = await api.exportText(deck!.id, 'sectioned');
+      const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: `${deck!.name.replace(/[^\w.-]+/g, '_')}.txt` });
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { onError((e as Error).message); }
   };
 
   const groups = new Map<string, DeckEntry[]>();
@@ -92,7 +104,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
           </div>
           <div className="deckbar">
             <button onClick={copy}>{copied ? 'Copied' : 'Copy list'}</button>
-            <a className="btn" href={api.exportUrl(deck.id, 'sectioned')} download>Download</a>
+            <button onClick={download}>Download</button>
             <button className="danger" onClick={() => { if (window.confirm(`Delete "${deck.name}"?`)) onDelete(deck.id); }}>Delete</button>
           </div>
 

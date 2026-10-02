@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import { transaction, type Db } from './db.js';
 import { BOARDS, parseDeckList, validateCommander, type Board, type DeckEntry } from '@grimoire/shared';
 import type { DeckDetail, DeckSummary, ImportResult } from '@grimoire/shared';
 import { getCardsByIds, resolveCardName } from './cards.js';
@@ -14,26 +14,26 @@ const toSummary = (r: DeckRow): DeckSummary => ({ id: r.id, name: r.name, format
 export class NotFoundError extends Error {}
 export class BadRequestError extends Error {}
 
-export function listDecks(db: Database.Database): DeckSummary[] {
-  return (db.prepare(`${SUMMARY_SQL} ORDER BY d.updated_at DESC, d.id DESC`).all() as DeckRow[]).map(toSummary);
+export function listDecks(db: Db): DeckSummary[] {
+  return (db.prepare(`${SUMMARY_SQL} ORDER BY d.updated_at DESC, d.id DESC`).all() as unknown as DeckRow[]).map(toSummary);
 }
 
-export function createDeck(db: Database.Database, name: string): DeckSummary {
+export function createDeck(db: Db, name: string): DeckSummary {
   const trimmed = name.trim();
   if (!trimmed) throw new BadRequestError('Deck name is required');
   const { lastInsertRowid } = db.prepare('INSERT INTO decks (name) VALUES (?)').run(trimmed);
   return getSummary(db, Number(lastInsertRowid));
 }
 
-function getSummary(db: Database.Database, id: number): DeckSummary {
+function getSummary(db: Db, id: number): DeckSummary {
   const row = db.prepare(`${SUMMARY_SQL} WHERE d.id = ?`).get(id) as DeckRow | undefined;
   if (!row) throw new NotFoundError(`Deck ${id} not found`);
   return toSummary(row);
 }
 
-const touch = (db: Database.Database, id: number) => db.prepare("UPDATE decks SET updated_at = datetime('now') WHERE id = ?").run(id);
+const touch = (db: Db, id: number) => db.prepare("UPDATE decks SET updated_at = datetime('now') WHERE id = ?").run(id);
 
-export function renameDeck(db: Database.Database, id: number, name: string): DeckSummary {
+export function renameDeck(db: Db, id: number, name: string): DeckSummary {
   const trimmed = name.trim();
   if (!trimmed) throw new BadRequestError('Deck name is required');
   getSummary(db, id);
@@ -41,13 +41,13 @@ export function renameDeck(db: Database.Database, id: number, name: string): Dec
   return getSummary(db, id);
 }
 
-export function deleteDeck(db: Database.Database, id: number): void {
+export function deleteDeck(db: Db, id: number): void {
   if (db.prepare('DELETE FROM decks WHERE id = ?').run(id).changes === 0) throw new NotFoundError(`Deck ${id} not found`);
 }
 
-export function getDeck(db: Database.Database, id: number): DeckDetail {
+export function getDeck(db: Db, id: number): DeckDetail {
   const deck = getSummary(db, id);
-  const rows = db.prepare('SELECT card_id, board, qty FROM deck_cards WHERE deck_id = ?').all(id) as Array<{ card_id: string; board: Board; qty: number }>;
+  const rows = db.prepare('SELECT card_id, board, qty FROM deck_cards WHERE deck_id = ?').all(id) as unknown as Array<{ card_id: string; board: Board; qty: number }>;
   const cards = getCardsByIds(db, rows.map((r) => r.card_id));
   // Cards that vanished from the card pool (e.g. removed from Scryfall) are skipped.
   const entries: DeckEntry[] = rows.flatMap((r) => {
@@ -59,12 +59,12 @@ export function getDeck(db: Database.Database, id: number): DeckDetail {
 }
 
 /** Set the quantity of a card on a board (0 removes it). Commander-zone cards are exclusive to that board. */
-export function setCardQty(db: Database.Database, deckId: number, cardId: string, board: Board, qty: number): DeckDetail {
+export function setCardQty(db: Db, deckId: number, cardId: string, board: Board, qty: number): DeckDetail {
   if (!BOARDS.includes(board)) throw new BadRequestError(`Unknown board "${board}"`);
   if (!Number.isInteger(qty) || qty < 0 || qty > 99) throw new BadRequestError('qty must be an integer from 0 to 99');
   getSummary(db, deckId);
   if (!getCardsByIds(db, [cardId]).size) throw new NotFoundError(`Card ${cardId} not found`);
-  db.transaction(() => {
+  transaction(db, () => {
     if (qty === 0) {
       db.prepare('DELETE FROM deck_cards WHERE deck_id = ? AND card_id = ? AND board = ?').run(deckId, cardId, board);
     } else {
@@ -74,12 +74,12 @@ export function setCardQty(db: Database.Database, deckId: number, cardId: string
         ON CONFLICT (deck_id, card_id, board) DO UPDATE SET qty = excluded.qty`).run(deckId, cardId, board, qty);
     }
     touch(db, deckId);
-  })();
+  });
   return getDeck(db, deckId);
 }
 
 /** Import a pasted list into a new deck (or replace the contents of `deckId`). */
-export function importDeck(db: Database.Database, text: string, opts: { name?: string; deckId?: number }): ImportResult {
+export function importDeck(db: Db, text: string, opts: { name?: string; deckId?: number }): ImportResult {
   const lines = parseDeckList(text);
   if (lines.length === 0) throw new BadRequestError('No cards found in the pasted list');
 
@@ -93,7 +93,7 @@ export function importDeck(db: Database.Database, text: string, opts: { name?: s
     merged.set(key, { qty: Math.min((cur?.qty ?? 0) + line.qty, 99), board: line.board });
   }
 
-  const id = db.transaction(() => {
+  const id = transaction(db, () => {
     const deckId = opts.deckId ?? createDeck(db, opts.name?.trim() || 'Imported deck').id;
     if (opts.deckId !== undefined) {
       getSummary(db, deckId);
@@ -112,7 +112,7 @@ export function importDeck(db: Database.Database, text: string, opts: { name?: s
     }
     touch(db, deckId);
     return deckId;
-  })();
+  });
 
   return { ...getDeck(db, id), unresolved };
 }
