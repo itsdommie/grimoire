@@ -17,5 +17,5 @@ test('example chips fill the search box', async ({ page }) => {
 test('bad queries show an error instead of crashing', async ({ page }) => {
   await page.goto('/');
   await page.getByPlaceholder(/Search/).fill('bogus:1');
-  await expect(page.locator('.error')).toContainText('Unknown search keyword');
+  await expect(page.locator('.status .error')).toContainText('Unknown search keyword');
 });

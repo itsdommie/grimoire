@@ -51,3 +51,24 @@ export function getCardByName(db: Database.Database, name: string): Card | null 
   const row = db.prepare('SELECT * FROM cards WHERE name = ? COLLATE NOCASE').get(name) as Row | undefined;
   return row ? rowToCard(db, row) : null;
 }
+
+export function getCardsByIds(db: Database.Database, ids: readonly string[]): Map<string, Card> {
+  const out = new Map<string, Card>();
+  const stmt = db.prepare('SELECT * FROM cards WHERE id = ?');
+  for (const id of ids) {
+    const row = stmt.get(id) as Row | undefined;
+    if (row) out.set(id, rowToCard(db, row));
+  }
+  return out;
+}
+
+/**
+ * Resolve a card name from a pasted list. Case-insensitive; accepts a bare front-face
+ * name for multi-faced cards ("Fire" for "Fire // Ice") and "A / B" as "A // B".
+ */
+export function resolveCardName(db: Database.Database, name: string): Card | null {
+  const norm = name.replace(/\s*\/{1,2}\s*/g, ' // ').trim();
+  const exact = db.prepare('SELECT * FROM cards WHERE name = ? COLLATE NOCASE').get(norm) as Row | undefined;
+  const row = exact ?? (db.prepare("SELECT * FROM cards WHERE name LIKE ? ESCAPE '\\' ORDER BY length(name) LIMIT 1").get(`${norm.replace(/[\\%_]/g, (m) => `\\${m}`)} // %`) as Row | undefined);
+  return row ? rowToCard(db, row) : null;
+}

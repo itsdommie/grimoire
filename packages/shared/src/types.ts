@@ -27,3 +27,24 @@ export interface SearchResponse {
   cards: Card[];
   error?: string;
 }
+
+// ------------------------------------------------------------------ decks
+
+export interface DeckSummary {
+  id: number;
+  name: string;
+  format: 'commander';
+  cardCount: number;
+  updatedAt: string;
+}
+
+export interface DeckDetail {
+  deck: DeckSummary;
+  entries: import('./deck.js').DeckEntry[];
+  issues: import('./deck.js').Issue[];
+}
+
+export interface ImportResult extends DeckDetail {
+  /** Lines whose card name could not be found, as written in the pasted list. */
+  unresolved: string[];
+}

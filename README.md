@@ -8,7 +8,7 @@ npm run ingest      # download Scryfall bulk data into data/grimoire.db
 npm run dev:server  # API on :3001
 npm run dev:web     # UI on :5173
 npm test            # unit tests
-npm run e2e         # Playwright (needs ingest first; uses /usr/bin/chromium)
+npm run e2e         # Playwright (needs ingest first; uses /usr/bin/chromium and a throwaway DB copy)
 ```
 
 Search syntax follows Scryfall: `t:creature c:rg cmc<=3 o:"draw a card"`, `f:commander id<=wubg`, `-c:u`, `(a or b)`.
@@ -16,3 +16,9 @@ Search syntax follows Scryfall: `t:creature c:rg cmc<=3 o:"draw a card"`, `f:com
 
 Card data and images are from [Scryfall](https://scryfall.com) (images are hotlinked, never re-hosted). Magic: The Gathering is
 © Wizards of the Coast; this is unofficial, non-commercial fan content.
+
+## Decks
+
+Decks are stored in `data/grimoire.db` next to the card data. Paste a plain, Moxfield or Archidekt text list via **Import**;
+**Copy list** / **Download** export a re-importable list. Validation covers size, singleton, colour identity, Commander
+legality and commander/partner eligibility.

@@ -49,6 +49,22 @@ CREATE TABLE IF NOT EXISTS legality (
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS legality_format ON legality(format, status);
 
+-- Decks reference cards by oracle id without a foreign key: re-ingesting replaces the cards table.
+CREATE TABLE IF NOT EXISTS decks (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT NOT NULL,
+  format     TEXT NOT NULL DEFAULT 'commander',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS deck_cards (
+  deck_id INTEGER NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+  card_id TEXT NOT NULL,
+  board   TEXT NOT NULL CHECK (board IN ('commander','main','sideboard')),
+  qty     INTEGER NOT NULL CHECK (qty > 0),
+  PRIMARY KEY (deck_id, card_id, board)
+) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
