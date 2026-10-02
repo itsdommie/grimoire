@@ -14,6 +14,19 @@ const ORDERS = new Set<Order>(['name', 'cmc', 'edhrec', 'usd']);
 export const TOKEN_HEADER = 'x-grimoire-token';
 const TOKEN_PLACEHOLDER = '__GRIMOIRE_TOKEN__';
 
+/** The UI only needs its own scripts/styles/API plus Scryfall card images (hotlinked). */
+export const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: https://cards.scryfall.io",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join('; ');
+
 export interface ServerOptions {
   db: Db;
   dataDir: string;
@@ -25,7 +38,8 @@ export interface ServerOptions {
    * can't read it, and can't send the header cross-origin). Used by the desktop app.
    */
   token?: string;
-  logger?: boolean;
+  /** true/false, or a level and stream for file logging. */
+  logger?: boolean | { level: string; stream: NodeJS.WritableStream };
   data?: DataManager;
   /** See DataManagerOptions.localFile. */
   bulkFile?: string;
@@ -114,7 +128,7 @@ export function buildServer(opts: ServerOptions) {
   // ------------------------------------------------------------- static UI
   if (webRoot) {
     const indexHtml = readFileSync(resolve(webRoot, 'index.html'), 'utf8').replace(TOKEN_PLACEHOLDER, token ?? '');
-    app.get('/', async (_req, reply) => reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-store').send(indexHtml));
+    app.get('/', async (_req, reply) => reply.type('text/html; charset=utf-8').header('Cache-Control', 'no-store').header('Content-Security-Policy', CSP).send(indexHtml));
     app.register(fastifyStatic, { root: webRoot, index: false, wildcard: true });
   }
 

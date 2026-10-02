@@ -1,13 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 export type Db = DatabaseSync;
 
-/** Development default: <repo>/data. The desktop app passes the per-user app-data directory instead. */
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-export const DEFAULT_DATA_DIR = process.env.GRIMOIRE_DATA_DIR ?? resolve(repoRoot, 'data');
 export const dbPathFor = (dataDir: string) => resolve(dataDir, 'grimoire.db');
 
 export const SCHEMA = `
@@ -71,7 +67,7 @@ CREATE TABLE IF NOT EXISTS deck_cards (
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
-export function openDb(path = dbPathFor(DEFAULT_DATA_DIR), opts: { readonly?: boolean } = {}): Db {
+export function openDb(path: string, opts: { readonly?: boolean } = {}): Db {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path, { readOnly: opts.readonly ?? false });
   if (!opts.readonly) {

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2a2150"/><stop offset="1" stop-color="#12131a"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9b0ff"/><stop offset="1" stop-color="#8f6df0"/></linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <!-- open spellbook -->
+  <path d="M512 400 C430 350 300 346 190 380 L190 760 C300 726 430 730 512 780 Z" fill="url(#gold)" opacity=".95"/>
+  <path d="M512 400 C594 350 724 346 834 380 L834 760 C724 726 594 730 512 780 Z" fill="url(#gold)" opacity=".75"/>
+  <path d="M512 400 L512 780" stroke="#12131a" stroke-width="14" stroke-linecap="round"/>
+  <g stroke="#12131a" stroke-width="10" stroke-linecap="round" opacity=".45">
+    <path d="M250 470 C320 452 400 456 462 486"/><path d="M250 540 C320 522 400 526 462 556"/><path d="M250 610 C320 592 400 596 462 626"/>
+    <path d="M774 470 C704 452 624 456 562 486"/><path d="M774 540 C704 522 624 526 562 556"/>
+  </g>
+  <!-- star -->
+  <path d="M512 150 L548 252 L656 256 L571 322 L601 426 L512 366 L423 426 L453 322 L368 256 L476 252 Z" fill="#fff6c9"/>
+</svg>

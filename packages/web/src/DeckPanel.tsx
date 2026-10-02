@@ -25,6 +25,8 @@ interface Props {
 
 export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError }: Props) {
   const [showImport, setShowImport] = useState(false);
+  // window.prompt() isn't available in Electron, so naming uses an in-app dialog.
+  const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
   const [copied, setCopied] = useState(false);
 
   const deck = current?.deck;
@@ -33,9 +35,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
   };
   const setQty = (e: DeckEntry, board: Board, qty: number) => run(() => api.setCard(deck!.id, e.card.id, board, qty));
 
-  const rename = async () => {
-    const name = window.prompt('Deck name', deck!.name);
-    if (!name?.trim()) return;
+  const rename = async (name: string) => {
     try { await api.renameDeck(deck!.id, name); onDecksChanged(); onChange({ ...current!, deck: { ...deck!, name: name.trim() } }); } catch (e) { onError((e as Error).message); }
   };
 
@@ -92,14 +92,14 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
           {decks.length === 0 && <option value="">No decks yet</option>}
           {decks.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.cardCount})</option>)}
         </select>
-        <button onClick={() => { const n = window.prompt('New deck name', 'New deck'); if (n?.trim()) onCreate(n); }}>New</button>
+        <button onClick={() => setNaming('new')}>New</button>
         <button onClick={() => setShowImport(true)}>Import</button>
       </div>
 
       {deck && current && (
         <>
           <div className="deckhead">
-            <h2 title="Rename" onClick={rename}>{deck.name}</h2>
+            <h2 title="Rename" onClick={() => setNaming('rename')}>{deck.name}</h2>
             <span className={total === COMMANDER_DECK_SIZE ? 'count ok' : 'count'}>{total}/{COMMANDER_DECK_SIZE}</span>
           </div>
           <div className="deckbar">
@@ -137,6 +137,16 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
         </>
       )}
       {!deck && <p className="empty">Create a deck to start building.</p>}
+
+      {naming && (
+        <NameDialog
+          title={naming === 'new' ? 'New deck' : 'Rename deck'}
+          initial={naming === 'new' ? 'New deck' : deck!.name}
+          confirmLabel={naming === 'new' ? 'Create' : 'Rename'}
+          onCancel={() => setNaming(null)}
+          onSubmit={(name) => { setNaming(null); if (naming === 'new') onCreate(name); else void rename(name); }}
+        />
+      )}
 
       {showImport && (
         <ImportDialog
@@ -191,6 +201,25 @@ function ImportDialog({ currentId, onClose, onImported, onError }: {
           {!unresolved && <button className="primary" disabled={busy || !text.trim()} onClick={submit}>Import</button>}
         </div>
       </div>
+    </div>
+  );
+}
+
+function NameDialog({ title, initial, confirmLabel, onSubmit, onCancel }: {
+  title: string; initial: string; confirmLabel: string; onSubmit: (name: string) => void; onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial);
+  const submit = () => { if (name.trim()) onSubmit(name.trim()); };
+  return (
+    <div className="modal" role="dialog" aria-label={title} onKeyDown={(e) => e.key === 'Escape' && onCancel()}>
+      <form className="dialog narrow" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+        <h2>{title}</h2>
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onFocus={(e) => e.target.select()} aria-label="Deck name" maxLength={100} />
+        <div className="deckbar end">
+          <button type="button" onClick={onCancel}>Cancel</button>
+          <button type="submit" className="primary" disabled={!name.trim()}>{confirmLabel}</button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -1,0 +1,53 @@
+name: Build
+
+# Not yet exercised: the repo hasn't been pushed. Windows installers can't be built on the Linux dev machine
+# (electron-builder needs Wine there), so this workflow is the intended way to produce them.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # matches the Node bundled in Electron 44 (node:sqlite)
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build app bundle
+        run: npm run build -w @grimoire/desktop
+      - name: Build installers
+        run: npx electron-builder --publish never
+        working-directory: packages/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false' # no code signing yet
+      # Smoke-test the packaged app (first run, search, decks, persistence).
+      - name: Smoke test (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npx playwright test -c playwright.desktop.config.ts
+        env:
+          GRIMOIRE_EXE: ${{ github.workspace }}/release/linux-unpacked/grimoire
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        run: npx playwright test -c playwright.desktop.config.ts
+        env:
+          GRIMOIRE_EXE: ${{ github.workspace }}\release\win-unpacked\Grimoire.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grimoire-${{ runner.os }}
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.exe
+          if-no-files-found: error

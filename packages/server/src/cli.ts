@@ -1,4 +1,5 @@
-import { DEFAULT_DATA_DIR, dbPathFor, openDb } from './db.js';
+import { dbPathFor, openDb } from './db.js';
+import { DEFAULT_DATA_DIR } from './devpaths.js';
 import { DataManager } from './data.js';
 
 const [command, ...args] = process.argv.slice(2);

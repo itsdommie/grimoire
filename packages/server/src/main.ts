@@ -1,4 +1,5 @@
-import { DEFAULT_DATA_DIR, dbPathFor, openDb } from './db.js';
+import { dbPathFor, openDb } from './db.js';
+import { DEFAULT_DATA_DIR } from './devpaths.js';
 import { buildServer } from './server.js';
 
 const dataDir = DEFAULT_DATA_DIR;

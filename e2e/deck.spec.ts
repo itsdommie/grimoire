@@ -4,10 +4,11 @@ const search = (page: import('@playwright/test').Page) => page.getByPlaceholder(
 
 test.describe.serial('deck builder', () => {
   test('create a deck, set a commander, add cards, see validation', async ({ page }) => {
-    page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? 'E2E Atraxa' : undefined));
     await page.goto('/');
 
     await page.getByRole('button', { name: 'New', exact: true }).click();
+    await page.getByRole('dialog', { name: 'New deck' }).getByLabel('Deck name').fill('E2E Atraxa');
+    await page.getByRole('dialog').getByRole('button', { name: 'Create', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'E2E Atraxa' })).toBeVisible();
     await expect(page.getByText('0/100')).toBeVisible();
 
@@ -34,6 +35,18 @@ test.describe.serial('deck builder', () => {
     await page.locator('.deck .row', { hasText: 'Lightning Bolt' }).hover();
     await page.getByRole('button', { name: 'Remove Lightning Bolt', exact: true }).click();
     await expect(page.locator('.issues .error')).toHaveCount(0);
+  });
+
+  test('rename via dialog', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('heading', { name: 'E2E Atraxa' }).click();
+    await page.getByLabel('Deck name').fill('E2E Atraxa Renamed');
+    await page.getByRole('dialog').getByRole('button', { name: 'Rename', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'E2E Atraxa Renamed' })).toBeVisible();
+    await page.getByRole('heading', { name: 'E2E Atraxa Renamed' }).click();
+    await page.getByLabel('Deck name').fill('E2E Atraxa');
+    await page.getByRole('dialog').getByRole('button', { name: 'Rename', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'E2E Atraxa', exact: true })).toBeVisible();
   });
 
   test('deck persists across reloads', async ({ page }) => {

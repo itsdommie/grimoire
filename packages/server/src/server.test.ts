@@ -26,6 +26,8 @@ describe('desktop server protection', () => {
     expect(page.body).toContain(`content="${TOKEN}"`);
     expect(page.body).not.toContain('__GRIMOIRE_TOKEN__');
     expect(page.headers['cache-control']).toBe('no-store');
+    expect(page.headers['content-security-policy']).toContain("script-src 'self'");
+    expect(page.headers['content-security-policy']).toContain('https://cards.scryfall.io');
     expect((await app.inject({ method: 'GET', url: '/assets/app.js' })).statusCode).toBe(200);
   });
 
