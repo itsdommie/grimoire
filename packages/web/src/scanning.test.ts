@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Card, CardMatchCandidate } from '@grimoire/shared';
-import { CARD_ASPECT, ScanTracker, guideRect, pickCandidate, titleLines, type OcrResult } from './scanner';
+import { CARD_ASPECT, ScanTracker, guideRect, pickCandidate, titleLines, type OcrResult } from './scanning';
 
 const line = (text: string, top: number, height = 30) => ({ text, left: 10, top, width: 200, height });
 const candidate = (score: number): CardMatchCandidate => ({ card: { id: 'x', name: 'X' } as Card, score, line: 'x' });
@@ -75,7 +75,7 @@ describe('ScanTracker', () => {
 
 describe('bottomLines', () => {
   it('keeps the lines from the bottom edge, top to bottom, where the printing is printed', async () => {
-    const { bottomLines } = await import('./scanner');
+    const { bottomLines } = await import('./scanning');
     const ocr: OcrResult = { width: 400, height: 560, lines: [line('Sol Ring', 30), line('Flavour text', 300), line('150/281 C', 500, 14), line('SNC • EN > ARTIST', 520, 14), line('x', 530, 14), line('TM & 2022 Wizards of the Coast', 540, 12)] };
     expect(bottomLines(ocr)).toEqual(['150/281 C', 'SNC • EN > ARTIST', 'TM & 2022 Wizards of the Coast']);
   });

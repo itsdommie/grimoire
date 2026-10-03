@@ -1,7 +1,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protocol.ts';
-import type { OcrResult, TextRecognizer } from '../../web/src/scanner.ts';
+import type { OcrResult, TextRecognizer } from '../../web/src/scanning.ts';
 
 /**
  * Runs before the app. It starts the API worker and replaces `fetch` for `/api/...` URLs with a call into that worker, so the

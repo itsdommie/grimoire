@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, DeckDetail, Finish, PrintingInfo } from '@grimoire/shared';
 import { api } from './api';
-import { ScanTracker, bottomLines, guideRect, pickCandidate, titleLines, type TextRecognizer } from './scanner';
+import { ScanTracker, bottomLines, guideRect, pickCandidate, titleLines, type TextRecognizer } from './scanning';
 
 type Target = 'collection' | 'deck';
 

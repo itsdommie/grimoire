@@ -69,12 +69,29 @@ async function loadBundledPrintings(db: Db, meta: (key: string) => string | null
   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_version', ?)").run(bundled.printings);
 }
 
+/**
+ * Open the private file store. When the page has just been reloaded, the previous worker may not have let go of its files yet, and the
+ * store refuses to open until it has (measured: about half of quick reloads). It remembers a failed attempt, so each retry has to
+ * say to start over. A few seconds of trying is plenty.
+ */
+async function installPool(sqlite3: Awaited<ReturnType<typeof sqlite3InitModule>>) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 30; attempt++) {
+    // (the option exists at runtime, but the package's type definitions leave it out)
+    try { return await sqlite3.installOpfsSAHPoolVfs({ name: 'grimoire', initialCapacity: 10, forceReinitIfPreviouslyFailed: true } as { name: string; initialCapacity: number }); } catch (err) {
+      lastError = err;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  }
+  throw lastError;
+}
+
 async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; metered?: boolean }): Promise<void> {
   // The package's types declare no options, but Emscripten's loader takes locateFile (it must find sqlite3.wasm next to this file).
   const init = sqlite3InitModule as unknown as (o: { locateFile(name: string): string }) => ReturnType<typeof sqlite3InitModule>;
   const sqlite3 = await init({ locateFile: (name) => new URL(name, ctx.location.href).href });
   // Room for the database, its journal and the downloaded update waiting to be applied.
-  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: 'grimoire', initialCapacity: 10 });
+  const pool = await installPool(sqlite3);
   // First run: copy the bundled card database into private storage. After that it is only ever opened (the user's decks and
   // collection live in the same file, so it must never be replaced once it exists).
   // (If the app was closed during this copy, the next start just copies again: the file store only shows a database once its whole
