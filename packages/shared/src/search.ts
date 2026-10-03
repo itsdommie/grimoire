@@ -294,8 +294,9 @@ function compileTerm(key: string, op: Op, value: string, params: Compiled['param
       return `rarity_n ${SQL_OP[op]} ?`;
     }
     case 's': case 'set': case 'e': case 'edition':
-      params.push(value.toLowerCase());
-      return `set_code = ?`;
+      // Every set a card was printed in (when the printings are loaded), as well as its featured printing's set.
+      params.push(value.toLowerCase(), value.toLowerCase());
+      return `(set_code = ? OR cards.id IN (SELECT card_id FROM printings WHERE set_code = ?))`; // (IN, not a correlated EXISTS: that one scanned all printings per card, 3 s against 16 ms)
     case 'f': case 'format': case 'legal':
       params.push(value.toLowerCase());
       return `EXISTS (SELECT 1 FROM legality l WHERE l.card_id = cards.id AND l.format = ? AND l.status IN ('legal','restricted'))`;

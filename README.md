@@ -172,6 +172,15 @@ in the collection and 4 decks each running one, there is still one spare, so Sol
 "Only cards I own" in search (`spare>=1` works in queries too), the deck's missing-cards report and "What can I build?". The deck you
 are building doesn't count against itself, and a Commander deck's maybeboard holds no copies.
 
+## Sets
+
+The **Sets** tab lists every set (newest first) with how many of its cards you own. Open one to see its cards in collector-number
+order, dimmed when you don't have them, with the art of that set's printing. Filter to **Owned** or **Missing**, see about how much
+the missing ones would cost (each at its cheapest price in the set; Scryfall's prices, a rough guide), and press **+** on a card to
+record a copy of *that printing*. Counting is by card: a copy of Sol Ring from any set counts toward every set that printed it, and
+the "recorded as this set's printing" figure counts only copies you have said are from this set. `set:cmm` in the search box finds every card
+printed in Commander Masters, not just the ones whose featured printing is from it.
+
 ## Decks
 
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.

@@ -1,4 +1,4 @@
-import type { AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { SetDetail, SetSummary, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -51,6 +51,8 @@ export const api = {
     return res.text();
   },
   restore: (data: unknown, mode: 'merge' | 'replace') => request<RestoreResult>('POST', '/api/backup/restore', { data, mode }),
+  sets: (q = '') => request<{ sets: SetSummary[] }>('GET', `/api/sets?q=${encodeURIComponent(q)}`),
+  set: (code: string, filter: 'all' | 'owned' | 'missing', limit: number, offset = 0, signal?: AbortSignal) => request<SetDetail>('GET', `/api/sets/${encodeURIComponent(code)}?filter=${filter}&limit=${limit}&offset=${offset}`, undefined, signal),
   advisorStatus: () => request<AdvisorStatus>('GET', '/api/advisor/status'),
   advisorSetKey: (key: string) => request<AdvisorStatus>('PUT', '/api/advisor/key', { key }),
   advisorClearKey: () => request<AdvisorStatus>('DELETE', '/api/advisor/key'),

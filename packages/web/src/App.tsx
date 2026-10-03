@@ -9,6 +9,7 @@ import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
 import { RulesView } from './RulesView';
 import { AdvisorView, type ChatItem } from './AdvisorView';
+import { SetsView } from './SetsView';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
@@ -94,7 +95,7 @@ export function App() {
   const [skipUsed, setSkipUsedState] = useState(() => { try { return localStorage.getItem('grimoire.skipUsed') === '1'; } catch { return false; } });
   const setSkipUsed = (v: boolean) => { setSkipUsedState(v); try { localStorage.setItem('grimoire.skipUsed', v ? '1' : '0'); } catch { /* storage unavailable */ } };
   const [onlyLegal, setOnlyLegal] = useState(true);
-  const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules' | 'advisor'>('cards');
+  const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules' | 'advisor' | 'sets'>('cards');
   // On a phone the browse area and the deck are separate full-screen panes; on a wide screen they sit side by side and this is unused.
   const [pane, setPane] = useState<'browse' | 'deck'>('browse');
   // On a touch screen the search box must not take focus before the person has touched anything: it would raise the keyboard over the app
@@ -204,6 +205,7 @@ export function App() {
           <nav className="viewtabs" aria-label="Views">
             <button className={view === 'cards' ? 'active' : ''} aria-current={view === 'cards' ? 'page' : undefined} onClick={() => setView('cards')}>Cards</button>
             <button className={view === 'collection' ? 'active' : ''} aria-current={view === 'collection' ? 'page' : undefined} onClick={() => setView('collection')}>Collection</button>
+            <button className={view === 'sets' ? 'active' : ''} aria-current={view === 'sets' ? 'page' : undefined} onClick={() => setView('sets')}>Sets</button>
             <button className={view === 'rules' ? 'active' : ''} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => setView('rules')}>Rules</button>
             <button className={view === 'advisor' ? 'active' : ''} aria-current={view === 'advisor' ? 'page' : undefined} onClick={() => setView('advisor')}>Advisor</button>
             <button className={view === 'play' ? 'active' : ''} aria-current={view === 'play' ? 'page' : undefined} onClick={() => setView('play')}>Play</button>
@@ -222,7 +224,7 @@ export function App() {
           </select>}
         </header>
         <main>
-          {view === 'play' ? <PlayView /> : view === 'advisor' ? <AdvisorView deck={current ? { id: current.deck.id, name: current.deck.name, format: rules.name } : null} chat={advice} setChat={setAdvice} onOpenCard={setDetailId} /> : view === 'rules' ? <RulesView openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} /> : (<>
+          {view === 'play' ? <PlayView /> : view === 'sets' ? <SetsView onOpenCard={setDetailId} onSearchSet={(code) => { setQuery(`set:${code}`); setView('cards'); }} onCollectionChanged={() => void collectionChanged()} collectionVersion={collectionVersion} /> : view === 'advisor' ? <AdvisorView deck={current ? { id: current.deck.id, name: current.deck.name, format: rules.name } : null} chat={advice} setChat={setAdvice} onOpenCard={setDetailId} /> : view === 'rules' ? <RulesView openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} /> : (<>
           {error && <p className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></p>}
           <p className="status">
             {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}${/\b(?:about|meaning|sem):/.test(searchQuery) ? ', best matches first' : ''}` : ''}

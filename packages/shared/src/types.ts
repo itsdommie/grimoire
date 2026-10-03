@@ -258,3 +258,42 @@ export interface AdvisorReply {
   /** How many database lookups it made to answer. */
   lookups: number;
 }
+
+// -------------------------------------------------------------------- sets
+
+export interface SetSummary {
+  code: string;
+  name: string;
+  released: string | null;
+  /** Different cards printed in the set. */
+  cards: number;
+  /** Of those, cards you own in any printing. */
+  owned: number;
+  /** Of those, cards you have recorded as this set's printing. */
+  ownedHere: number;
+}
+export interface SetCard {
+  card: Card;
+  /** The printing shown for this card in this set (the lowest collector number; some sets print a card several times). */
+  printingId: string;
+  collector: string;
+  imageUrl: string;
+  /** The finish a click on "own" records: nonfoil when the printing comes that way, else foil or etched. */
+  finish: Finish;
+  /** Cheapest price among the card's printings in this set, any finish (null when none is known). */
+  usd: number | null;
+  /** How many printings of this card the set has. */
+  variants: number;
+  /** Copies you have recorded as a printing from this set. */
+  copiesHere: number;
+}
+export interface SetDetail {
+  set: SetSummary;
+  /** About what it would cost to buy every card you don't own from the set, at the cheapest price in the set (null when no prices are loaded). */
+  missingUsd: number | null;
+  /** Cards you don't own whose price is unknown. */
+  unpriced: number;
+  /** Cards matching the filter (the page below is part of these). */
+  total: number;
+  cards: SetCard[];
+}

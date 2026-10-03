@@ -388,3 +388,21 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .chatinput textarea { flex: 1; padding: 10px 14px; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid #333650; border-radius: 10px; resize: vertical; }
 .chatinput textarea:focus { outline: 2px solid var(--accent); }
 @media (max-width: 900px) { .chatinput { bottom: 52px; } .chatmsg { max-width: 100%; } }
+
+/* ---- sets ---- */
+.sets { padding-top: 8px; }
+.setsbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.setsbar input[type="text"], .setsbar input:not([type]) { max-width: 360px; }
+.setlist { list-style: none; margin: 8px 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 6px; }
+.setlist button { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; width: 100%; padding: 8px 12px; text-align: left; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid transparent; border-radius: 8px; cursor: pointer; }
+.setlist button:hover { border-color: var(--accent); }
+.setlist .setname { grid-column: 1 / 2; overflow-wrap: anywhere; }
+.setlist .setcount { grid-column: 2 / 3; grid-row: 1; color: var(--muted); font-variant-numeric: tabular-nums; }
+.setlist meter { grid-column: 1 / 3; width: 100%; height: 8px; }
+.setpage h2 { margin: 10px 0 4px; }
+.setprogress meter { width: 220px; vertical-align: middle; }
+.seg { display: inline-flex; border: 1px solid #333650; border-radius: 8px; overflow: hidden; }
+.seg button { padding: 6px 14px; font: inherit; color: var(--muted); background: none; border: 0; cursor: pointer; }
+.seg button.active { color: var(--fg); background: #2a2540; }
+.settile.missing .art img { opacity: .4; filter: grayscale(.6); }
+.settile.missing:hover .art img { opacity: .9; filter: none; }

@@ -6,6 +6,7 @@ import { exportUserData, restoreUserData } from './backup.js';
 import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
+import { getSet, listSets, type SetFilter } from './sets.js';
 import { Advisor, AdvisorError, keyFromEnvironment, type AdvisorOptions } from './advisor.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
@@ -217,6 +218,12 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
   on('POST', '/api/semantic/enable', () => { semantic.start(); return reply(202, semantic.status()); });
   on('POST', '/api/semantic/cancel', () => { semantic.cancel(); return semantic.status(); });
   on('DELETE', '/api/semantic', () => { semantic.remove(); return reply(204); });
+
+  // ------------------------------------------------------------------ sets
+  on('GET', '/api/sets', ({ query }) => ({ sets: listSets(db, query.q ?? '') }));
+  on('GET', '/api/sets/:code', ({ params, query }) => getSet(db, params.code!, {
+    filter: query.filter === 'owned' || query.filter === 'missing' ? (query.filter as SetFilter) : 'all', limit: num(query.limit), offset: num(query.offset),
+  }) ?? reply(404, { error: 'No such set' }));
 
   // --------------------------------------------------------------- advisor
   const advisor = new Advisor({ ...(advisorOptions ?? { keys: keyFromEnvironment(null) }), db, rankerFor: semanticFor });
