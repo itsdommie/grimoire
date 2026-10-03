@@ -22,6 +22,9 @@ export interface Card {
   imageUrlBack?: string | null;
   scryfallUri: string;
   legalities: Record<string, string>;
+  /** Cheapest paper printing in USD and its set, when cheapest-printing prices are enabled. */
+  usdMin?: number | null;
+  usdMinSet?: string | null;
   /** How many copies the user owns (set by the server; absent for cards built without a collection). */
   owned?: number;
 }
@@ -61,8 +64,10 @@ export interface DataStatus {
   cardCount: number;
   /** Scryfall's `updated_at` for the bulk file currently loaded. */
   bulkUpdatedAt: string | null;
-  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags'; received?: number; total?: number; cards?: number };
+  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices'; received?: number; total?: number; cards?: number };
   error?: string;
+  /** Cheapest-printing prices (an optional 79 MB download). */
+  prices?: { enabled: boolean; updatedAt: string | null };
   /** Something optional failed (rulings or tags) while the core card data is fine. */
   warning?: string;
   /** The loaded data predates this app version (older shape, or extras not fetched yet): the UI refreshes it automatically. */

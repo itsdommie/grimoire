@@ -4,7 +4,7 @@ import { api } from './api';
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
 
-const ITEM_LABEL = { cards: 'card data', rulings: 'rulings', tags: 'function tags' } as const;
+const ITEM_LABEL = { cards: 'card data', rulings: 'rulings', tags: 'function tags', prices: 'prices' } as const;
 
 export function describeProgress(p: NonNullable<DataStatus['progress']>): string {
   const what = ITEM_LABEL[p.item ?? 'cards'];
@@ -36,7 +36,8 @@ export function useDataStatus() {
   }, [status]);
 
   const start = async (force = false) => { try { setStatus(await api.updateData(force)); } catch { setUnreachable(true); } };
-  return { status, unreachable, start };
+  const setPrices = async (enabled: boolean, refresh = false) => { try { setStatus(await api.setPrices(enabled, refresh)); } catch { setUnreachable(true); } };
+  return { status, unreachable, start, setPrices };
 }
 
 /** Full-screen first-run screen: nothing works until the card pool has been downloaded. */
@@ -80,6 +81,28 @@ export function DataFooter({ status, onUpdate }: { status: DataStatus; onUpdate:
           {status.upToDate && ' (up to date)'}
           {status.state === 'error' && <span className="error"> Update failed: {status.error}</span>}
           {status.warning && <span className="muted"> {status.warning}.</span>}
+        </>
+      )}
+    </span>
+  );
+}
+
+/** Footer control for the optional cheapest-printing prices (a 79 MB one-off download). */
+export function PricesFooter({ status, onEnable, onDisable, onRefresh }: { status: DataStatus; onEnable: () => void; onDisable: () => void; onRefresh: () => void }) {
+  const [explain, setExplain] = useState(false);
+  const enabled = status.prices?.enabled ?? false;
+  const working = status.state === 'updating'; // prices are fetched as part of an update, so don't claim they're ready until it finishes
+  const date = status.prices?.updatedAt && !status.prices.updatedAt.startsWith('local') ? new Date(status.prices.updatedAt).toLocaleDateString() : null;
+  return (
+    <span className="datafooter">
+      Prices:{' '}
+      {working ? (status.progress ? describeProgress(status.progress) : 'Updating…') : enabled ? (
+        <>cheapest printing{date ? `, from ${date}` : ''} · <button className="linklike" onClick={onRefresh}>Update prices</button> · <button className="linklike" onClick={onDisable}>Turn off</button></>
+      ) : (
+        <>
+          featured printing (rough) · <button className="linklike" onClick={onEnable}>Use cheapest-printing prices</button>
+          {' · '}<button className="linklike" onClick={() => setExplain((v) => !v)} aria-expanded={explain}>What is this?</button>
+          {explain && <span className="muted"> By default a card's price is that of Scryfall's featured printing, which can be far from the cheapest copy. This downloads Scryfall's list of every printing once (about 79 MB) and keeps the lowest paper price of each card. It refreshes about weekly.</span>}
         </>
       )}
     </span>

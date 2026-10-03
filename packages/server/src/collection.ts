@@ -5,7 +5,7 @@ import { getDeck, BadRequestError } from './decks.js';
 
 export function collectionSummary(db: Db): CollectionSummary {
   const row = db.prepare(`SELECT count(*) AS unique_cards, COALESCE(sum(collection.qty), 0) AS total,
-      COALESCE(sum(collection.qty * cards.usd), 0) AS value, COALESCE(sum(cards.usd IS NULL), 0) AS unpriced
+      COALESCE(sum(collection.qty * COALESCE(cards.usd_min, cards.usd)), 0) AS value, COALESCE(sum(COALESCE(cards.usd_min, cards.usd) IS NULL), 0) AS unpriced
     FROM collection JOIN cards ON cards.id = collection.card_id`).get() as unknown as { unique_cards: number; total: number; value: number; unpriced: number };
   return { unique: row.unique_cards, total: row.total, valueUsd: Math.round(row.value * 100) / 100, unpriced: row.unpriced };
 }
@@ -65,7 +65,8 @@ export function deckMissing(db: Db, deckId: number): MissingReport {
     have += Math.min(qty, owned);
     const short = Math.max(0, qty - owned);
     if (short === 0) continue;
-    const costUsd = card.usd === null ? null : round2(card.usd * short);
+    const price = card.usdMin ?? card.usd;
+    const costUsd = price === null || price === undefined ? null : round2(price * short);
     if (costUsd === null) unpriced++; else totalUsd += costUsd;
     missing.push({ card, need: qty, owned, missing: short, costUsd });
   }

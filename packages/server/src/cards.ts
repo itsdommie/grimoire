@@ -8,7 +8,7 @@ const ORDER_SQL: Record<Order, string> = {
   name: 'name COLLATE NOCASE ASC',
   cmc: 'cmc ASC, name COLLATE NOCASE ASC',
   edhrec: 'edhrec_rank IS NULL, edhrec_rank ASC, name COLLATE NOCASE ASC',
-  usd: 'usd IS NULL, usd DESC, name COLLATE NOCASE ASC',
+  usd: 'COALESCE(usd_min, usd) IS NULL, COALESCE(usd_min, usd) DESC, name COLLATE NOCASE ASC',
 };
 
 /** Every card query selects the owned count too, so any Card handed out knows how many copies the user has. */
@@ -19,6 +19,7 @@ export interface Row {
   colors: number; color_identity: number; produced_mana: number; keywords: string;
   power: string | null; toughness: string | null; loyalty: string | null;
   rarity: string; set_code: string; layout: string; edhrec_rank: number | null; usd: number | null;
+  usd_min: number | null; usd_min_set: string | null;
   image_url: string | null; image_url_back: string | null; scryfall_uri: string; owned: number;
 }
 
@@ -32,7 +33,7 @@ export function rowToCard(db: Db, r: Row): Card {
     colors: r.colors, colorIdentity: r.color_identity, producedMana: r.produced_mana,
     keywords: r.keywords ? r.keywords.split(' ') : [],
     power: r.power, toughness: r.toughness, loyalty: r.loyalty, rarity: r.rarity, setCode: r.set_code,
-    layout: r.layout, edhrecRank: r.edhrec_rank, usd: r.usd, imageUrl: r.image_url, imageUrlBack: r.image_url_back, scryfallUri: r.scryfall_uri,
+    layout: r.layout, edhrecRank: r.edhrec_rank, usd: r.usd, usdMin: r.usd_min, usdMinSet: r.usd_min_set, imageUrl: r.image_url, imageUrlBack: r.image_url_back, scryfallUri: r.scryfall_uri,
     legalities, owned: r.owned,
   };
 }

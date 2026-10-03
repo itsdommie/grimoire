@@ -3,7 +3,7 @@ import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 import { openDb, dbPathFor, type Db } from './db.js';
-import { loadJsonl, loadRulings, loadTags } from './ingest.js';
+import { clearPrices, loadJsonl, loadPrices, loadRulings, loadTags } from './ingest.js';
 import type { DataStatus } from '@grimoire/shared';
 
 // Scryfall asks for a descriptive User-Agent and an Accept header on every API request.
@@ -18,9 +18,10 @@ interface BulkEntry { type: string; updated_at: string; jsonl_download_uri?: str
 /** Bump when the shape of imported data changes (e.g. a new column): existing installs then re-import from the cached bulk file. */
 export const DATA_VERSION = 2;
 
-type Kind = 'oracle_cards' | 'rulings' | 'oracle_tags';
-const FILE_PREFIX: Record<Kind, string> = { oracle_cards: 'oracle-cards', rulings: 'rulings', oracle_tags: 'oracle-tags' };
-const META_KEY: Record<Exclude<Kind, 'oracle_cards'>, string> = { rulings: 'rulings_updated_at', oracle_tags: 'tags_updated_at' };
+type Kind = 'oracle_cards' | 'rulings' | 'oracle_tags' | 'default_cards';
+const FILE_PREFIX: Record<Kind, string> = { oracle_cards: 'oracle-cards', rulings: 'rulings', oracle_tags: 'oracle-tags', default_cards: 'default-cards' };
+const META_KEY = { rulings: 'rulings_updated_at', oracle_tags: 'tags_updated_at' } as const;
+const PRICE_REFRESH_DAYS = 7;
 
 export interface DataManagerOptions {
   /** Where the database and downloaded bulk files live. */
@@ -33,11 +34,17 @@ export interface DataManagerOptions {
   /** Same for the optional extras (GRIMOIRE_RULINGS_FILE, GRIMOIRE_TAGS_FILE). */
   localRulings?: string;
   localTags?: string;
+  /** Cheapest-printing prices from a local Default Cards file (GRIMOIRE_PRICES_FILE). */
+  localPrices?: string;
 }
 
 export interface UpdateOptions {
   /** Re-import even when Scryfall's bulk data is unchanged. */
   force?: boolean;
+  /** true: turn cheapest-printing prices on and fetch them now. false: turn them off. Omitted: keep the current setting. */
+  prices?: boolean;
+  /** Re-download prices even if they're recent. */
+  refreshPrices?: boolean;
   /** Import from a local .jsonl / .jsonl.gz file instead of downloading (offline installs, tests). */
   file?: string;
 }
@@ -49,6 +56,7 @@ export class DataManager {
   private readonly localFile: string | undefined;
   private readonly localRulings: string | undefined;
   private readonly localTags: string | undefined;
+  private readonly localPrices: string | undefined;
   private warning: string | undefined;
   private running: Promise<void> | null = null;
   private progress: DataStatus['progress'];
@@ -62,6 +70,7 @@ export class DataManager {
     this.localFile = opts.localFile;
     this.localRulings = opts.localRulings;
     this.localTags = opts.localTags;
+    this.localPrices = opts.localPrices;
   }
 
   private meta(key: string): string | null {
@@ -81,8 +90,11 @@ export class DataManager {
       ...(this.warning && !this.running ? { warning: this.warning } : {}),
       ...(this.upToDate !== undefined && !this.running ? { upToDate: this.upToDate } : {}),
       ...(cardCount > 0 && this.outdated() ? { outdated: true } : {}),
+      prices: { enabled: this.pricesEnabled(), updatedAt: this.meta('prices_updated_at') },
     };
   }
+
+  pricesEnabled(): boolean { return this.meta('prices_enabled') === '1'; }
 
   /** The loaded data predates this version of the app (older data shape, or extras that weren't fetched yet). */
   private outdated(): boolean {
@@ -99,8 +111,10 @@ export class DataManager {
     this.error = undefined;
     this.warning = undefined;
     this.upToDate = undefined;
+    if (opts.prices === true) this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('prices_enabled', '1')").run();
+    if (opts.prices === false) this.disablePrices();
     this.progress = { phase: 'checking', item: 'cards' };
-    this.running = this.update({ ...opts, file: opts.file ?? this.localFile })
+    this.running = this.update({ ...opts, file: opts.file ?? this.localFile, refreshPrices: opts.refreshPrices || opts.prices === true })
       .catch((err: unknown) => { this.error = err instanceof Error ? err.message : String(err); })
       .finally(() => { this.running = null; this.progress = undefined; });
   }
@@ -146,6 +160,13 @@ export class DataManager {
         failures.push(`${kind === 'rulings' ? 'rulings' : 'card tags'}: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
+    if (this.pricesEnabled()) {
+      try {
+        if (await this.updatePrices(manifest, opts, needCards, local)) imported = true;
+      } catch (err) {
+        failures.push(`prices: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
     if (failures.length) this.warning = `Couldn't update ${failures.join('; ')}`;
     this.upToDate = !imported;
   }
@@ -170,6 +191,46 @@ export class DataManager {
     return true;
   }
 
+  /**
+   * Cheapest-printing prices. The Default Cards file is ~79 MB, so it is only re-downloaded on request or once it is a week old.
+   * Re-importing the card pool wipes the prices, so they are re-applied from the cached file whenever the cards change.
+   */
+  private async updatePrices(manifest: Record<Kind, BulkEntry> | null, opts: UpdateOptions, cardsChanged: boolean, local: boolean): Promise<boolean> {
+    let file: string | undefined = this.localPrices;
+    let version = 'local';
+    if (!file) {
+      if (local) return false;
+      const entry = manifest?.default_cards;
+      if (!entry?.updated_at) return false;
+      const bulkDir = resolve(this.dataDir, 'bulk');
+      const cached = existsSync(bulkDir) ? readdirSync(bulkDir).filter((f) => f.startsWith(`${FILE_PREFIX.default_cards}-`)).sort().at(-1) : undefined;
+      const updatedAt = this.meta('prices_updated_at');
+      const stale = !updatedAt || (Date.now() - Date.parse(this.meta('prices_checked_at') ?? '') > PRICE_REFRESH_DAYS * 864e5 && entry.updated_at !== updatedAt);
+      const mustFetch = !cached || opts.refreshPrices || stale;
+      file = mustFetch ? await this.ensureFile('default_cards', entry, 'prices') : resolve(bulkDir, cached);
+      version = mustFetch ? entry.updated_at : (updatedAt ?? entry.updated_at);
+      if (!mustFetch && !cardsChanged) return false; // prices are already applied to the current cards
+    }
+    this.progress = { phase: 'importing', item: 'prices', cards: 0 };
+    const writer = openDb(dbPathFor(this.dataDir));
+    try {
+      await loadPrices(writer, this.lines(file), (n) => { this.progress = { phase: 'importing', item: 'prices', cards: n }; });
+      const put = writer.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+      put.run('prices_updated_at', version);
+      put.run('prices_checked_at', new Date().toISOString());
+    } finally {
+      writer.close();
+    }
+    return true;
+  }
+
+  private disablePrices(): void {
+    this.db.prepare("DELETE FROM meta WHERE key IN ('prices_enabled', 'prices_updated_at', 'prices_checked_at')").run();
+    clearPrices(this.db);
+    const bulkDir = resolve(this.dataDir, 'bulk');
+    if (existsSync(bulkDir)) for (const f of readdirSync(bulkDir)) if (f.startsWith(`${FILE_PREFIX.default_cards}-`)) rmSync(resolve(bulkDir, f), { force: true });
+  }
+
   private lines(file: string) {
     const raw = createReadStream(file);
     const input = file.endsWith('.gz') ? raw.pipe(createGunzip()) : raw;
@@ -177,7 +238,7 @@ export class DataManager {
   }
 
   /** Download a bulk file (unless it's already cached) and prune older downloads of the same kind. */
-  private async ensureFile(kind: Kind, entry: BulkEntry, item: 'cards' | 'rulings' | 'tags'): Promise<string> {
+  private async ensureFile(kind: Kind, entry: BulkEntry, item: 'cards' | 'rulings' | 'tags' | 'prices'): Promise<string> {
     if (!entry.jsonl_download_uri) throw new Error(`Scryfall's ${kind} bulk entry has no JSONL download`);
     const bulkDir = resolve(this.dataDir, 'bulk');
     mkdirSync(bulkDir, { recursive: true });
@@ -195,10 +256,11 @@ export class DataManager {
     const cards = find('oracle_cards');
     if (!cards) throw new Error('Scryfall bulk manifest has no Oracle Cards entry');
     // Rulings and tags are optional extras: if Scryfall ever drops one, cards still import.
-    return { oracle_cards: cards, rulings: find('rulings') ?? ({ type: 'rulings', updated_at: '', jsonl_download_uri: undefined } as BulkEntry), oracle_tags: find('oracle_tags') ?? ({ type: 'oracle_tags', updated_at: '', jsonl_download_uri: undefined } as BulkEntry) };
+    const absent = (type: Kind) => ({ type, updated_at: '', jsonl_download_uri: undefined }) as BulkEntry;
+    return { oracle_cards: cards, rulings: find('rulings') ?? absent('rulings'), oracle_tags: find('oracle_tags') ?? absent('oracle_tags'), default_cards: find('default_cards') ?? absent('default_cards') };
   }
 
-  private async download(url: string, dest: string, item: 'cards' | 'rulings' | 'tags'): Promise<void> {
+  private async download(url: string, dest: string, item: 'cards' | 'rulings' | 'tags' | 'prices'): Promise<void> {
     const res = await this.fetchImpl(url, { headers: HEADERS });
     if (!res.ok || !res.body) throw new Error(`Download failed (HTTP ${res.status})`);
     const total = Number(res.headers.get('content-length')) || undefined;

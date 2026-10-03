@@ -110,3 +110,56 @@ export async function loadTags(db: Db, lines: AsyncIterable<string>, onProgress?
   }
   return tags.length;
 }
+
+interface RawPrinting {
+  oracle_id?: string; set?: string; digital?: boolean; oversized?: boolean; layout?: string; set_type?: string; border_color?: string;
+  games?: string[]; prices?: { usd?: string | null };
+}
+
+/** Printings that can't be the "cheapest copy you'd actually buy": digital-only, oversized, tokens, art cards, gold-bordered. */
+const SKIP_LAYOUTS = new Set(['token', 'double_faced_token', 'emblem', 'art_series', 'vanguard', 'scheme', 'planar', 'host']);
+const SKIP_SET_TYPES = new Set(['memorabilia', 'token', 'minigame']);
+
+export function isRealPaperPrinting(p: RawPrinting): boolean {
+  if (!p.oracle_id || p.digital || p.oversized || p.border_color === 'gold') return false;
+  if (p.games && !p.games.includes('paper')) return false;
+  if (p.layout && SKIP_LAYOUTS.has(p.layout)) return false;
+  return !(p.set_type && SKIP_SET_TYPES.has(p.set_type));
+}
+
+/**
+ * Stream Scryfall's Default Cards (every printing) and keep the cheapest non-foil USD price per card, with its set.
+ * Replaces any previous cheapest prices. Returns how many of our cards got a price.
+ */
+export async function loadPrices(db: Db, lines: AsyncIterable<string>, onProgress?: (printings: number) => void): Promise<number> {
+  const cheapest = new Map<string, { usd: number; set: string }>();
+  let seen = 0;
+  for await (const line of lines) {
+    if (!line.trim()) continue;
+    if (++seen % 20000 === 0) onProgress?.(seen);
+    const p = JSON.parse(line) as RawPrinting;
+    if (!isRealPaperPrinting(p)) continue;
+    const usd = Number.parseFloat(p.prices?.usd ?? '');
+    if (!Number.isFinite(usd) || usd <= 0) continue;
+    const cur = cheapest.get(p.oracle_id!);
+    if (!cur || usd < cur.usd) cheapest.set(p.oracle_id!, { usd, set: p.set ?? '' });
+  }
+  const update = db.prepare('UPDATE cards SET usd_min = ?, usd_min_set = ? WHERE id = ?');
+  let updated = 0;
+  db.exec('BEGIN IMMEDIATE');
+  try {
+    db.exec('UPDATE cards SET usd_min = NULL, usd_min_set = NULL');
+    for (const [id, { usd, set }] of cheapest) updated += Number(update.run(usd, set, id).changes); // only cards we actually have
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  onProgress?.(seen);
+  return updated;
+}
+
+/** Forget the cheapest-printing prices (cards fall back to Scryfall's featured-printing price). */
+export function clearPrices(db: Db): void {
+  db.exec('UPDATE cards SET usd_min = NULL, usd_min_set = NULL');
+}

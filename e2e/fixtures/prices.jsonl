@@ -1,0 +1,3 @@
+{"object": "card", "oracle_id": "fixture-1", "set": "cmm", "layout": "normal", "games": ["paper"], "digital": false, "prices": {"usd": "1.50"}}
+{"object": "card", "oracle_id": "fixture-1", "set": "c21", "layout": "normal", "games": ["paper"], "digital": false, "prices": {"usd": "0.90"}}
+{"object": "card", "oracle_id": "fixture-1", "set": "dig", "layout": "normal", "games": ["arena"], "digital": true, "prices": {"usd": "0.05"}}

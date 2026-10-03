@@ -5,14 +5,14 @@ import { api } from './api';
 export const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Summary line and actions at the top of the collection view. */
-export function CollectionBar({ summary, onImport, onClear }: { summary: CollectionSummary | null; onImport: () => void; onClear: () => void }) {
+export function CollectionBar({ summary, cheapest, onImport, onClear }: { summary: CollectionSummary | null; cheapest: boolean; onImport: () => void; onClear: () => void }) {
   const empty = !summary || summary.total === 0;
   return (
     <div className="collbar">
       <div>
         {empty
           ? <strong>Your collection is empty.</strong>
-          : <><strong>{summary.total.toLocaleString()}</strong> cards · <strong>{summary.unique.toLocaleString()}</strong> unique · about <strong title="Scryfall's price for its featured printing of each card, so treat it as a rough guide">{usd(summary.valueUsd)}</strong>
+          : <><strong>{summary.total.toLocaleString()}</strong> cards · <strong>{summary.unique.toLocaleString()}</strong> unique · about <strong title={cheapest ? 'Each card at its cheapest printing: a lower bound on what your copies could sell for' : "Scryfall's price for its featured printing of each card, so treat it as a rough guide"}>{usd(summary.valueUsd)}</strong>{cheapest && <span className="muted small"> (cheapest printings)</span>}
               {summary.unpriced > 0 && <span className="muted small"> ({summary.unpriced} unpriced)</span>}</>}
         <p className="muted small">Import a CSV from ManaBox, Moxfield, Archidekt or Deckbox, or paste a list. Hover any card in Cards to add copies.</p>
       </div>

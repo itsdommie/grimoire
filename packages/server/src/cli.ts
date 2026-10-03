@@ -19,14 +19,14 @@ if (command === 'semantic') {
   process.exit(0);
 }
 if (command !== 'ingest') {
-  console.error('Usage: cli ingest [--force] [--file <cards.jsonl[.gz]>] | cli semantic');
+  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic');
   process.exit(2);
 }
 
 const db = openDb(dbPathFor(DEFAULT_DATA_DIR));
 const data = new DataManager({ dataDir: DEFAULT_DATA_DIR, db });
 const fileFlag = args.indexOf('--file');
-data.start({ force: args.includes('--force'), file: fileFlag >= 0 ? args[fileFlag + 1] : undefined });
+data.start({ force: args.includes('--force'), file: fileFlag >= 0 ? args[fileFlag + 1] : undefined, ...(args.includes('--prices') ? { prices: true } : {}) });
 
 const timer = setInterval(() => {
   const p = data.status().progress;

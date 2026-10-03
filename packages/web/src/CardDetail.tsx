@@ -66,7 +66,9 @@ export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClos
               </div>
 
               <p className="statline">
-                {card.usd !== null ? <>Price about <strong>{usd(card.usd)}</strong> <span className="muted small">(Scryfall's featured printing)</span></> : <span className="muted">No price</span>}
+                {card.usdMin != null
+                  ? <>From <strong>{usd(card.usdMin)}</strong> <span className="muted small">(cheapest printing{card.usdMinSet ? `, ${card.usdMinSet.toUpperCase()}` : ''}{card.usd != null && card.usd !== card.usdMin ? `; featured printing ${usd(card.usd)}` : ''})</span></>
+                  : card.usd !== null ? <>Price about <strong>{usd(card.usd)}</strong> <span className="muted small">(Scryfall's featured printing)</span></> : <span className="muted">No price</span>}
               </p>
               <div className="deckbar">
                 <span className="stepper" role="group" aria-label="Copies owned">

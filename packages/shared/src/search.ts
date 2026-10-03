@@ -175,7 +175,7 @@ const NUMERIC: Record<string, string> = {
   pow: 'power_n', power: 'power_n',
   tou: 'toughness_n', toughness: 'toughness_n',
   loy: 'loyalty_n', loyalty: 'loyalty_n',
-  usd: 'usd', edhrec: 'edhrec_rank',
+  usd: 'COALESCE(usd_min, usd)', edhrec: 'edhrec_rank',
 };
 
 /** Parse a colour query value into { mask } or { count } */

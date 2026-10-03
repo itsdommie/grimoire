@@ -33,6 +33,7 @@ export class ApiError extends Error {
 
 export const api = {
   dataStatus: () => request<DataStatus>('GET', '/api/data/status'),
+  setPrices: (enabled: boolean, refresh = false) => request<DataStatus>('POST', '/api/data/prices', { enabled, refresh }),
   updateData: (force = false) => request<DataStatus>('POST', '/api/data/update', { force }),
   /** Search errors (bad syntax) come back as a 400 with a SearchResponse body; surface them as data. */
   async search(params: { q: string; order: string; limit: number }, signal: AbortSignal, scope: 'all' | 'collection' = 'all'): Promise<SearchResponse> {

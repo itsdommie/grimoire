@@ -8,6 +8,7 @@ const FIRST_RUN = { api: 3102, web: 5274, dir: resolve('data/e2e-first-run') };
 const fixture = resolve('e2e/fixtures/cards.jsonl');
 const rulings = resolve('e2e/fixtures/rulings.jsonl');
 const tags = resolve('e2e/fixtures/tags.jsonl');
+const prices = resolve('e2e/fixtures/prices.jsonl');
 
 const servers = (s: typeof MAIN, prepare: string, extraEnv: Record<string, string> = {}) => [
   {
@@ -35,6 +36,6 @@ export default defineConfig({
   webServer: [
     ...servers(MAIN, 'node scripts/prepare-e2e-db.mjs && ', { GRIMOIRE_FAKE_EMBEDDINGS: '1' }),
     // Empty data directory + a local bulk file: exercises the first-run download/import flow without the network.
-    ...servers(FIRST_RUN, 'node -e "require(\'fs\').rmSync(process.env.GRIMOIRE_DATA_DIR,{recursive:true,force:true})" && ', { GRIMOIRE_BULK_FILE: fixture, GRIMOIRE_RULINGS_FILE: rulings, GRIMOIRE_TAGS_FILE: tags }),
+    ...servers(FIRST_RUN, 'node -e "require(\'fs\').rmSync(process.env.GRIMOIRE_DATA_DIR,{recursive:true,force:true})" && ', { GRIMOIRE_BULK_FILE: fixture, GRIMOIRE_RULINGS_FILE: rulings, GRIMOIRE_TAGS_FILE: tags, GRIMOIRE_PRICES_FILE: prices }),
   ],
 });

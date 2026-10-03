@@ -32,7 +32,9 @@ CREATE TABLE IF NOT EXISTS cards (
   layout         TEXT NOT NULL,
   digital        INTEGER NOT NULL DEFAULT 0,
   edhrec_rank    INTEGER,
-  usd            REAL,
+  usd            REAL,                   -- price of Scryfall's featured printing
+  usd_min        REAL,                   -- cheapest paper printing (only when prices are enabled)
+  usd_min_set    TEXT,
   image_url      TEXT,
   image_url_back TEXT,                   -- back face of transform / modal double-faced cards
   scryfall_uri   TEXT NOT NULL
@@ -96,7 +98,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
  * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
  * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
  */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 function hasColumn(db: Db, table: string, column: string): boolean {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);
@@ -107,6 +109,9 @@ export function migrate(db: Db): void {
   db.exec(SCHEMA);
   // v2: back-face images for double-faced cards.
   if (!hasColumn(db, 'cards', 'image_url_back')) db.exec('ALTER TABLE cards ADD COLUMN image_url_back TEXT');
+  // v4: cheapest-printing prices.
+  if (!hasColumn(db, 'cards', 'usd_min')) db.exec('ALTER TABLE cards ADD COLUMN usd_min REAL');
+  if (!hasColumn(db, 'cards', 'usd_min_set')) db.exec('ALTER TABLE cards ADD COLUMN usd_min_set TEXT');
   const current = (db.prepare('PRAGMA user_version').get() as unknown as { user_version: number }).user_version;
   if (current < SCHEMA_VERSION) db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }

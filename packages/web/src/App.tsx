@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FORMATS, type Board, type Card, type CollectionSummary, type DeckDetail, type DeckSummary, type FormatId, type SearchResponse } from '@grimoire/shared';
 import { api } from './api';
 import { DeckPanel } from './DeckPanel';
-import { DataFooter, DataSetup, useDataStatus } from './DataSetup';
+import { DataFooter, DataSetup, PricesFooter, useDataStatus } from './DataSetup';
 import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './CollectionView';
 import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
@@ -197,7 +197,7 @@ export function App() {
               <label className="filter"><input type="checkbox" checked={onlyOwned} onChange={(e) => setOnlyOwned(e.target.checked)} /> Only cards I own</label>
             )}
           </p>
-          {view === 'collection' && <CollectionBar summary={collection} onImport={() => setImporting(true)} onClear={async () => { try { await api.clearCollection(); await collectionChanged(); } catch (e) { setError((e as Error).message); } }} />}
+          {view === 'collection' && <CollectionBar cheapest={!!ds.prices?.enabled && !!ds.prices.updatedAt} summary={collection} onImport={() => setImporting(true)} onClear={async () => { try { await api.clearCollection(); await collectionChanged(); } catch (e) { setError((e as Error).message); } }} />}
           {view === 'collection' && <CommanderIdeas version={collectionVersion} onBuild={startDeck} />}
           {view === 'cards' && !query && (
             <p className="examples">Try: {(semantic.status?.state === 'ready' ? [...EXAMPLES, 'about:"punish opponents for drawing extra cards"'] : EXAMPLES).map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>
@@ -208,6 +208,7 @@ export function App() {
         </main>
         <footer>
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
+          <p><PricesFooter status={ds} onEnable={() => void dataStatus.setPrices(true)} onDisable={() => void dataStatus.setPrices(false)} onRefresh={() => void dataStatus.setPrices(true, true)} /></p>
           <p><SemanticFooter status={semantic.status} onEnable={semantic.enable} onCancel={semantic.cancel} onRemove={semantic.remove} /></p>
           <p><BackupControls onError={setError} onRestored={async () => { const list = await api.listDecks(); setDecks(list); if (list[0]) await open(list[0].id); else setCurrent(null); await collectionChanged(); }} /></p>
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>. Magic: The Gathering is © Wizards of the Coast.
@@ -226,6 +227,7 @@ export function App() {
         collection={collection}
         collectionVersion={collectionVersion}
         onOpenCard={setDetailId}
+        cheapest={!!ds.prices?.enabled && !!ds.prices.updatedAt}
       />}
       {detailId && (
         <CardDetailDialog

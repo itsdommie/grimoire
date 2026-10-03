@@ -28,9 +28,10 @@ interface Props {
   collection: CollectionSummary | null;
   collectionVersion: number;
   onOpenCard: (id: string) => void;
+  cheapest: boolean;
 }
 
-export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError, collection, collectionVersion, onOpenCard }: Props) {
+export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError, collection, collectionVersion, onOpenCard, cheapest }: Props) {
   const [showImport, setShowImport] = useState(false);
   // window.prompt() isn't available in Electron, so naming uses an in-app dialog.
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
@@ -151,7 +152,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
           )}
           {current.issues.length === 0 && <p className="valid">Valid Commander deck ✓</p>}
 
-          {haveCollection && <MissingPanel deckId={deck.id} entries={current.entries} version={collectionVersion} />}
+          {haveCollection && <MissingPanel deckId={deck.id} entries={current.entries} version={collectionVersion} cheapest={cheapest} />}
 
           {rules.commander && <>
             <h3>Commander</h3>
@@ -275,7 +276,7 @@ function NameDialog({ title, initial, confirmLabel, withFormat, onSubmit, onCanc
 }
 
 /** How much of the deck you own, and what the rest would cost (rough: Scryfall's featured-printing prices). */
-function MissingPanel({ deckId, entries, version }: { deckId: number; entries: DeckEntry[]; version: number }) {
+function MissingPanel({ deckId, entries, version, cheapest }: { deckId: number; entries: DeckEntry[]; version: number; cheapest: boolean }) {
   const [report, setReport] = useState<MissingReport | null>(null);
   const key = entries.filter((e) => e.board !== 'sideboard').map((e) => `${e.card.id}:${e.qty}:${e.card.owned ?? 0}`).join('|');
   useEffect(() => {
@@ -307,7 +308,7 @@ function MissingPanel({ deckId, entries, version }: { deckId: number; entries: D
               </li>
             ))}
           </ul>
-          <p className="muted small">Prices are Scryfall's for its featured printing of each card (USD), not the cheapest available copy.</p>
+          <p className="muted small">{cheapest ? 'Prices are the cheapest paper printing of each card (USD, from Scryfall).' : "Prices are Scryfall's for its featured printing of each card (USD), not the cheapest copy. Turn on cheapest-printing prices at the bottom of the page."}</p>
         </details>
       )}
     </section>

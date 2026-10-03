@@ -48,6 +48,7 @@ export interface ServerOptions {
   bulkFile?: string;
   rulingsFile?: string;
   tagsFile?: string;
+  pricesFile?: string;
   /** Semantic search index (defaults to one backed by the real model). Tests and the e2e server inject a fake embedder. */
   semantic?: SemanticIndex;
   /** Folder with ort.node.min.mjs and the .wasm files (shipped with the desktop app). */
@@ -59,7 +60,7 @@ const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeE
 export function buildServer(opts: ServerOptions) {
   const { db, dataDir, webRoot, token } = opts;
   const semantic = opts.semantic ?? new SemanticIndex({ db, dataDir, ortDir: opts.ortDir });
-  const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile });
+  const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile, localPrices: opts.pricesFile });
   // Collection CSVs and backups can be several MB (Fastify's default limit is 1 MB).
   const app = Fastify({ logger: opts.logger ?? process.env.NODE_ENV !== 'test', bodyLimit: 50 * 1024 * 1024 });
 
@@ -84,6 +85,11 @@ export function buildServer(opts: ServerOptions) {
   // ------------------------------------------------------------------ data
   app.get('/api/health', async () => ({ ok: true }));
   app.get('/api/data/status', async () => data.status());
+  /** Turn cheapest-printing prices on (downloads ~79 MB) or off. */
+  app.post<{ Body: { enabled?: boolean; refresh?: boolean } }>('/api/data/prices', async (req, reply) => {
+    data.start({ prices: req.body?.enabled !== false, refreshPrices: req.body?.refresh === true });
+    return reply.code(202).send(data.status());
+  });
   app.post<{ Body: { force?: boolean } | undefined }>('/api/data/update', async (req, reply) => {
     data.start({ force: req.body?.force });
     return reply.code(202).send(data.status());
