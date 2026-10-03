@@ -24,10 +24,7 @@
     ],
     "deny": [
       "Bash(sudo *)",
-      "Bash(rm -rf *)",
-      "Bash(git push*)",
-      "Bash(gh repo *)",
-      "Bash(git remote *)"
+      "Bash(rm -rf *)"
     ]
   }
 }
