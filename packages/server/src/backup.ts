@@ -1,5 +1,5 @@
 import type { RestoreResult, UserDataBackup } from '@grimoire/shared';
-import { BOARDS, type Board } from '@grimoire/shared';
+import { BOARDS, asFormat, type Board } from '@grimoire/shared';
 import { getCardsByIds, resolveCardName } from './cards.js';
 import { transaction, type Db } from './db.js';
 import { BadRequestError } from './decks.js';
@@ -58,7 +58,7 @@ export function restoreUserData(db: Db, raw: unknown, mode: 'merge' | 'replace')
     const insertDeck = db.prepare('INSERT INTO decks (name, format) VALUES (?, ?)');
     const insertCard = db.prepare('INSERT INTO deck_cards (deck_id, card_id, board, qty) VALUES (?, ?, ?, ?) ON CONFLICT (deck_id, card_id, board) DO UPDATE SET qty = qty + excluded.qty');
     for (const d of backup.decks) {
-      const deckId = Number(insertDeck.run(d.name.trim() || 'Restored deck', d.format || 'commander').lastInsertRowid);
+      const deckId = Number(insertDeck.run(d.name.trim() || 'Restored deck', asFormat(d.format)).lastInsertRowid);
       result.decks++;
       for (const c of d.cards) {
         const id = resolve(c.id, c.name);

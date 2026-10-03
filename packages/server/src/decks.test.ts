@@ -60,7 +60,7 @@ describe('deck API', () => {
 
   it('adds, updates, moves and removes cards, validating as it goes', async () => {
     const { body: d } = await json<DeckSummary>('POST', '/api/decks', { name: 'x' });
-    const put = (name: string, board: string, qty: number) => json<DeckDetail>('PUT', `/api/decks/${d.id}/cards`, { cardId: ids[name], board, qty });
+    const put = (name: string, board: string, qty: number, move = false) => json<DeckDetail>('PUT', `/api/decks/${d.id}/cards`, { cardId: ids[name], board, qty, move });
 
     await put("Atraxa, Praetors' Voice", 'commander', 1);
     let r = await put('Fireball', 'main', 1);
@@ -70,13 +70,27 @@ describe('deck API', () => {
     expect(r.body.deck.cardCount).toBe(42);
     expect(r.body.entries.find((e) => e.card.name === 'Forest')?.qty).toBe(40);
 
-    // Moving Fireball to the sideboard stops it counting against the deck.
-    r = await put('Fireball', 'sideboard', 1);
+    // Moving Fireball to the sideboard (an explicit move) stops it counting against the deck.
+    r = await put('Fireball', 'sideboard', 1, true);
     expect(r.body.issues.map((i) => i.code)).not.toContain('color-identity');
     expect(r.body.entries.filter((e) => e.card.name === 'Fireball')).toHaveLength(1);
 
     r = await put('Fireball', 'sideboard', 0);
     expect(r.body.entries.some((e) => e.card.name === 'Fireball')).toBe(false);
+  });
+
+  it('keeps main and sideboard copies side by side, but the commander zone is exclusive', async () => {
+    const { body: d } = await json<DeckSummary>('POST', '/api/decks', { name: 'x', format: 'modern' });
+    const put = (name: string, board: string, qty: number, move = false) => json<DeckDetail>('PUT', `/api/decks/${d.id}/cards`, { cardId: ids[name], board, qty, move });
+    await put('Fireball', 'main', 3);
+    const r = await put('Fireball', 'sideboard', 2);
+    expect(r.body.entries.filter((e) => e.card.name === 'Fireball').map((e) => [e.board, e.qty]).sort()).toEqual([['main', 3], ['sideboard', 2]]);
+    // Making it the commander takes it out of the 99 entirely.
+    const c = await put('Fireball', 'commander', 1);
+    expect(c.body.entries.filter((e) => e.card.name === 'Fireball').map((e) => [e.board, e.qty])).toEqual([['commander', 1]]);
+    // Putting it back in the main deck leaves the command zone.
+    const back = await put('Fireball', 'main', 2);
+    expect(back.body.entries.filter((e) => e.card.name === 'Fireball').map((e) => [e.board, e.qty])).toEqual([['main', 2]]);
   });
 
   it('survives re-ingesting the card pool', async () => {

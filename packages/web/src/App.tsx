@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Board, Card, CollectionSummary, DeckDetail, DeckSummary, SearchResponse } from '@grimoire/shared';
+import { FORMATS, type Board, type Card, type CollectionSummary, type DeckDetail, type DeckSummary, type FormatId, type SearchResponse } from '@grimoire/shared';
 import { api } from './api';
 import { DeckPanel } from './DeckPanel';
 import { DataFooter, DataSetup, useDataStatus } from './DataSetup';
@@ -42,8 +42,8 @@ function useSearch(query: string, order: string, version: string | null, scope: 
 const LETTERS: Array<[number, string]> = [[1, 'w'], [2, 'u'], [4, 'b'], [8, 'r'], [16, 'g']];
 const maskToLetters = (mask: number) => LETTERS.filter(([bit]) => mask & bit).map(([, l]) => l).join('') || 'c';
 
-function CardTile({ card, inDeck, canAdd, stepper, onAdd, onOwn, onOpen }: {
-  card: Card; inDeck: number; canAdd: boolean; stepper: boolean; onAdd: (card: Card, board: Board) => void; onOwn: (card: Card, qty: number) => void; onOpen: (id: string) => void;
+function CardTile({ card, inDeck, canAdd, commanderFormat, stepper, onAdd, onOwn, onOpen }: {
+  card: Card; inDeck: number; canAdd: boolean; commanderFormat: boolean; stepper: boolean; onAdd: (card: Card, board: Board) => void; onOwn: (card: Card, qty: number) => void; onOpen: (id: string) => void;
 }) {
   const owned = card.owned ?? 0;
   return (
@@ -56,7 +56,7 @@ function CardTile({ card, inDeck, canAdd, stepper, onAdd, onOwn, onOpen }: {
         {!stepper && owned > 0 && <span className="badge own" title="Copies in your collection">Own ×{owned}</span>}
         <span className="overlay">
           {canAdd && <button onClick={() => onAdd(card, 'main')}>+ Deck</button>}
-          {canAdd && <button onClick={() => onAdd(card, 'commander')}>★ Cmdr</button>}
+          {canAdd && (commanderFormat ? <button onClick={() => onAdd(card, 'commander')}>★ Cmdr</button> : <button onClick={() => onAdd(card, 'sideboard')}>+ Side</button>)}
           {!stepper && <button onClick={() => onOwn(card, owned + 1)} aria-label={`Add ${card.name} to collection`}>+ Own</button>}
         </span>
       </div>
@@ -79,6 +79,7 @@ export function App() {
   const [current, setCurrent] = useState<DeckDetail | null>(null);
   const [onlyIdentity, setOnlyIdentity] = useState(true);
   const [onlyOwned, setOnlyOwned] = useState(false);
+  const [onlyLegal, setOnlyLegal] = useState(true);
   const [view, setView] = useState<'cards' | 'collection' | 'play'>('cards');
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
@@ -105,15 +106,16 @@ export function App() {
     })();
   }, [open]);
 
+  const rules = FORMATS[current?.deck.format ?? 'commander'];
   const commanderIdentity = useMemo(() => {
-    const cmdrs = current?.entries.filter((e) => e.board === 'commander') ?? [];
+    const cmdrs = rules.commander ? current?.entries.filter((e) => e.board === 'commander') ?? [] : [];
     return onlyIdentity && cmdrs.length ? maskToLetters(cmdrs.reduce((m, e) => m | e.card.colorIdentity, 0)) : null;
-  }, [current, onlyIdentity]);
+  }, [current, onlyIdentity, rules.commander]);
 
   const dataStatus = useDataStatus();
   const semantic = useSemanticStatus();
   const searchQuery = view === 'cards'
-    ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', onlyOwned ? 'owned>0' : ''].filter(Boolean).join(' ')
+    ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', current && !rules.commander && onlyLegal ? `f:${rules.legality}` : '', onlyOwned ? 'owned>0' : ''].filter(Boolean).join(' ')
     : query;
   const { data, loading, patchOwned } = useSearch(searchQuery, order, dataStatus.status?.bulkUpdatedAt ?? null, view === 'collection' ? 'collection' : 'all');
   const inDeck = useMemo(() => new Map((current?.entries ?? []).map((e) => [e.card.id, e.qty])), [current]);
@@ -146,8 +148,8 @@ export function App() {
   const add = async (card: Card, board: Board) => {
     if (!current) return;
     const existing = current.entries.find((e) => e.card.id === card.id);
-    // Adding to the main deck again bumps the quantity; commander is always exactly one.
-    const qty = board === 'commander' ? 1 : existing && existing.board === 'main' ? existing.qty + 1 : 1;
+    // Adding to the same board again bumps the quantity; commander is always exactly one.
+    const qty = board === 'commander' ? 1 : existing && existing.board === board ? existing.qty + 1 : 1;
     try { changed(await api.setCard(current.deck.id, card.id, board, qty)); } catch (e) { setError((e as Error).message); }
   };
 
@@ -185,7 +187,10 @@ export function App() {
           <p className="status">
             {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}${/\b(?:about|meaning|sem):/.test(searchQuery) ? ', best matches first' : ''}` : ''}
             {loading && ' …'}
-            {view === 'cards' && current && current.entries.some((e) => e.board === 'commander') && (
+            {view === 'cards' && current && !rules.commander && (
+              <label className="filter"><input type="checkbox" checked={onlyLegal} onChange={(e) => setOnlyLegal(e.target.checked)} /> Only cards legal in {rules.name}</label>
+            )}
+            {view === 'cards' && current && rules.commander && current.entries.some((e) => e.board === 'commander') && (
               <label className="filter"><input type="checkbox" checked={onlyIdentity} onChange={(e) => setOnlyIdentity(e.target.checked)} /> Only Commander-legal cards in the commander's colours</label>
             )}
             {view === 'cards' && collection && collection.total > 0 && (
@@ -198,7 +203,7 @@ export function App() {
             <p className="examples">Try: {(semantic.status?.state === 'ready' ? [...EXAMPLES, 'about:"punish opponents for drawing extra cards"'] : EXAMPLES).map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>
           )}
           {view === 'collection' && data && data.total === 0 && !query && collection?.total ? <p className="muted">Nothing matches.</p> : null}
-          <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} stepper={view === 'collection'} onAdd={add} onOwn={own} onOpen={setDetailId} />)}</div>
+          <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} commanderFormat={rules.commander} stepper={view === 'collection'} onAdd={add} onOwn={own} onOpen={setDetailId} />)}</div>
           </>)}
         </main>
         <footer>
@@ -213,7 +218,7 @@ export function App() {
         decks={decks}
         current={current}
         onSelect={open}
-        onCreate={async (name) => { try { const d = await api.createDeck(name); await refreshDecks(); await open(d.id); } catch (e) { setError((e as Error).message); } }}
+        onCreate={async (name, format: FormatId) => { try { const d = await api.createDeck(name, format); await refreshDecks(); await open(d.id); } catch (e) { setError((e as Error).message); } }}
         onDelete={async (id) => { try { await api.deleteDeck(id); const list = await api.listDecks(); setDecks(list); if (list[0]) await open(list[0].id); else setCurrent(null); } catch (e) { setError((e as Error).message); } }}
         onChange={changed}
         onDecksChanged={refreshDecks}
@@ -226,6 +231,7 @@ export function App() {
         <CardDetailDialog
           cardId={detailId}
           canAddToDeck={!!current}
+          commanderFormat={rules.commander}
           onClose={() => setDetailId(null)}
           onAddToDeck={(card, board) => void add(card, board)}
           onOwn={(card, qty) => void own(card, qty)}

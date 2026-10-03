@@ -245,3 +245,5 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .field select { padding: 6px 8px; } .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
 .check input { width: auto; flex: none; }
 .player header { position: static; padding: 0; background: none; border: 0; }
+.deck .fmt { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.deck .fmt select { padding: 3px 6px; font-size: 13px; }

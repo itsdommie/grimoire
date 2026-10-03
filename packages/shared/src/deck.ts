@@ -1,3 +1,4 @@
+import { FORMATS, type FormatId } from './formats.js';
 import type { Card } from './types.js';
 
 export type Board = 'commander' | 'main' | 'sideboard';
@@ -11,7 +12,7 @@ export interface DeckEntry {
 
 export interface Issue {
   severity: 'error' | 'warning';
-  code: 'commander-count' | 'commander-ineligible' | 'commander-pair' | 'deck-size' | 'singleton' | 'color-identity' | 'banned' | 'not-legal';
+  code: 'commander-count' | 'commander-ineligible' | 'commander-pair' | 'deck-size' | 'singleton' | 'color-identity' | 'banned' | 'not-legal' | 'copies' | 'sideboard-size' | 'wrong-zone';
   message: string;
   cards?: string[];
 }
@@ -28,12 +29,12 @@ export const isBasicLand = (c: Card) => /\bBasic\b.*\bLand\b/.test(frontTypeLine
 const NUMBER_WORDS: Record<string, number> = { two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
 
 /** How many copies a singleton deck may hold: 1 normally, Infinity for basics / "any number" cards, N for "up to N". */
-export function copyLimit(c: Card): number {
+export function copyLimit(c: Card, normal = 1): number {
   if (isBasicLand(c)) return Infinity;
   if (/A deck can have any number of cards named/i.test(c.oracleText)) return Infinity;
   const m = /A deck can have up to (\w+) cards named/i.exec(c.oracleText);
-  if (m) return NUMBER_WORDS[m[1]!.toLowerCase()] ?? 1;
-  return 1;
+  if (m) return NUMBER_WORDS[m[1]!.toLowerCase()] ?? normal;
+  return normal;
 }
 
 const hasLine = (c: Card, re: RegExp) => c.oracleText.split('\n').some((l) => re.test(l));
@@ -136,6 +137,55 @@ export function validateCommander(entries: readonly DeckEntry[]): Issue[] {
   if (banned.length) issues.push({ severity: 'error', code: 'banned', message: `Banned in Commander: ${banned.join(', ')}.`, cards: banned });
   if (illegal.length) issues.push({ severity: 'error', code: 'not-legal', message: `Not legal in Commander: ${illegal.join(', ')}.`, cards: illegal });
 
+  return issues;
+}
+
+/** Validate a deck against its format's rules. */
+export function validateDeck(entries: readonly DeckEntry[], format: FormatId = 'commander'): Issue[] {
+  return FORMATS[format].commander ? validateCommander(entries) : validateConstructed(entries, format);
+}
+
+const sum = (list: readonly DeckEntry[]) => list.reduce((n, e) => n + e.qty, 0);
+
+/** Standard, Pioneer, Modern, Legacy, Vintage and Pauper: 60+ cards, at most 15 in the sideboard, 4 copies (1 if restricted). */
+export function validateConstructed(entries: readonly DeckEntry[], format: FormatId): Issue[] {
+  const rules = FORMATS[format];
+  const issues: Issue[] = [];
+  const main = entries.filter((e) => e.board === 'main');
+  const side = entries.filter((e) => e.board === 'sideboard');
+  const stray = entries.filter((e) => e.board === 'commander');
+
+  if (stray.length) {
+    issues.push({ severity: 'error', code: 'wrong-zone', message: `${rules.name} has no commander. Move ${stray.map((e) => e.card.name).join(', ')} to the main deck.`, cards: stray.map((e) => e.card.name) });
+  }
+
+  const mainCount = sum(main) + sum(stray);
+  if (mainCount < rules.deckSize) {
+    issues.push({ severity: 'warning', code: 'deck-size', message: `Main deck has ${mainCount} cards, needs ${plural(rules.deckSize - mainCount, 'more card')} (minimum ${rules.deckSize}).` });
+  }
+  const sideCount = sum(side);
+  if (sideCount > rules.maxSideboard) {
+    issues.push({ severity: 'error', code: 'sideboard-size', message: `Sideboard has ${sideCount} cards, ${plural(sideCount - rules.maxSideboard, 'card')} over the ${rules.maxSideboard} allowed.` });
+  }
+
+  // Copies are counted across the main deck and sideboard together.
+  const counts = new Map<string, { card: Card; qty: number }>();
+  for (const e of [...main, ...side, ...stray]) {
+    const cur = counts.get(e.card.id);
+    if (cur) cur.qty += e.qty; else counts.set(e.card.id, { card: e.card, qty: e.qty });
+  }
+  const tooMany: string[] = [];
+  const banned: string[] = [], illegal: string[] = [];
+  for (const { card, qty } of counts.values()) {
+    const status = card.legalities[rules.legality];
+    if (status === 'banned') banned.push(card.name);
+    else if (status !== 'legal' && status !== 'restricted') illegal.push(card.name);
+    const limit = status === 'restricted' ? Math.min(1, copyLimit(card, rules.copies)) : copyLimit(card, rules.copies);
+    if (qty > limit) tooMany.push(`${card.name} ×${qty}${status === 'restricted' ? ' (restricted: 1 allowed)' : ''}`);
+  }
+  if (tooMany.length) issues.push({ severity: 'error', code: 'copies', message: `Too many copies: ${tooMany.join(', ')}.`, cards: tooMany.map((t) => t.replace(/ ×.*$/, '')) });
+  if (banned.length) issues.push({ severity: 'error', code: 'banned', message: `Banned in ${rules.name}: ${banned.join(', ')}.`, cards: banned });
+  if (illegal.length) issues.push({ severity: 'error', code: 'not-legal', message: `Not legal in ${rules.name}: ${illegal.join(', ')}.`, cards: illegal });
   return issues;
 }
 

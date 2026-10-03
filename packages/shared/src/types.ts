@@ -37,7 +37,7 @@ export interface SearchResponse {
 export interface DeckSummary {
   id: number;
   name: string;
-  format: 'commander';
+  format: import('./formats.js').FormatId;
   cardCount: number;
   updatedAt: string;
 }

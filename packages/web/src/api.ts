@@ -1,4 +1,4 @@
-import type { Board, CardDetail, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { Board, CardDetail, FormatId, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -62,12 +62,14 @@ export const api = {
   commanderIdeas: () => request<CommanderIdea[]>('GET', '/api/collection/commanders'),
   deckMissing: (id: number) => request<MissingReport>('GET', `/api/decks/${id}/missing`),
   listDecks: () => request<DeckSummary[]>('GET', '/api/decks'),
-  createDeck: (name: string) => request<DeckSummary>('POST', '/api/decks', { name }),
+  createDeck: (name: string, format?: FormatId) => request<DeckSummary>('POST', '/api/decks', { name, format }),
   getDeck: (id: number) => request<DeckDetail>('GET', `/api/decks/${id}`),
   renameDeck: (id: number, name: string) => request<DeckSummary>('PATCH', `/api/decks/${id}`, { name }),
+  updateDeck: (id: number, changes: { name?: string; format?: FormatId }) => request<DeckSummary>('PATCH', `/api/decks/${id}`, changes),
   deleteDeck: (id: number) => request<void>('DELETE', `/api/decks/${id}`),
-  setCard: (id: number, cardId: string, board: Board, qty: number) => request<DeckDetail>('PUT', `/api/decks/${id}/cards`, { cardId, board, qty }),
-  importDeck: (text: string, opts: { name?: string; deckId?: number }) => request<ImportResult>('POST', '/api/decks/import', { text, ...opts }),
+  /** `move` relocates the card (removing it from other boards) instead of adding a stack on this one. */
+  setCard: (id: number, cardId: string, board: Board, qty: number, move = false) => request<DeckDetail>('PUT', `/api/decks/${id}/cards`, { cardId, board, qty, move }),
+  importDeck: (text: string, opts: { name?: string; deckId?: number; format?: FormatId }) => request<ImportResult>('POST', '/api/decks/import', { text, ...opts }),
   async exportText(id: number, style: ExportStyle): Promise<string> {
     const res = await fetch(`/api/decks/${id}/export?style=${style}`, { headers: authHeaders() });
     if (!res.ok) throw new ApiError('Export failed', res.status, null);

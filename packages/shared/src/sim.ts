@@ -147,6 +147,8 @@ export interface SimOptions {
   onThePlay?: boolean;
   /** 'standard': London mulligan with a free first mulligan. 'none': always keep the first seven (for exact-maths tests). */
   mulligan?: 'standard' | 'none';
+  /** Commander gives a free first mulligan; 60-card formats don't. Default true. */
+  freeMulligan?: boolean;
 }
 
 export interface TurnStats {
@@ -241,11 +243,13 @@ export class Simulator {
     const firstKept = this.opts.mulligan === 'none' || this.keepable(hand, 7);
     if (firstKept) this.keepFirst++;
     if (this.opts.mulligan !== 'none') {
-      while (!this.keepable(hand, 7 - Math.max(0, mulligans - 1)) && mulligans < 4) {
+      const free = this.opts.freeMulligan !== false;
+      const kept = (m: number) => 7 - (free ? Math.max(0, m - 1) : m); // cards in hand after m mulligans
+      while (!this.keepable(hand, kept(mulligans)) && mulligans < 4) {
         mulligans++;
         library = this.shuffle([...library, ...hand]);
         hand = library.splice(0, 7);
-        const toBottom = mulligans === 1 ? 0 : mulligans - 1; // the first mulligan is free
+        const toBottom = 7 - kept(mulligans); // London mulligan: draw seven, bottom the difference
         library.push(...this.bottom(hand, toBottom));
       }
     }

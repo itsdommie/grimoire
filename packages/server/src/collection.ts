@@ -54,11 +54,12 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 
 /** What a deck still needs from the collection, with a rough price. Basic lands are treated as free and always available. */
 export function deckMissing(db: Db, deckId: number): MissingReport {
-  const { entries } = getDeck(db, deckId);
+  const { entries, deck } = getDeck(db, deckId);
+  const sideboardCounts = deck.format !== 'commander'; // in Commander the sideboard is a maybeboard; in 60-card formats you need those cards too
   let needed = 0, have = 0, totalUsd = 0, unpriced = 0;
   const missing: MissingCard[] = [];
   for (const { card, qty, board } of entries) {
-    if (board === 'sideboard' || isBasicLand(card)) continue;
+    if ((board === 'sideboard' && !sideboardCounts) || isBasicLand(card)) continue;
     const owned = card.owned ?? 0;
     needed += qty;
     have += Math.min(qty, owned);

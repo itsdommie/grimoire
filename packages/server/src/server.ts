@@ -4,14 +4,14 @@ import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
-import { SearchError, formatDeckList, semanticPhrases, type Board, type ExportStyle } from '@grimoire/shared';
+import { SearchError, formatDeckList, semanticPhrases, type Board, type ExportStyle, type FormatId } from '@grimoire/shared';
 import type { Db } from './db.js';
 import { DataManager } from './data.js';
 import { NOT_SET_UP, SemanticIndex } from './semantic.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
 import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
-import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, renameDeck, setCardQty } from './decks.js';
+import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
 const ORDERS = new Set<Order>(['name', 'cmc', 'edhrec', 'usd']);
 export const TOKEN_HEADER = 'x-grimoire-token';
@@ -133,17 +133,17 @@ export function buildServer(opts: ServerOptions) {
   };
 
   app.get('/api/decks', async () => listDecks(db));
-  app.post<{ Body: { name?: string } }>('/api/decks', async (req, reply) => reply.code(201).send(createDeck(db, req.body?.name ?? 'New deck')));
+  app.post<{ Body: { name?: string; format?: string } }>('/api/decks', async (req, reply) => reply.code(201).send(createDeck(db, req.body?.name ?? 'New deck', (req.body?.format ?? 'commander') as FormatId)));
   app.get<{ Params: { id: string } }>('/api/decks/:id', async (req) => getDeck(db, deckId(req.params.id)));
-  app.patch<{ Params: { id: string }; Body: { name?: string } }>('/api/decks/:id', async (req) => renameDeck(db, deckId(req.params.id), req.body?.name ?? ''));
+  app.patch<{ Params: { id: string }; Body: { name?: string; format?: string } }>('/api/decks/:id', async (req) => updateDeck(db, deckId(req.params.id), { name: req.body?.name, format: req.body?.format }));
   app.delete<{ Params: { id: string } }>('/api/decks/:id', async (req, reply) => { deleteDeck(db, deckId(req.params.id)); return reply.code(204).send(); });
-  app.put<{ Params: { id: string }; Body: { cardId: string; board: Board; qty: number } }>('/api/decks/:id/cards', async (req) => {
-    const { cardId, board, qty } = req.body ?? ({} as never);
-    return setCardQty(db, deckId(req.params.id), cardId, board, qty);
+  app.put<{ Params: { id: string }; Body: { cardId: string; board: Board; qty: number; move?: boolean } }>('/api/decks/:id/cards', async (req) => {
+    const { cardId, board, qty, move } = req.body ?? ({} as never);
+    return setCardQty(db, deckId(req.params.id), cardId, board, qty, { move: move === true });
   });
-  app.post<{ Body: { text?: string; name?: string; deckId?: number } }>('/api/decks/import', async (req, reply) => {
-    const { text = '', name, deckId: target } = req.body ?? {};
-    return reply.code(201).send(importDeck(db, text, { name, deckId: target }));
+  app.post<{ Body: { text?: string; name?: string; deckId?: number; format?: string } }>('/api/decks/import', async (req, reply) => {
+    const { text = '', name, deckId: target, format } = req.body ?? {};
+    return reply.code(201).send(importDeck(db, text, { name, deckId: target, format }));
   });
   app.get<{ Params: { id: string }; Querystring: { style?: string } }>('/api/decks/:id/export', async (req, reply) => {
     const { deck, entries } = getDeck(db, deckId(req.params.id));

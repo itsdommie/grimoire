@@ -1,4 +1,5 @@
 import { COMMANDER_DECK_SIZE, type DeckEntry } from './deck.js';
+import { FORMATS, type FormatId } from './formats.js';
 import { hypergeomAtLeast, minSources } from './hypergeom.js';
 import { MANA_COLORS, parseManaCost, type ManaColor } from './mana.js';
 import { isLand, isSpellLand, tagRoles, ROLES, ROLE_LABEL, type Role } from './roles.js';
@@ -35,6 +36,14 @@ export const ROLE_TARGETS: Partial<Record<Role, { min: number; max: number; note
   removal: { min: 5, max: 10, note: 'Aim for 5-10 pieces of spot removal.' },
   wipe: { min: 1, max: 4, note: 'Usually 1-3 board wipes (fewer for creature-heavy decks).' },
 };
+
+/** The numbers the maths uses for a format: library size, extra cards seen (Commander only), and the land-count formula. */
+export interface FormatAssumptions { deckSize: number; extraCardsSeen: number; landFormula: { a: number; b: number; c: number } }
+export function assumptionsFor(format: FormatId): FormatAssumptions {
+  if (FORMATS[format].commander) return { deckSize: ASSUMPTIONS.deckSize, extraCardsSeen: ASSUMPTIONS.extraCardsSeen, landFormula: ASSUMPTIONS.landFormula };
+  // 60-card decks: the published Karsten formula; no free mulligan or slower multiplayer turns, so no extra cards seen.
+  return { deckSize: FORMATS[format].deckSize, extraCardsSeen: 0, landFormula: { a: 19.59, b: 1.9, c: 0.28 } };
+}
 
 // ----------------------------------------------------------------- results
 
@@ -73,6 +82,9 @@ export interface ColorAnalysis {
 export interface Finding { severity: 'warn' | 'info' | 'ok'; title: string; detail: string }
 
 export interface DeckAnalysis {
+  format: FormatId;
+  /** What the source/land maths assumed (shown in the UI). */
+  math: { deckSize: number; extraCardsSeen: number };
   /** Cards counted: main deck + commander, ignoring the sideboard. */
   libraryCards: number;
   complete: boolean;
@@ -108,13 +120,17 @@ const isFetchLand = (c: Card) => isLand(c) && c.producedMana === 0 && /search yo
 
 // ----------------------------------------------------------------- analysis
 
-export function analyzeDeck(entries: readonly DeckEntry[]): DeckAnalysis {
+export function analyzeDeck(entries: readonly DeckEntry[], format: FormatId = 'commander'): DeckAnalysis {
+  const rules = FORMATS[format];
+  const fa = assumptionsFor(format);
+  const mathOpts = { deckSize: fa.deckSize, extraCards: fa.extraCardsSeen };
   const deck = entries.filter((e) => e.board !== 'sideboard');
   const commanders = deck.filter((e) => e.board === 'commander');
   const library = deck.filter((e) => e.board === 'main');
   const libraryCards = library.reduce((n, e) => n + e.qty, 0);
   const identity = commanders.reduce((m, e) => m | e.card.colorIdentity, 0);
-  const complete = libraryCards + commanders.reduce((n, e) => n + e.qty, 0) >= COMMANDER_DECK_SIZE;
+  const commanderCards = commanders.reduce((n, e) => n + e.qty, 0);
+  const complete = libraryCards + commanderCards >= rules.deckSize;
 
   // ---- curve (non-land, library only; commander is in the command zone)
   const buckets = Array<number>(8).fill(0);
@@ -138,13 +154,13 @@ export function analyzeDeck(entries: readonly DeckEntry[]): DeckAnalysis {
   const roles: RoleSummary[] = ROLES.map((role) => {
     const cards = roleCards.get(role)!.sort((a, b) => a.name.localeCompare(b.name));
     const count = cards.reduce((n, c) => n + c.qty, 0);
-    const t = ROLE_TARGETS[role];
+    const t = rules.commander ? ROLE_TARGETS[role] : undefined; // the 8-12 ramp/draw rules of thumb are Commander advice
     return { role, label: ROLE_LABEL[role], count, cards, ...(t ? { target: { min: t.min, max: t.max }, status: (count < t.min ? 'short' : count > t.max ? 'high' : 'ok') as Status } : {}) };
   });
 
   // ---- lands
   const landCount = library.reduce((n, { card, qty }) => n + (isLand(card) ? qty : isSpellLand(card) ? qty * 0.5 : 0), 0);
-  const { a, b, c } = ASSUMPTIONS.landFormula;
+  const { a, b, c } = fa.landFormula;
   const recommended = Math.round(a + b * avgMv - c * cheapRampDraw);
   const landStatus: Status | null = !complete ? null : landCount < recommended - 1 ? 'short' : landCount > recommended + 2 ? 'high' : 'ok';
 
@@ -164,7 +180,7 @@ export function analyzeDeck(entries: readonly DeckEntry[]): DeckAnalysis {
       const mv = Math.max(1, Math.round(card.cmc));
       const key = `${fixed}@${mv}`;
       const map = patternMap.get(col)!;
-      const cur = map.get(key) ?? { pips: fixed, mv, cards: [], needed: sourcesNeeded(fixed, mv), commander: false };
+      const cur = map.get(key) ?? { pips: fixed, mv, cards: [], needed: sourcesNeeded(fixed, mv, mathOpts), commander: false };
       cur.cards.push(card.name);
       if (board === 'commander') cur.commander = true;
       map.set(key, cur);
@@ -199,7 +215,7 @@ export function analyzeDeck(entries: readonly DeckEntry[]): DeckAnalysis {
 
   // ---- findings
   const findings: Finding[] = [];
-  if (!complete) findings.push({ severity: 'info', title: 'Deck is incomplete', detail: `${libraryCards + commanders.reduce((n, e) => n + e.qty, 0)} of ${COMMANDER_DECK_SIZE} cards, so land and source checks are held back until it's full.` });
+  if (!complete) findings.push({ severity: 'info', title: 'Deck is incomplete', detail: `${libraryCards + commanderCards} of ${rules.deckSize} cards, so land and source checks are held back until it's full.` });
   if (landStatus === 'short') findings.push({ severity: 'warn', title: `You're short on lands: ${fmt(landCount)} (suggested ${recommended})`, detail: `Based on average mana value ${avgMv.toFixed(2)} and ${cheapRampDraw} cheap ramp/draw spells.` });
   if (landStatus === 'high') findings.push({ severity: 'info', title: `Land count is high: ${fmt(landCount)} (suggested ${recommended})`, detail: 'Fine for decks that want to flood out or run land-based engines; otherwise consider more spells.' });
   for (const r of roles) {
@@ -208,7 +224,7 @@ export function analyzeDeck(entries: readonly DeckEntry[]): DeckAnalysis {
     else if (r.status === 'high') findings.push({ severity: 'info', title: `Lots of ${r.label.toLowerCase()}: ${r.count} (usual range ${r.target.min}-${r.target.max})`, detail: ROLE_TARGETS[r.role]!.note });
   }
   const wins = roles.find((r) => r.role === 'wincon')!;
-  if (wins.count === 0 && libraryCards > 0) findings.push({ severity: 'info', title: 'No explicit win condition detected', detail: 'The tagger only recognises alternate wins, mass drain and overrun effects; combat-based plans won\'t show up here.' });
+  if (rules.commander && wins.count === 0 && libraryCards > 0) findings.push({ severity: 'info', title: 'No explicit win condition detected', detail: 'The tagger only recognises alternate wins, mass drain and overrun effects; combat-based plans won\'t show up here.' });
   for (const col of colors) {
     if (col.status === 'short') findings.push({ severity: 'warn', title: `${col.color} sources are low: ${fmt(col.landSources)} (suggested ${col.needed})`, detail: `Needed to cast your ${col.color} cards on time; ${col.otherSources} non-land ${col.color} producers don't count towards this.` });
   }
@@ -217,7 +233,7 @@ export function analyzeDeck(entries: readonly DeckEntry[]): DeckAnalysis {
   if (nonland > 0 && avgMv > 3.5) findings.push({ severity: 'info', title: `Top-heavy curve (average mana value ${avgMv.toFixed(2)})`, detail: 'Expect to need extra ramp and lands.' });
   if (findings.every((f) => f.severity !== 'warn') && libraryCards > 0 && complete) findings.push({ severity: 'ok', title: 'No obvious problems found', detail: 'Lands, colour sources and key roles are within the usual ranges.' });
 
-  return { libraryCards, complete, lands: { count: landCount, recommended, avgMv, cheapRampDraw, status: landStatus }, curve: { buckets, avgMv, nonland }, pips, colors, roles, findings };
+  return { format, math: { deckSize: fa.deckSize, extraCardsSeen: fa.extraCardsSeen }, libraryCards, complete, lands: { count: landCount, recommended, avgMv, cheapRampDraw, status: landStatus }, curve: { buckets, avgMv, nonland }, pips, colors, roles, findings };
 }
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));

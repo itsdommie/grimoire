@@ -41,7 +41,7 @@ describe('export / restore', () => {
     expect(listDecks(target).map((d) => d.name).sort()).toEqual(['Elves', 'Empty deck']);
     const elves = getDeck(target, listDecks(target).find((d) => d.name === 'Elves')!.id);
     expect(elves.entries.map((e) => [e.card.name, e.board, e.qty]).sort()).toEqual(
-      [['Cmdr', 'commander', 1], ['Cultivate', 'main', 1], ['Forest', 'main', 20], ['Sol Ring', 'main', 1]].sort(),
+      [['Cmdr', 'commander', 1], ['Cultivate', 'main', 1], ['Forest', 'main', 20], ['Sol Ring', 'main', 1], ['Sol Ring', 'sideboard', 1]].sort(),
     );
     expect(exportUserData(target).collection).toEqual(backup.collection);
   });

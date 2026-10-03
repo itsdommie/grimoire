@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEffect } from 'react';
 import type { Board, Card, CollectionSummary, DeckDetail, DeckEntry, DeckSummary, MissingReport } from '@grimoire/shared';
-import { COMMANDER_DECK_SIZE, isBasicLand } from '@grimoire/shared';
+import { FORMATS, FORMAT_IDS, isBasicLand, type FormatId } from '@grimoire/shared';
 import { api } from './api';
 import { AnalysisView } from './AnalysisView';
 import { SimulateView } from './SimulateView';
@@ -20,7 +20,7 @@ interface Props {
   decks: DeckSummary[];
   current: DeckDetail | null;
   onSelect: (id: number) => void;
-  onCreate: (name: string) => void;
+  onCreate: (name: string, format: FormatId) => void;
   onDelete: (id: number) => void;
   onChange: (detail: DeckDetail) => void;
   onDecksChanged: () => void;
@@ -38,10 +38,17 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
   const [copied, setCopied] = useState(false);
 
   const deck = current?.deck;
+  const rules = FORMATS[deck?.format ?? 'commander'];
+  const sideCount = (current?.entries ?? []).filter((e) => e.board === 'sideboard').reduce((n, e) => n + e.qty, 0);
+  const changeFormat = async (format: FormatId) => {
+    try { await api.updateDeck(deck!.id, { format }); onChange(await api.getDeck(deck!.id)); onDecksChanged(); } catch (e) { onError((e as Error).message); }
+  };
   const run = async (fn: () => Promise<DeckDetail>) => {
     try { onChange(await fn()); } catch (e) { onError((e as Error).message); }
   };
   const setQty = (e: DeckEntry, board: Board, qty: number) => run(() => api.setCard(deck!.id, e.card.id, board, qty));
+  /** Relocate a stack to another board, merging with any copies already there. */
+  const moveTo = (e: DeckEntry, board: Board) => run(() => api.setCard(deck!.id, e.card.id, board, e.qty + (current?.entries.find((x) => x.card.id === e.card.id && x.board === board)?.qty ?? 0), true));
 
   const rename = async (name: string) => {
     try { await api.renameDeck(deck!.id, name); onDecksChanged(); onChange({ ...current!, deck: { ...deck!, name: name.trim() } }); } catch (e) { onError((e as Error).message); }
@@ -85,9 +92,9 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
       <span className="actions">
         <button onClick={() => setQty(e, board, e.qty - 1)} aria-label={`Remove one ${e.card.name}`}>−</button>
         <button onClick={() => setQty(e, board, e.qty + 1)} aria-label={`Add one ${e.card.name}`}>+</button>
-        {board !== 'commander' && <button onClick={() => setQty(e, 'commander', 1)} title="Make commander" aria-label={`Make ${e.card.name} commander`}>★</button>}
-        {board !== 'main' && <button onClick={() => setQty(e, 'main', e.qty)} title="Move to main deck" aria-label={`Move ${e.card.name} to main deck`}>↑</button>}
-        {board === 'main' && <button onClick={() => setQty(e, 'sideboard', e.qty)} title="Move to sideboard" aria-label={`Move ${e.card.name} to sideboard`}>↓</button>}
+        {rules.commander && board !== 'commander' && <button onClick={() => setQty(e, 'commander', 1)} title="Make commander" aria-label={`Make ${e.card.name} commander`}>★</button>}
+        {board !== 'main' && <button onClick={() => moveTo(e, 'main')} title="Move to main deck" aria-label={`Move ${e.card.name} to main deck`}>↑</button>}
+        {board === 'main' && <button onClick={() => moveTo(e, 'sideboard')} title="Move to sideboard" aria-label={`Move ${e.card.name} to sideboard`}>↓</button>}
         <button onClick={() => setQty(e, board, 0)} title="Remove" aria-label={`Remove ${e.card.name}`}>×</button>
       </span>
     </li>
@@ -110,7 +117,15 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
         <>
           <div className="deckhead">
             <h2 title="Rename" onClick={() => setNaming('rename')}>{deck.name}</h2>
-            <span className={total === COMMANDER_DECK_SIZE ? 'count ok' : 'count'}>{total}/{COMMANDER_DECK_SIZE}</span>
+            <span className={(rules.commander ? total === rules.deckSize : total >= rules.deckSize) ? 'count ok' : 'count'} title={rules.commander ? 'Cards including the commander' : 'Main deck cards (minimum 60)'}>{total}/{rules.deckSize}{rules.commander ? '' : '+'}</span>
+          </div>
+          <div className="deckbar">
+            <label className="fmt">Format
+              <select value={deck.format} aria-label="Format" onChange={(e) => void changeFormat(e.target.value as FormatId)}>
+                {FORMAT_IDS.map((f) => <option key={f} value={f}>{FORMATS[f].name}</option>)}
+              </select>
+            </label>
+            {!rules.commander && <span className="muted small">Sideboard {sideCount}/{rules.maxSideboard}</span>}
           </div>
           <div className="deckbar">
             <button onClick={copy}>{copied ? 'Copied' : 'Copy list'}</button>
@@ -124,9 +139,9 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
             ))}
           </div>
 
-          {tab === 'analysis' && <AnalysisView entries={current.entries} />}
+          {tab === 'analysis' && <AnalysisView entries={current.entries} format={deck.format} />}
           {/* Kept mounted (just hidden) so results survive tab switches and can be flagged stale when the deck changes. */}
-          <div hidden={tab !== 'simulate'}><SimulateView key={deck.id} entries={current.entries} /></div>
+          <div hidden={tab !== 'simulate'}><SimulateView key={deck.id} entries={current.entries} format={deck.format} /></div>
 
           {tab === 'deck' && <>
           {current.issues.length > 0 && (
@@ -138,8 +153,10 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
 
           {haveCollection && <MissingPanel deckId={deck.id} entries={current.entries} version={collectionVersion} />}
 
-          <h3>Commander</h3>
-          <ul className="list">{commanders.length ? commanders.map((e) => row(e, 'commander')) : <li className="empty">Use ★ on a card to set the commander.</li>}</ul>
+          {rules.commander && <>
+            <h3>Commander</h3>
+            <ul className="list">{commanders.length ? commanders.map((e) => row(e, 'commander')) : <li className="empty">Use ★ on a card to set the commander.</li>}</ul>
+          </>}
 
           {order.filter((g) => groups.has(g)).map((g) => {
             const list = groups.get(g)!;
@@ -151,10 +168,10 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
             );
           })}
 
-          {side.length > 0 && (
+          {(side.length > 0 || !rules.commander) && (
             <section>
-              <h3>Sideboard <small>({side.reduce((n, e) => n + e.qty, 0)})</small></h3>
-              <ul className="list">{side.map((e) => row(e, 'sideboard'))}</ul>
+              <h3>{rules.commander ? 'Maybeboard' : 'Sideboard'} <small>({sideCount}{rules.commander ? '' : `/${rules.maxSideboard}`})</small></h3>
+              <ul className="list">{side.length ? side.map((e) => row(e, 'sideboard')) : <li className="empty">Use ↓ on a deck card, or "+ Side" on a search result.</li>}</ul>
             </section>
           )}
           </>}
@@ -168,7 +185,8 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
           initial={naming === 'new' ? 'New deck' : deck!.name}
           confirmLabel={naming === 'new' ? 'Create' : 'Rename'}
           onCancel={() => setNaming(null)}
-          onSubmit={(name) => { setNaming(null); if (naming === 'new') onCreate(name); else void rename(name); }}
+          withFormat={naming === 'new'}
+          onSubmit={(name, format) => { setNaming(null); if (naming === 'new') onCreate(name, format); else void rename(name); }}
         />
       )}
 
@@ -190,13 +208,14 @@ function ImportDialog({ currentId, onClose, onImported, onError }: {
   const [text, setText] = useState('');
   const [name, setName] = useState('');
   const [target, setTarget] = useState<'new' | 'replace'>('new');
+  const [format, setFormat] = useState<FormatId>('commander');
   const [unresolved, setUnresolved] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     setBusy(true);
     try {
-      const res = await api.importDeck(text, target === 'replace' && currentId !== undefined ? { deckId: currentId } : { name: name || undefined });
+      const res = await api.importDeck(text, target === 'replace' && currentId !== undefined ? { deckId: currentId } : { name: name || undefined, format });
       onImported(res);
       if (res.unresolved.length === 0) onClose(); else setUnresolved(res.unresolved);
     } catch (e) {
@@ -215,6 +234,7 @@ function ImportDialog({ currentId, onClose, onImported, onError }: {
         <div className="deckbar">
           <label><input type="radio" checked={target === 'new'} onChange={() => setTarget('new')} /> New deck</label>
           {target === 'new' && <input className="small" value={name} onChange={(e) => setName(e.target.value)} placeholder="Deck name" />}
+          {target === 'new' && <select value={format} onChange={(e) => setFormat(e.target.value as FormatId)} aria-label="Format of the imported deck">{FORMAT_IDS.map((f) => <option key={f} value={f}>{FORMATS[f].name}</option>)}</select>}
           {currentId !== undefined && <label><input type="radio" checked={target === 'replace'} onChange={() => setTarget('replace')} /> Replace current deck</label>}
         </div>
         {unresolved && (
@@ -229,16 +249,22 @@ function ImportDialog({ currentId, onClose, onImported, onError }: {
   );
 }
 
-function NameDialog({ title, initial, confirmLabel, onSubmit, onCancel }: {
-  title: string; initial: string; confirmLabel: string; onSubmit: (name: string) => void; onCancel: () => void;
+function NameDialog({ title, initial, confirmLabel, withFormat, onSubmit, onCancel }: {
+  title: string; initial: string; confirmLabel: string; withFormat?: boolean; onSubmit: (name: string, format: FormatId) => void; onCancel: () => void;
 }) {
   const [name, setName] = useState(initial);
-  const submit = () => { if (name.trim()) onSubmit(name.trim()); };
+  const [format, setFormat] = useState<FormatId>('commander');
+  const submit = () => { if (name.trim()) onSubmit(name.trim(), format); };
   return (
     <div className="modal" role="dialog" aria-label={title} onKeyDown={(e) => e.key === 'Escape' && onCancel()}>
       <form className="dialog narrow" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <h2>{title}</h2>
         <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onFocus={(e) => e.target.select()} aria-label="Deck name" maxLength={100} />
+        {withFormat && (
+          <label className="field">Format
+            <select value={format} onChange={(e) => setFormat(e.target.value as FormatId)} aria-label="New deck format">{FORMAT_IDS.map((f) => <option key={f} value={f}>{FORMATS[f].name}</option>)}</select>
+          </label>
+        )}
         <div className="deckbar end">
           <button type="button" onClick={onCancel}>Cancel</button>
           <button type="submit" className="primary" disabled={!name.trim()}>{confirmLabel}</button>

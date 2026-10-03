@@ -9,6 +9,8 @@ const STATUS_LABEL: Record<string, string> = { legal: 'Legal', banned: 'Banned',
 interface Props {
   cardId: string;
   canAddToDeck: boolean;
+  /** Commander decks have a command zone (★ Commander); 60-card decks have a sideboard (+ Sideboard). */
+  commanderFormat: boolean;
   onClose: () => void;
   onAddToDeck: (card: Card, board: Board) => void;
   onOwn: (card: Card, qty: number) => void;
@@ -16,7 +18,7 @@ interface Props {
 }
 
 /** Everything about one card, offline: image (with a flip for double-faced cards), text, legality, price, rulings and function tags. */
-export function CardDetailDialog({ cardId, canAddToDeck, onClose, onAddToDeck, onOwn, onSearchTag }: Props) {
+export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClose, onAddToDeck, onOwn, onSearchTag }: Props) {
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [back, setBack] = useState(false);
@@ -74,7 +76,7 @@ export function CardDetailDialog({ cardId, canAddToDeck, onClose, onAddToDeck, o
                   <button onClick={() => setOwned((card.owned ?? 0) + 1)} aria-label="Own one more">+</button>
                 </span>
                 {canAddToDeck && <button onClick={() => onAddToDeck(card, 'main')}>+ Deck</button>}
-                {canAddToDeck && <button onClick={() => onAddToDeck(card, 'commander')}>★ Commander</button>}
+                {canAddToDeck && (commanderFormat ? <button onClick={() => onAddToDeck(card, 'commander')}>★ Commander</button> : <button onClick={() => onAddToDeck(card, 'sideboard')}>+ Sideboard</button>)}
                 <a className="btn" href={card.scryfallUri} target="_blank" rel="noreferrer">View on Scryfall</a>
               </div>
 

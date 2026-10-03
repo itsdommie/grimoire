@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { toSimDeck, type DeckEntry, type SimResult } from '@grimoire/shared';
+import { FORMATS, toSimDeck, type DeckEntry, type FormatId, type SimResult } from '@grimoire/shared';
 import { ColumnChart, LineChart } from './charts';
 import type { WorkerResponse } from './sim.worker';
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const GAME_CHOICES = [2_000, 10_000, 50_000];
 
-export function SimulateView({ entries }: { entries: DeckEntry[] }) {
+export function SimulateView({ entries, format = 'commander' }: { entries: DeckEntry[]; format?: FormatId }) {
+  const rules = FORMATS[format];
   const [games, setGames] = useState(10_000);
-  const [onThePlay, setOnThePlay] = useState(false);
+  // Commander is multiplayer (everyone draws on turn 1, first mulligan is free); 60-card games are usually one-on-one.
+  const [onThePlay, setOnThePlay] = useState(!rules.commander);
   const [mulligan, setMulligan] = useState(true);
   const [result, setResult] = useState<SimResult | null>(null);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -32,7 +34,7 @@ export function SimulateView({ entries }: { entries: DeckEntry[] }) {
       if (e.data.type === 'progress') { setProgress({ done: e.data.done, total: e.data.total }); setResult(e.data.partial); }
       else { setResult(e.data.result); setRanFor(deckKey); setProgress(null); worker.terminate(); workerRef.current = null; }
     };
-    worker.postMessage({ type: 'run', deck: toSimDeck(entries), options: { games, turns: 10, seed: Math.floor(Math.random() * 2 ** 31), onThePlay, mulligan: mulligan ? 'standard' : 'none' } });
+    worker.postMessage({ type: 'run', deck: toSimDeck(entries), options: { games, turns: 10, seed: Math.floor(Math.random() * 2 ** 31), onThePlay, mulligan: mulligan ? 'standard' : 'none', freeMulligan: rules.commander } });
   };
   const cancel = () => { workerRef.current?.terminate(); workerRef.current = null; setProgress(null); };
 
@@ -55,8 +57,8 @@ export function SimulateView({ entries }: { entries: DeckEntry[] }) {
           {progress && <progress value={progress.done} max={progress.total} aria-label="Simulation progress" />}
           {progress && <span className="muted small">{progress.done.toLocaleString()} / {progress.total.toLocaleString()}</span>}
         </div>
-        {library < 98 && <p className="muted small">The library has {library} cards, not 99, so land and draw odds will look different from the finished deck.</p>}
-        {!hasCommander && <p className="muted small">No commander set, so commander timing isn't measured.</p>}
+        {library < rules.deckSize - (rules.commander ? 2 : 1) && <p className="muted small">The library has {library} cards, not {rules.commander ? rules.deckSize - 1 : rules.deckSize}, so land and draw odds will look different from the finished deck.</p>}
+        {rules.commander && !hasCommander && <p className="muted small">No commander set, so commander timing isn't measured.</p>}
         {stale && !running && <p className="finding warn"><span className="ficon" aria-hidden>▲</span><span>The deck changed since this run. Run again for current numbers.</span></p>}
       </section>
 
@@ -113,7 +115,7 @@ export function SimulateView({ entries }: { entries: DeckEntry[] }) {
           <details className="assumptions">
             <summary>How the simulated player behaves</summary>
             <ul className="small">
-              <li>London mulligan with a free first mulligan. Keeps 7 cards with 2–5 lands (2–4 for smaller hands).</li>
+              <li>London mulligan{rules.commander ? ' with a free first mulligan' : ' (no free mulligan in this format)'}. Keeps 7 cards with 2–5 lands (2–4 for smaller hands).</li>
               <li>Each turn: draw {onThePlay ? '(none on turn 1)' : '(including turn 1, as in multiplayer)'}, play a land (preferring colours the hand needs, then untapped lands), then cast the commander if it can, otherwise the cheapest ramp spell, otherwise the cheapest card-draw spell.</li>
               <li>Mana rocks work immediately, mana creatures after a turn. Land-search ramp puts lands onto the battlefield tapped. Lands that enter tapped only if you fail a condition are treated as untapped.</li>
               <li>Commander tax, recasts, X spells and every other card effect are ignored.</li>
