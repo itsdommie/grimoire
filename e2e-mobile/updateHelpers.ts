@@ -51,7 +51,10 @@ export async function makeUserData(page: Page) {
 
 /** The page reloads itself, applies the update behind a splash message, and comes back with the new card data and the same user data. */
 export async function expectUpdated(page: Page, user: { cardId: string; deckId: number }, timeout = 90_000) {
-  await expect.poll(async () => page.evaluate(async () => { try { return (await (await fetch('/api/cards/search?q=' + encodeURIComponent('name:"Sol Ring (Updated)"'))).json()).total; } catch { return -1; } }), { timeout, intervals: [1000] }).toBe(1);
+  // (the page reloads itself part-way through, and a poll that lands on the reload is just "not yet")
+  await expect.poll(async () => {
+    try { return await page.evaluate(async () => { try { return (await (await fetch('/api/cards/search?q=' + encodeURIComponent('name:"Sol Ring (Updated)"'))).json()).total; } catch { return -1; } }); } catch { return -1; }
+  }, { timeout, intervals: [1000] }).toBe(1);
   await expect(page.getByPlaceholder(/Search/)).toBeVisible({ timeout: 60_000 });
   expect((await api<{ total: number }>(page, '/api/cards/search?q=' + encodeURIComponent('!"Sol Ring"'))).total).toBe(0); // the old name is gone: the card pool really was replaced
   const deck = await api<{ deck: { name: string }; entries: Array<{ card: { name: string; owned: number }; qty: number }> }>(page, `/api/decks/${user.deckId}`);
