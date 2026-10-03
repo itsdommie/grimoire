@@ -14,7 +14,7 @@ const launch = (userData: string): Promise<ElectronApplication> =>
   electron.launch({
     executablePath: exe ?? (require('electron') as string),
     args: [...(exe ? [] : ['packages/desktop']), '--no-sandbox'],
-    env: { ...process.env, GRIMOIRE_USER_DATA: userData, GRIMOIRE_BULK_FILE: fixture },
+    env: { ...process.env, GRIMOIRE_USER_DATA: userData, GRIMOIRE_BULK_FILE: fixture, GRIMOIRE_DISABLE_UPDATES: '1' },
   });
 
 test.describe.serial('desktop app', () => {

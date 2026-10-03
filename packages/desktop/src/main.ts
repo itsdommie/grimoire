@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { buildServer } from '@grimoire/server/server';
 import { dbPathFor, openDb } from '@grimoire/server/db';
+import { startUpdater, updateMenuItems } from './updater';
 
 // Tests (and portable installs) can relocate all app data.
 if (process.env.GRIMOIRE_USER_DATA) app.setPath('userData', process.env.GRIMOIRE_USER_DATA);
@@ -78,8 +79,10 @@ function buildMenu() {
     {
       label: 'Help',
       submenu: [
+        ...updateMenuItems(), { type: 'separator' },
         { label: 'Card data by Scryfall', click: () => void shell.openExternal('https://scryfall.com') },
         { label: 'Open data folder', click: () => void shell.openPath(app.getPath('userData')) },
+        { label: 'Third-party licences', click: () => void shell.openPath(join(app.isPackaged ? process.resourcesPath : resolve(__dirname, '../build'), 'THIRD_PARTY_NOTICES.txt')) },
       ],
     },
   ]));
@@ -95,6 +98,7 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(async () => {
     // The UI needs no device or notification permissions.
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+    startUpdater(); // reads the saved preference before the menu shows its checkbox
     buildMenu();
     try {
       mainWindow = createWindow(await startServer());

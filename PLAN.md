@@ -26,7 +26,7 @@ Consequences for the design:
 - **Claude advisor key:** stored via the OS keychain (Electron `safeStorage`), never on disk in plain text or in the repo.
 - **Simulator:** Web Worker in the renderer, so it needs nothing native.
 - **No native modules:** SQLite is Node's built-in `node:sqlite` (Electron 44 ships Node 24 with it, FTS5 included), so there is nothing to rebuild per platform. Windows installers are built on Windows (CI); Linux on Linux.
-- **Docker/Proxmox** is demoted to an optional self-hosted mode, not the main delivery path.
+- **Docker / self-hosting** is demoted to an optional mode, not the main delivery path.
 
 ## Phases
 
@@ -48,9 +48,9 @@ Each phase ends with something usable.
 
 - **Scryfall:** use bulk data rather than hammering the API, send a proper `User-Agent` and `Accept` header, respect rate limits, hotlink card images (never re-host, crop or alter them), attribute Scryfall.
 - **Wizards:** non-commercial, per the Fan Content Policy.
-- **GitHub:** repo is **private** unless Dommie says otherwise. Never push without being asked.
+- **GitHub:** the repo is public (MIT) and releases are published from it; never commit secrets, tokens or personal data.
 - **Secrets:** never commit API keys or tokens.
-- **Environment:** Node 26, SQLite 3.53, Git, `gh` logged in as `itsdommie`. Dev machine is Linux, so Windows installers need CI or a cross-build; testing them locally isn't possible here. Docker needs sudo/daemon fixes if the optional self-hosted mode is built.
+- **Environment:** Node 26, SQLite 3.53, Git, `gh`. Dev machine is Linux, so Windows installers need CI or a cross-build; testing them locally isn't possible here. Docker needs sudo/daemon fixes if the optional self-hosted mode is built.
 - **Distribution:** Windows and Linux only. Never require end users to install Node, Python or Docker. Don't push to GitHub (needed for CI builds) until asked.
 
 ## Status

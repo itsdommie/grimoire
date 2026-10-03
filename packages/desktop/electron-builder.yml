@@ -2,6 +2,13 @@ appId: app.grimoire.desktop
 productName: Grimoire
 executableName: grimoire
 copyright: "Unofficial fan content. Magic: The Gathering is (c) Wizards of the Coast. Card data from Scryfall."
+publish:
+  provider: github
+  owner: itsdommie
+  repo: grimoire
+  releaseType: draft
+  updaterCacheDirName: grimoire-updater
+
 directories:
   output: ../../release
   buildResources: build
@@ -11,6 +18,10 @@ files:
 extraResources:
   - from: ../web/dist
     to: web
+  - from: ../../LICENSE
+    to: LICENSE.grimoire.txt
+  - from: build/THIRD_PARTY_NOTICES.txt
+    to: THIRD_PARTY_NOTICES.txt
   - from: ../../node_modules/onnxruntime-web/dist
     to: ort
     filter:

@@ -8,3 +8,5 @@ data/
 playwright-report/
 test-results/
 release/
+packages/desktop/build/THIRD_PARTY_NOTICES.txt
+.claude/

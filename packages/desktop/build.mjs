@@ -5,6 +5,8 @@ import { execSync } from 'node:child_process';
 
 execSync('npm run build -w @grimoire/web', { stdio: 'inherit', cwd: new URL('../..', import.meta.url) });
 
+execSync('node scripts/third-party-notices.mjs', { stdio: 'inherit', cwd: new URL('../..', import.meta.url) });
+
 await build({
   entryPoints: ['src/main.ts'],
   outfile: 'dist/main.cjs',

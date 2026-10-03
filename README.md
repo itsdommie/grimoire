@@ -4,16 +4,30 @@ A local-first Magic: The Gathering deck lab, packaged as a desktop app for **Win
 
 ## Install
 
-Installers are built by CI (see `.github/workflows/build.yml`) or locally with `npm run desktop:dist`:
+Download the latest version from the **[website](https://itsdommie.github.io/grimoire/)** or the
+**[releases page](https://github.com/itsdommie/grimoire/releases/latest)**:
 
-- **Windows:** `Grimoire-Setup-<version>.exe` (NSIS installer, per-user, no admin needed).
+- **Windows:** `Grimoire-Setup-<version>.exe` (installs just for you, no administrator rights). Windows may say "Windows protected
+  your PC" because the app isn't signed with a paid certificate: choose *More info*, then *Run anyway*.
 - **Linux:** `Grimoire-<version>-x86_64.AppImage` (make it executable and run it) or `Grimoire-<version>-amd64.deb`.
 
 On first launch Grimoire downloads the card database from [Scryfall](https://scryfall.com) (~25 MB) once, then works offline.
-Your decks and card data live in the app's user-data folder (Help → Open data folder).
+Windows and the AppImage update themselves (Help → Check for updates; it can be switched off). Your decks and card data live in
+the app's user-data folder (Help → Open data folder).
 
 *Troubleshooting (Linux):* on distros that restrict unprivileged user namespaces (e.g. Ubuntu 24.04+), the AppImage may need
 `--no-sandbox`; the `.deb` sets up the Chromium sandbox properly. Logs are in `<data folder>/logs/grimoire.log`.
+
+## Privacy
+
+No account, no analytics, no tracking. Grimoire contacts only: Scryfall (card data and images), GitHub (update checks, can be
+turned off) and, once and only if you enable semantic search, Hugging Face (a 34 MB model). What you create stays on your computer.
+
+## Releasing (maintainers)
+
+Bump `version` in `packages/desktop/package.json`, commit, then `git tag vX.Y.Z && git push --tags`. The *Release* workflow builds
+Windows and Linux installers, smoke-tests them, and publishes the release (including the files the auto-updater reads) only if
+both succeed. The website in `site/` is deployed to GitHub Pages by the *Website* workflow.
 
 ## Develop
 
@@ -96,5 +110,11 @@ instead of downloading it; `GRIMOIRE_RULINGS_FILE` and `GRIMOIRE_TAGS_FILE` do t
 The desktop app runs a local server on a random loopback port. API calls need a per-launch token that only the app's own page
 receives, and requests with a non-loopback `Host` header are rejected, so other programs and websites can't read or change your decks.
 
-Card data and images are from Scryfall (images are hotlinked, never re-hosted). Magic: The Gathering is © Wizards of the Coast;
-this is unofficial, non-commercial fan content.
+## Legal
+
+Grimoire is MIT licensed (see [LICENSE](LICENSE)); notices for its dependencies ship with the app (`THIRD_PARTY_NOTICES.txt`).
+Card data, rulings, tags and images are from [Scryfall](https://scryfall.com) (images are hotlinked, never re-hosted).
+
+Grimoire is unofficial Fan Content permitted under the Fan Content Policy. Not approved or endorsed by Wizards. Portions of the
+materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Magic: The Gathering is a trademark of Wizards of
+the Coast LLC.
