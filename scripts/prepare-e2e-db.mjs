@@ -10,3 +10,7 @@ mkdirSync(dir, { recursive: true });
 const db = new DatabaseSync(src, { readOnly: true });
 db.exec(`VACUUM INTO '${dir}/grimoire.db'`);
 db.close();
+// The dev database may hold real embeddings; e2e tests use a fake embedder, so start from a clean slate.
+const copy = new DatabaseSync(`${dir}/grimoire.db`);
+copy.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; VACUUM;");
+copy.close();

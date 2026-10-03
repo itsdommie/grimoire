@@ -1,5 +1,6 @@
 import type { Db } from './db.js';
-import { compileQuery, SearchError, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
+import { NOT_SET_UP } from './semantic.js';
+import { compileQuery, SearchError, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
 
 export type Order = 'name' | 'cmc' | 'edhrec' | 'usd';
 
@@ -36,16 +37,32 @@ export function rowToCard(db: Db, r: Row): Card {
   };
 }
 
-export interface SearchOptions { query: string; order?: Order; limit?: number; offset?: number }
+/** Ranks candidate cards by similarity to an already-embedded `about:` phrase. */
+export interface SemanticRanker { rank(ids: readonly string[]): Array<{ id: string; score: number }> }
+export interface SearchOptions { query: string; order?: Order; limit?: number; offset?: number; semantic?: SemanticRanker }
 
 /** Throws SearchError (from @grimoire/shared) on a malformed query. */
 export function searchCards(db: Db, opts: SearchOptions): SearchResponse {
   const { where, params } = compileQuery(opts.query);
   validateTags(db, opts.query);
+  const phrases = semanticPhrases(opts.query);
+  if (phrases.length > 1) throw new SearchError('Use one about:"…" phrase per search.');
+  if (phrases[0]?.negated) throw new SearchError('about: can\'t be negated. Describe what you do want instead.');
+  if (phrases.length && !opts.semantic) throw new SearchError(NOT_SET_UP);
+
   const limit = Math.min(Math.max(opts.limit ?? 60, 1), 200);
   const offset = Math.max(opts.offset ?? 0, 0);
-  const order = ORDER_SQL[opts.order ?? 'name'];
 
+  if (opts.semantic) {
+    // Filter with SQL, then order the survivors by similarity to the phrase (best first).
+    const ids = (db.prepare(`SELECT id FROM cards WHERE ${where}`).all(...params) as unknown as Array<{ id: string }>).map((r) => r.id);
+    const ranked = opts.semantic.rank(ids).sort((a, b) => b.score - a.score || (a.id < b.id ? -1 : 1));
+    const page = ranked.slice(offset, offset + limit).map((r) => r.id);
+    const byId = getCardsByIds(db, page);
+    return { total: ids.length, cards: page.flatMap((id) => { const c = byId.get(id); return c ? [c] : []; }) };
+  }
+
+  const order = ORDER_SQL[opts.order ?? 'name'];
   const total = (db.prepare(`SELECT count(*) AS n FROM cards WHERE ${where}`).get(...params) as { n: number }).n;
   const rows = db.prepare(`${CARD_SELECT} WHERE ${where} ORDER BY ${order} LIMIT ? OFFSET ?`).all(...params, limit, offset) as unknown as Row[];
   return { total, cards: rows.map((r) => rowToCard(db, r)) };

@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -90,6 +90,25 @@ test.describe.serial('desktop app', () => {
     await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible({ timeout: 30_000 });
     await expect(page.getByRole('img', { name: /Fixture Commander castable by turn/ })).toBeVisible();
     expect(errors).toEqual([]);
+    await app.close();
+  });
+
+  test('semantic search runs the real language model from the packaged app', async () => {
+    // Reuse a model already on this machine (a dev checkout) to avoid the 34 MB download; CI downloads it.
+    const devModel = resolve('data/models/bge-small-en-v1.5');
+    if (existsSync(join(devModel, 'model.onnx'))) {
+      mkdirSync(join(userData, 'data', 'models'), { recursive: true });
+      cpSync(devModel, join(userData, 'data', 'models', 'bge-small-en-v1.5'), { recursive: true });
+    }
+    const app = await launch(userData);
+    const page = await app.firstWindow();
+    const footer = page.locator('.datafooter', { hasText: 'Semantic search:' });
+    await footer.getByRole('button', { name: 'Set up…' }).click();
+    await expect(footer).toContainText(/Ready · 3 cards indexed/, { timeout: 120_000 });
+
+    await page.getByPlaceholder(/Search/).fill('about:"tap for mana, a rock that adds two colorless"');
+    await expect(page.locator('.status')).toContainText('best matches first');
+    await expect(page.locator('.tile .name').first()).toHaveText('Sol Ring'); // the real model, in the packaged app
     await app.close();
   });
 

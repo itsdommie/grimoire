@@ -58,6 +58,14 @@ Decks and your collection live in the app's data folder (Help → Open data fold
 to one JSON file; **Restore from a file…** brings them back (adding to what you have, or replacing it). Grimoire also keeps a small
 copy of your decks and collection in a `backups` folder before it upgrades its database.
 
+## Search by meaning (optional)
+
+Turn on **Semantic search** in the footer to search by what a card does, not just by keywords: `about:"punish opponents for
+drawing extra cards"`, `about:"protect my commander" c:w`. Setup downloads a small language model once (about 34 MB, checked
+against a pinned checksum) and indexes your cards on this computer in a few minutes; nothing you type leaves it. It works best
+on concrete rules-text descriptions. Uses [BGE-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) (MIT) via
+[onnxruntime-web](https://github.com/microsoft/onnxruntime) (MIT). Developers: `npm run semantic` builds the index for the dev database.
+
 ## Analysis and simulation
 
 The **Analysis** tab shows the mana curve, colour pips, a suggested land count, how many sources of each colour you need,

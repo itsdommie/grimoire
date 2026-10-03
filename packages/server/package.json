@@ -6,13 +6,15 @@
   "scripts": {
     "ingest": "tsx src/cli.ts ingest",
     "dev": "tsx watch src/main.ts",
-    "start": "tsx src/main.ts"
+    "start": "tsx src/main.ts",
+    "semantic": "tsx src/cli.ts semantic"
   },
   "dependencies": {
     "@fastify/cors": "^11.0.0",
     "@fastify/static": "^10.1.5",
     "@grimoire/shared": "*",
-    "fastify": "^5.0.0"
+    "fastify": "^5.0.0",
+    "onnxruntime-web": "^1.30.0"
   },
   "exports": {
     "./server": "./src/server.ts",

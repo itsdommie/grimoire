@@ -222,6 +222,7 @@ function compileTerm(key: string, op: Op, value: string, params: Compiled['param
     params.push(n);
     return `${numCol} ${SQL_OP[op]} ?`;
   }
+  if (key === 'about' || key === 'meaning' || key === 'sem') return '1=1'; // ranked by the server's semantic index, not filtered by SQL
   if (key === 'otag' || key === 'function' || key === 'oracletag') {
     // Scryfall's community "Oracle Tags", including every descendant tag (otag:removal also matches otag:removal-destroy).
     const slug = value.toLowerCase();
@@ -318,5 +319,18 @@ export function termsOf(src: string): Array<{ key: string; op: Op; value: string
     else if (n.type === 'and' || n.type === 'or') n.children.forEach(walk);
   };
   walk(parse(src));
+  return out;
+}
+
+/** `about:"..."` phrases for semantic search, with whether each sits under a negation. */
+export function semanticPhrases(src: string): Array<{ text: string; negated: boolean }> {
+  const out: Array<{ text: string; negated: boolean }> = [];
+  const walk = (n: Node | null, negated: boolean) => {
+    if (!n) return;
+    if (n.type === 'term') { if (n.key === 'about' || n.key === 'meaning' || n.key === 'sem') out.push({ text: n.value, negated }); }
+    else if (n.type === 'not') walk(n.child, !negated);
+    else if (n.type === 'and' || n.type === 'or') n.children.forEach((c) => walk(c, negated));
+  };
+  walk(parse(src), false);
   return out;
 }

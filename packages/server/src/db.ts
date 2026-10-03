@@ -86,6 +86,9 @@ CREATE TABLE IF NOT EXISTS tag_aliases (alias TEXT PRIMARY KEY, slug TEXT NOT NU
 CREATE TABLE IF NOT EXISTS card_tags (card_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (card_id, tag)) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS card_tags_tag ON card_tags(tag);
 
+-- Semantic search: one int8-quantised embedding per card (hash = the text it was computed from, so edits re-embed).
+CREATE TABLE IF NOT EXISTS embeddings (card_id TEXT PRIMARY KEY, hash INTEGER NOT NULL, vec BLOB NOT NULL) WITHOUT ROWID;
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
@@ -93,7 +96,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
  * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
  * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
  */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 function hasColumn(db: Db, table: string, column: string): boolean {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);

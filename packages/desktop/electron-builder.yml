@@ -11,6 +11,12 @@ files:
 extraResources:
   - from: ../web/dist
     to: web
+  - from: ../../node_modules/onnxruntime-web/dist
+    to: ort
+    filter:
+      - ort.node.min.mjs
+      - ort-wasm-simd-threaded.mjs
+      - ort-wasm-simd-threaded.wasm
 asar: true
 compression: normal
 

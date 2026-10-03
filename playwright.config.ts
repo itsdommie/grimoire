@@ -33,7 +33,7 @@ export default defineConfig({
     { name: 'first-run', testMatch: /first-run/, use: { baseURL: `http://127.0.0.1:${FIRST_RUN.web}` } },
   ],
   webServer: [
-    ...servers(MAIN, 'node scripts/prepare-e2e-db.mjs && '),
+    ...servers(MAIN, 'node scripts/prepare-e2e-db.mjs && ', { GRIMOIRE_FAKE_EMBEDDINGS: '1' }),
     // Empty data directory + a local bulk file: exercises the first-run download/import flow without the network.
     ...servers(FIRST_RUN, 'node -e "require(\'fs\').rmSync(process.env.GRIMOIRE_DATA_DIR,{recursive:true,force:true})" && ', { GRIMOIRE_BULK_FILE: fixture, GRIMOIRE_RULINGS_FILE: rulings, GRIMOIRE_TAGS_FILE: tags }),
   ],

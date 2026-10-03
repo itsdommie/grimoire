@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RestoreResult, UserDataBackup } from '@grimoire/shared';
-import { dbPathFor, openDb, type Db } from './db.js';
+import { dbPathFor, openDb, SCHEMA_VERSION, type Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { buildServer } from './server.js';
 import { exportUserData, parseBackup, restoreUserData } from './backup.js';
@@ -125,7 +125,7 @@ describe('safety copy before migrating', () => {
     const dir = join(dirname(path), 'backups');
     const files = readdirSync(dir);
     expect(files).toHaveLength(1);
-    expect(files[0]).toMatch(/^user-data-before-v2-/);
+    expect(files[0]).toMatch(new RegExp(`^user-data-before-v${SCHEMA_VERSION}-`));
     const copy = new DatabaseSync(join(dir, files[0]!));
     expect((copy.prepare('SELECT name FROM decks').get() as { name: string }).name).toBe('precious');
     expect(() => copy.prepare('SELECT 1 FROM cards LIMIT 1').get()).toThrow(); // no card data: copies stay small

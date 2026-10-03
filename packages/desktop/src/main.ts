@@ -28,8 +28,10 @@ async function startServer(): Promise<string> {
   const token = randomBytes(24).toString('hex');
   // The built UI ships as an extra resource when packaged; in a dev run it's the Vite build output.
   const webRoot = app.isPackaged ? join(process.resourcesPath, 'web') : resolve(__dirname, '../../web/dist');
+  // onnxruntime-web's runtime files (semantic search): shipped next to the app when packaged, taken from node_modules in a dev run.
+  const ortDir = app.isPackaged ? join(process.resourcesPath, 'ort') : resolve(__dirname, '../../../node_modules/onnxruntime-web/dist');
   server = buildServer({
-    db, dataDir, webRoot, token,
+    db, dataDir, webRoot, token, ortDir,
     logger: { level: 'info', stream: openLogStream() },
     bulkFile: process.env.GRIMOIRE_BULK_FILE,
     rulingsFile: process.env.GRIMOIRE_RULINGS_FILE,

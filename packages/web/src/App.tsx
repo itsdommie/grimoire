@@ -7,6 +7,7 @@ import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './Collect
 import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
+import { SemanticFooter, useSemanticStatus } from './Semantic';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -110,6 +111,7 @@ export function App() {
   }, [current, onlyIdentity]);
 
   const dataStatus = useDataStatus();
+  const semantic = useSemanticStatus();
   const searchQuery = view === 'cards'
     ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', onlyOwned ? 'owned>0' : ''].filter(Boolean).join(' ')
     : query;
@@ -181,7 +183,7 @@ export function App() {
           {view === 'play' ? <PlayView /> : (<>
           {error && <p className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></p>}
           <p className="status">
-            {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}` : ''}
+            {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}${/\b(?:about|meaning|sem):/.test(searchQuery) ? ', best matches first' : ''}` : ''}
             {loading && ' …'}
             {view === 'cards' && current && current.entries.some((e) => e.board === 'commander') && (
               <label className="filter"><input type="checkbox" checked={onlyIdentity} onChange={(e) => setOnlyIdentity(e.target.checked)} /> Only Commander-legal cards in the commander's colours</label>
@@ -193,7 +195,7 @@ export function App() {
           {view === 'collection' && <CollectionBar summary={collection} onImport={() => setImporting(true)} onClear={async () => { try { await api.clearCollection(); await collectionChanged(); } catch (e) { setError((e as Error).message); } }} />}
           {view === 'collection' && <CommanderIdeas version={collectionVersion} onBuild={startDeck} />}
           {view === 'cards' && !query && (
-            <p className="examples">Try: {EXAMPLES.map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>
+            <p className="examples">Try: {(semantic.status?.state === 'ready' ? [...EXAMPLES, 'about:"punish opponents for drawing extra cards"'] : EXAMPLES).map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>
           )}
           {view === 'collection' && data && data.total === 0 && !query && collection?.total ? <p className="muted">Nothing matches.</p> : null}
           <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} stepper={view === 'collection'} onAdd={add} onOwn={own} onOpen={setDetailId} />)}</div>
@@ -201,6 +203,7 @@ export function App() {
         </main>
         <footer>
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
+          <p><SemanticFooter status={semantic.status} onEnable={semantic.enable} onCancel={semantic.cancel} onRemove={semantic.remove} /></p>
           <p><BackupControls onError={setError} onRestored={async () => { const list = await api.listDecks(); setDecks(list); if (list[0]) await open(list[0].id); else setCurrent(null); await collectionChanged(); }} /></p>
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>. Magic: The Gathering is © Wizards of the Coast.
           Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.

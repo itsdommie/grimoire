@@ -4,9 +4,10 @@ import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
-import { SearchError, formatDeckList, type Board, type ExportStyle } from '@grimoire/shared';
+import { SearchError, formatDeckList, semanticPhrases, type Board, type ExportStyle } from '@grimoire/shared';
 import type { Db } from './db.js';
 import { DataManager } from './data.js';
+import { NOT_SET_UP, SemanticIndex } from './semantic.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
 import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
@@ -47,12 +48,17 @@ export interface ServerOptions {
   bulkFile?: string;
   rulingsFile?: string;
   tagsFile?: string;
+  /** Semantic search index (defaults to one backed by the real model). Tests and the e2e server inject a fake embedder. */
+  semantic?: SemanticIndex;
+  /** Folder with ort.node.min.mjs and the .wasm files (shipped with the desktop app). */
+  ortDir?: string;
 }
 
 const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 export function buildServer(opts: ServerOptions) {
   const { db, dataDir, webRoot, token } = opts;
+  const semantic = opts.semantic ?? new SemanticIndex({ db, dataDir, ortDir: opts.ortDir });
   const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile });
   // Collection CSVs and backups can be several MB (Fastify's default limit is 1 MB).
   const app = Fastify({ logger: opts.logger ?? process.env.NODE_ENV !== 'test', bodyLimit: 50 * 1024 * 1024 });
@@ -84,6 +90,15 @@ export function buildServer(opts: ServerOptions) {
   });
 
   // ----------------------------------------------------------------- cards
+  /** For `about:"…"` queries: embed the phrase (the index must be set up) so searchCards can rank by it. */
+  const semanticFor = async (q: string) => {
+    const phrase = semanticPhrases(q)[0];
+    if (!phrase) return undefined;
+    if (!semantic.isReady()) { semantic.ensureLoaded(); if (!semantic.isReady()) throw new SearchError(NOT_SET_UP); }
+    const vector = await semantic.embedQuery(phrase.text);
+    return { rank: (ids: readonly string[]) => semantic.rank(vector, ids) };
+  };
+
   app.get<{ Querystring: { q?: string; order?: string; limit?: string; offset?: string } }>('/api/cards/search', async (req, reply) => {
     const { q = '', order, limit, offset } = req.query;
     try {
@@ -92,6 +107,7 @@ export function buildServer(opts: ServerOptions) {
         order: ORDERS.has(order as Order) ? (order as Order) : 'name',
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
+        semantic: await semanticFor(q),
       });
     } catch (err) {
       if (err instanceof SearchError) return reply.code(400).send({ total: 0, cards: [], error: err.message });
@@ -140,7 +156,7 @@ export function buildServer(opts: ServerOptions) {
   app.get<{ Querystring: { q?: string; order?: string; limit?: string; offset?: string } }>('/api/collection', async (req, reply) => {
     const { q = '', order, limit, offset } = req.query;
     try {
-      return searchCards(db, { query: `${q} owned>0`, order: ORDERS.has(order as Order) ? (order as Order) : 'name', limit: limit ? Number(limit) : undefined, offset: offset ? Number(offset) : undefined });
+      return searchCards(db, { query: `${q} owned>0`, order: ORDERS.has(order as Order) ? (order as Order) : 'name', limit: limit ? Number(limit) : undefined, offset: offset ? Number(offset) : undefined, semantic: await semanticFor(q) });
     } catch (err) {
       if (err instanceof SearchError) return reply.code(400).send({ total: 0, cards: [], error: err.message });
       throw err;
@@ -159,6 +175,12 @@ export function buildServer(opts: ServerOptions) {
   app.get('/api/collection/commanders', async () => commanderIdeas(db));
   app.get<{ Params: { id: string } }>('/api/decks/:id/missing', async (req) => deckMissing(db, deckId(req.params.id)));
 
+  // -------------------------------------------------------------- semantic
+  app.get('/api/semantic/status', async () => semantic.status());
+  app.post('/api/semantic/enable', async (_req, reply) => { semantic.start(); return reply.code(202).send(semantic.status()); });
+  app.post('/api/semantic/cancel', async () => { semantic.cancel(); return semantic.status(); });
+  app.delete('/api/semantic', async (_req, reply) => { semantic.remove(); return reply.code(204).send(); });
+
   // ----------------------------------------------------------------- backup
   app.get('/api/backup', async (_req, reply) => {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -175,5 +197,5 @@ export function buildServer(opts: ServerOptions) {
     app.register(fastifyStatic, { root: webRoot, index: false, wildcard: true });
   }
 
-  return Object.assign(app, { data });
+  return Object.assign(app, { data, semantic });
 }

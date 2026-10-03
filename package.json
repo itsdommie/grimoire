@@ -16,7 +16,8 @@
     "desktop": "npm start -w @grimoire/desktop",
     "desktop:pack": "npm run pack -w @grimoire/desktop",
     "desktop:dist": "npm run dist -w @grimoire/desktop",
-    "e2e:desktop": "npm run build -w @grimoire/desktop && playwright test -c playwright.desktop.config.ts"
+    "e2e:desktop": "npm run build -w @grimoire/desktop && playwright test -c playwright.desktop.config.ts",
+    "semantic": "npm run semantic -w @grimoire/server"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

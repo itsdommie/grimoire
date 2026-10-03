@@ -145,3 +145,18 @@ export interface RestoreResult {
   /** Cards that couldn't be found in the current card data (by id or name). */
   unresolved: string[];
 }
+
+// -------------------------------------------------------------- semantic search
+
+export interface SemanticStatus {
+  /** off: not set up. downloading / building: working. ready: usable (pending > 0 means some cards aren't indexed yet). */
+  state: 'off' | 'downloading' | 'building' | 'ready' | 'error';
+  enabled: boolean;
+  indexed: number;
+  total: number;
+  /** Cards that are new or changed since they were indexed. */
+  pending: number;
+  progress?: { phase: 'downloading' | 'building'; received?: number; total?: number; done?: number; of?: number };
+  error?: string;
+  model: string;
+}
