@@ -146,5 +146,6 @@ export function getCardDetail(db: Db, id: string): CardDetail | null {
   const tags = (db.prepare(`SELECT t.slug, t.label, t.description, t.cards FROM card_tags ct JOIN tags t ON t.slug = ct.tag
       WHERE ct.card_id = ? AND t.cards >= 25 AND t.slug NOT LIKE 'cycle-%' ORDER BY t.cards DESC`).all(id) as unknown as TagInfo[])
     .filter((t) => !NOISE_TAGS.has(t.slug)).slice(0, 16);
-  return { card, rulings, tags, keywords: keywordInfo(db, card.keywords) };
+  const wanted = (db.prepare('SELECT want FROM wishlist WHERE card_id = ?').get(id) as unknown as { want: number } | undefined)?.want ?? 0;
+  return { card, rulings, tags, keywords: keywordInfo(db, card.keywords), wanted };
 }

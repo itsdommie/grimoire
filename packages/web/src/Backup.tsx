@@ -59,7 +59,7 @@ function RestoreDialog({ onClose, onRestored, onError }: { onClose: () => void; 
         <h2>Restore from a backup</h2>
         {result ? (
           <>
-            <p className="finding ok"><span className="ficon" aria-hidden>✓</span><span>Restored {result.decks} deck{result.decks === 1 ? '' : 's'} and {result.collectionCopies.toLocaleString()} collection cards.</span></p>
+            <p className="finding ok"><span className="ficon" aria-hidden>✓</span><span>Restored {result.decks} deck{result.decks === 1 ? '' : 's'} and {result.collectionCopies.toLocaleString()} collection cards{result.wishlist > 0 ? ` and ${result.wishlist.toLocaleString()} wishlist card${result.wishlist === 1 ? '' : 's'}` : ''}.</span></p>
             {result.unresolved.length > 0 && <div className="issues"><p className="warning">{result.unresolved.length} card(s) couldn't be found in the current card data:</p><ul>{result.unresolved.slice(0, 30).map((u) => <li key={u}>{u}</li>)}</ul></div>}
             <div className="deckbar end"><button className="primary" onClick={onClose}>Done</button></div>
           </>

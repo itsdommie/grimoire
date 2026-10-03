@@ -7,7 +7,7 @@ import { SCHEMA_VERSION, transaction, type Db } from './schema.js';
  * they name cards by oracle id and printings by Scryfall id).
  */
 
-/** Everything that is card data. Anything not listed (decks, deck_cards, collection, collection_prints, embeddings) belongs to the user. */
+/** Everything that is card data. Anything not listed (decks, deck_cards, collection, collection_prints, wishlist, embeddings) belongs to the user. */
 export const CARD_DATA_TABLES = ['cards', 'legality', 'rulings', 'tags', 'tag_edges', 'tag_aliases', 'card_tags', 'rule_sections', 'rules', 'glossary', 'card_aliases', 'sets', 'printings'] as const;
 
 /** Full-text tables, rebuilt row by row (their columns, in order). */

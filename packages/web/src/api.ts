@@ -1,4 +1,4 @@
-import type { SetDetail, SetSummary, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { SetDetail, SetSummary, WishlistReport, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -74,6 +74,11 @@ export const api = {
   /** Which printing is this card, from the lines read off its bottom edge? */
   identifyPrinting: (cardId: string, lines: string[]) => request<PrintingIdentification>('POST', '/api/cards/identify', { cardId, lines }),
   /** Set how many of one printing and finish you own. `claim` uses up copies with no recorded printing before adding new ones. */
+  wishlist: (signal?: AbortSignal) => request<WishlistReport>('GET', '/api/wishlist', undefined, signal),
+  /** How many copies of a card you want in total; 0 takes it off. */
+  setWanted: (cardId: string, want: number) => request<WishlistReport>('PUT', '/api/wishlist', { cardId, want }),
+  clearWishlist: () => request<void>('DELETE', '/api/wishlist'),
+  wishlistMissing: (deckId: number, spare = false) => request<{ added: number }>('POST', `/api/decks/${deckId}/wishlist-missing`, { spare }),
   setPrinting: (printingId: string, finish: Finish, qty: number, claim = false) => request<CollectionSummary>('PUT', '/api/collection/printings', { printingId, finish, qty, claim }),
   collectionSummary: () => request<CollectionSummary>('GET', '/api/collection/summary'),
   importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),

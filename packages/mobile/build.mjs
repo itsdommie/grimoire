@@ -47,7 +47,7 @@ const printingSets = slim.prepare('SELECT code, name, COALESCE(released, \'\'), 
 const printingsVersion = slim.prepare("SELECT value FROM meta WHERE key = 'printings_version'").get()?.value ?? 'none';
 const printingsFormat = Number(slim.prepare("SELECT value FROM meta WHERE key = 'printings_format'").get()?.value ?? 1);
 slim.exec("DELETE FROM printings; DELETE FROM sets; DELETE FROM meta WHERE key LIKE 'printings%';");
-slim.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; DELETE FROM collection_prints; PRAGMA journal_mode = DELETE; VACUUM;");
+slim.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; DELETE FROM collection_prints; DELETE FROM wishlist; PRAGMA journal_mode = DELETE; VACUUM;");
 slim.close();
 
 // Plain JSON, not .gz: Android's asset packager strips a .gz extension, and the APK compresses the file anyway.

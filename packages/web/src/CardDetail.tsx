@@ -41,6 +41,10 @@ export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClos
 
   const card = detail?.card;
   // Ownership edits happen in the parent; mirror the new count locally so the dialog updates immediately.
+  const setWanted = async (want: number) => {
+    if (!card || want < 0) return;
+    try { await api.setWanted(card.id, want); setDetail((d) => (d ? { ...d, wanted: want } : d)); } catch { /* the stepper just stays where it was */ }
+  };
   const setOwned = (qty: number) => { if (card) { onOwn(card, qty); setDetail((d) => (d ? { ...d, card: { ...d.card, owned: Math.max(0, qty) } } : d)); } };
 
   return (
@@ -83,6 +87,12 @@ export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClos
                   <button onClick={() => setOwned((card.owned ?? 0) - 1)} aria-label="Own one fewer">−</button>
                   <span>{card.owned ?? 0}</span>
                   <button onClick={() => setOwned((card.owned ?? 0) + 1)} aria-label="Own one more">+</button>
+                </span>
+                <span className="stepper" role="group" aria-label="Copies wanted" title="How many copies you want in total. It shows on your Wishlist until you own that many.">
+                  <span className="muted small">Want</span>
+                  <button onClick={() => void setWanted(detail.wanted - 1)} disabled={detail.wanted === 0} aria-label="Want one fewer">−</button>
+                  <span>{detail.wanted}</span>
+                  <button onClick={() => void setWanted(detail.wanted === 0 ? Math.max(1, (card.owned ?? 0) + 1) : detail.wanted + 1)} aria-label="Want one more">+</button>
                 </span>
                 {canAddToDeck && <button onClick={() => onAddToDeck(card, 'main')}>+ Deck</button>}
                 {canAddToDeck && (commanderFormat ? <button onClick={() => onAddToDeck(card, 'commander')}>★ Commander</button> : <button onClick={() => onAddToDeck(card, 'sideboard')}>+ Sideboard</button>)}

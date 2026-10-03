@@ -305,6 +305,7 @@ function NameDialog({ title, initial, confirmLabel, withFormat, onSubmit, onCanc
 /** How much of the deck you own, and what the rest would cost (rough: Scryfall's featured-printing prices). */
 function MissingPanel({ deckId, entries, version, cheapest, skipUsed, onSkipUsed }: { deckId: number; entries: DeckEntry[]; version: number; cheapest: boolean; skipUsed: boolean; onSkipUsed: (v: boolean) => void }) {
   const [report, setReport] = useState<MissingReport | null>(null);
+  const [wished, setWished] = useState<number | null>(null);
   const key = entries.filter((e) => e.board !== 'sideboard').map((e) => `${e.card.id}:${e.qty}:${e.card.owned ?? 0}:${e.card.inDecks ?? 0}`).join('|');
   useEffect(() => {
     let stop = false;
@@ -336,6 +337,10 @@ function MissingPanel({ deckId, entries, version, cheapest, skipUsed, onSkipUsed
               </li>
             ))}
           </ul>
+          <div className="deckbar">
+            <button onClick={() => { setWished(null); void api.wishlistMissing(deckId, skipUsed).then((r) => setWished(r.added)).catch(() => setWished(-1)); }}>Add these to my wishlist</button>
+            {wished !== null && <span className="muted small" role="status">{wished < 0 ? "Couldn't add them." : wished === 0 ? 'They are all on your wishlist already.' : `Added ${wished} to your wishlist.`}</span>}
+          </div>
           <p className="muted small">{cheapest ? 'Prices are the cheapest paper printing of each card (USD, from Scryfall).' : "Prices are Scryfall's for its featured printing of each card (USD), not the cheapest copy. Turn on cheapest-printing prices at the bottom of the page."}</p>
         </details>
       )}

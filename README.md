@@ -181,6 +181,19 @@ record a copy of *that printing*. Counting is by card: a copy of Sol Ring from a
 the "recorded as this set's printing" figure counts only copies you have said are from this set. `set:cmm` in the search box finds every card
 printed in Commander Masters, not just the ones whose featured printing is from it.
 
+Each set shows its symbol (hotlinked from Scryfall, like card images), and the list can be narrowed by kind: main sets, Commander,
+reprints and specials, or promos and other. On a set's page, **Needs foil** lists the cards that come in foil there and that you have no
+foil copy of, with a progress line for how many foils you have. A foil counts when you have recorded it as that set's printing (the **+**
+for a foil is in the card's details, under its printings).
+
+## Wishlist
+
+The **Wishlist** tab holds the cards you want. A wish is the number of copies you want *in total*, so it ticks itself off as your
+collection grows: want 3 Sol Rings, own 1, and two are still to find, at about their cheapest price. Add a card with **Want** in its
+details, or press **Add these to my wishlist** on a deck's missing cards (it never lowers a wish you already made). Wishes you have met
+stay listed under **Got them** until you remove them. The wishlist is part of backups; a backup made before the wishlist existed still
+restores.
+
 ## Decks
 
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.

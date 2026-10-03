@@ -24,7 +24,9 @@ export function exportUserData(db: Db): UserDataBackup {
   }
   const collection = (db.prepare('SELECT card_id, qty FROM collection ORDER BY card_id').all() as unknown as Array<{ card_id: string; qty: number }>)
     .map((c) => ({ id: c.card_id, name: nameOf(c.card_id), qty: c.qty, ...(prints.has(c.card_id) ? { prints: prints.get(c.card_id)! } : {}) }));
-  return { app: 'grimoire', version: 1, exportedAt: new Date().toISOString(), decks, collection };
+  const wishlist = (db.prepare('SELECT card_id, want FROM wishlist ORDER BY card_id').all() as unknown as Array<{ card_id: string; want: number }>)
+    .map((w) => ({ id: w.card_id, name: nameOf(w.card_id), want: w.want }));
+  return { app: 'grimoire', version: 1, exportedAt: new Date().toISOString(), decks, collection, ...(wishlist.length > 0 ? { wishlist } : {}) };
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -43,6 +45,7 @@ export function parseBackup(raw: unknown): UserDataBackup {
     if (!isObj(c) || typeof c.id !== 'string' || !posInt(c.qty)) throw new BadRequestError('A collection entry in the backup is malformed.');
     if (c.prints !== undefined && (!Array.isArray(c.prints) || c.prints.some((p) => !isObj(p) || typeof p.id !== 'string' || !isFinish(p.finish) || !posInt(p.qty)))) throw new BadRequestError('A printing in the backup is malformed.');
   }
+  if (raw.wishlist !== undefined && (!Array.isArray(raw.wishlist) || raw.wishlist.some((w) => !isObj(w) || typeof w.id !== 'string' || !posInt(w.want)))) throw new BadRequestError('A wishlist entry in the backup is malformed.');
   return raw as unknown as UserDataBackup;
 }
 
@@ -61,9 +64,9 @@ export function restoreUserData(db: Db, raw: unknown, mode: 'merge' | 'replace')
     return null;
   };
 
-  const result: RestoreResult = { decks: 0, deckCards: 0, collectionCards: 0, collectionCopies: 0, unresolved: [] };
+  const result: RestoreResult = { decks: 0, deckCards: 0, collectionCards: 0, collectionCopies: 0, wishlist: 0, unresolved: [] };
   transaction(db, () => {
-    if (mode === 'replace') { db.exec('DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; DELETE FROM collection_prints;'); }
+    if (mode === 'replace') { db.exec('DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; DELETE FROM collection_prints; DELETE FROM wishlist;'); }
     const insertDeck = db.prepare('INSERT INTO decks (name, format) VALUES (?, ?)');
     const insertCard = db.prepare('INSERT INTO deck_cards (deck_id, card_id, board, qty) VALUES (?, ?, ?, ?) ON CONFLICT (deck_id, card_id, board) DO UPDATE SET qty = qty + excluded.qty');
     for (const d of backup.decks) {
@@ -93,6 +96,14 @@ export function restoreUserData(db: Db, raw: unknown, mode: 'merge' | 'replace')
         addPrint.run(id, p.id, p.finish, qty, 9999);
         assigned += qty;
       }
+    }
+    // Merging keeps whichever want is higher: the backup should never make a wish smaller.
+    const wish = db.prepare("INSERT INTO wishlist (card_id, want) VALUES (?, ?) ON CONFLICT (card_id) DO UPDATE SET want = MAX(wishlist.want, excluded.want), updated_at = datetime('now')");
+    for (const w of backup.wishlist ?? []) {
+      const id = resolve(w.id, w.name);
+      if (!id) continue;
+      wish.run(id, w.want);
+      result.wishlist++;
     }
   });
   result.unresolved = [...unresolved];

@@ -9,6 +9,7 @@ const pane = async (page: Page, name: 'Browse' | 'Deck') => {
 
 // One long flow in one browser context: the database lives in that context's private storage, like the app's own.
 test('the full UI works on the on-device database, and keeps its data across a reload', async ({ page }) => {
+  test.setTimeout(180_000); // one long flow: a slow CI runner needed more than the default 90 s
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');

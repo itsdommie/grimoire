@@ -190,7 +190,32 @@ export interface AddToCollectionResult {
 export interface Ruling { source: string; publishedAt: string; comment: string }
 export interface TagInfo { slug: string; label: string; description: string | null; cards: number }
 export interface KeywordInfo { term: string; definition: string; rule: string | null }
-export interface CardDetail { card: Card; rulings: Ruling[]; tags: TagInfo[]; keywords: KeywordInfo[] }
+export interface CardDetail {
+  card: Card; rulings: Ruling[]; tags: TagInfo[]; keywords: KeywordInfo[];
+  /** Copies you want in total (0 when the card is not on your wishlist). */
+  wanted: number;
+}
+
+// ----------------------------------------------------------------- wishlist
+
+export interface WishlistItem {
+  card: Card;
+  /** Copies you want to own in total. */
+  want: number;
+  owned: number;
+  /** Copies still to find: what you want, less what you own now. 0 means you have them all. */
+  need: number;
+  /** USD for the copies still needed, at the card's cheapest printing; null when it has no price. */
+  costUsd: number | null;
+}
+export interface WishlistReport {
+  /** Cards you still need copies of first (dearest first), then the ones you have since got. */
+  items: WishlistItem[];
+  /** Items with copies still to find. */
+  open: number;
+  totalUsd: number;
+  unpriced: number;
+}
 
 // ----------------------------------------------------------------- backup
 
@@ -203,6 +228,8 @@ export interface UserDataBackup {
   decks: Array<{ name: string; format: string; cards: Array<{ id: string; name: string; board: 'commander' | 'main' | 'sideboard'; qty: number }> }>;
   /** `prints`: which printings (and finishes) some of the copies are. Optional, so backups made before printings existed still restore. */
   collection: Array<{ id: string; name: string; qty: number; prints?: Array<{ id: string; set: string; collector: string; finish: Finish; qty: number }> }>;
+  /** Optional, so backups made before the wishlist existed still restore. `want` is the copies wanted in total. */
+  wishlist?: Array<{ id: string; name: string; want: number }>;
 }
 
 export interface RestoreResult {
@@ -210,6 +237,8 @@ export interface RestoreResult {
   deckCards: number;
   collectionCards: number;
   collectionCopies: number;
+  /** Wishlist entries restored. */
+  wishlist: number;
   /** Cards that couldn't be found in the current card data (by id or name). */
   unresolved: string[];
 }

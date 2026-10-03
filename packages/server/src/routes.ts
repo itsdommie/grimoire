@@ -7,6 +7,7 @@ import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
 import { getSet, listSets, type SetFilter } from './sets.js';
+import { clearWishlist, getWishlist, setWanted, wishMissing } from './wishlist.js';
 import { Advisor, AdvisorError, keyFromEnvironment, type AdvisorOptions } from './advisor.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
@@ -218,6 +219,16 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
   on('POST', '/api/semantic/enable', () => { semantic.start(); return reply(202, semantic.status()); });
   on('POST', '/api/semantic/cancel', () => { semantic.cancel(); return semantic.status(); });
   on('DELETE', '/api/semantic', () => { semantic.remove(); return reply(204); });
+
+  // --------------------------------------------------------------- wishlist
+  on('GET', '/api/wishlist', () => getWishlist(db));
+  on('PUT', '/api/wishlist', ({ body }) => {
+    const { cardId, want } = (body ?? {}) as { cardId: string; want: number };
+    setWanted(db, cardId, want);
+    return getWishlist(db);
+  });
+  on('DELETE', '/api/wishlist', () => { clearWishlist(db); return reply(204); });
+  on('POST', '/api/decks/:id/wishlist-missing', ({ params, body }) => wishMissing(db, deckId(params.id), { excludeOtherDecks: body?.spare === true }));
 
   // ------------------------------------------------------------------ sets
   on('GET', '/api/sets', ({ query }) => ({ sets: listSets(db, query.q ?? '') }));
