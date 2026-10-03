@@ -32,6 +32,8 @@ async function startServer(): Promise<string> {
     db, dataDir, webRoot, token,
     logger: { level: 'info', stream: openLogStream() },
     bulkFile: process.env.GRIMOIRE_BULK_FILE,
+    rulingsFile: process.env.GRIMOIRE_RULINGS_FILE,
+    tagsFile: process.env.GRIMOIRE_TAGS_FILE,
   });
   await server.listen({ port: 0, host: '127.0.0.1' }); // random free port, loopback only
   const { port } = server.server.address() as AddressInfo;

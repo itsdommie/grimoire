@@ -4,6 +4,7 @@ import { api } from './api';
 import { DeckPanel } from './DeckPanel';
 import { DataFooter, DataSetup, useDataStatus } from './DataSetup';
 import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './CollectionView';
+import { CardDetailDialog } from './CardDetail';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -12,7 +13,7 @@ const ORDERS = [
   ['usd', 'Price'],
 ] as const;
 
-const EXAMPLES = ['t:creature c:rg cmc<=3 o:"draw a card"', 'f:commander id<=wubg is:commander', 'o:"create a treasure" -c:w', 'kw:flying r:mythic'];
+const EXAMPLES = ['t:creature c:rg cmc<=3 o:"draw a card"', 'f:commander id<=wubg is:commander', 'otag:ramp c:g cmc<=3', 'otag:sweeper f:commander', 'kw:flying r:mythic'];
 
 function useSearch(query: string, order: string, version: string | null, scope: 'all' | 'collection') {
   const [state, setState] = useState<{ data: SearchResponse | null; loading: boolean }>({ data: null, loading: true });
@@ -38,16 +39,16 @@ function useSearch(query: string, order: string, version: string | null, scope: 
 const LETTERS: Array<[number, string]> = [[1, 'w'], [2, 'u'], [4, 'b'], [8, 'r'], [16, 'g']];
 const maskToLetters = (mask: number) => LETTERS.filter(([bit]) => mask & bit).map(([, l]) => l).join('') || 'c';
 
-function CardTile({ card, inDeck, canAdd, stepper, onAdd, onOwn }: {
-  card: Card; inDeck: number; canAdd: boolean; stepper: boolean; onAdd: (card: Card, board: Board) => void; onOwn: (card: Card, qty: number) => void;
+function CardTile({ card, inDeck, canAdd, stepper, onAdd, onOwn, onOpen }: {
+  card: Card; inDeck: number; canAdd: boolean; stepper: boolean; onAdd: (card: Card, board: Board) => void; onOwn: (card: Card, qty: number) => void; onOpen: (id: string) => void;
 }) {
   const owned = card.owned ?? 0;
   return (
     <div className="tile" title={`${card.name}\n${card.typeLine}`}>
       <div className="art">
-        <a href={card.scryfallUri} target="_blank" rel="noreferrer">
-          {card.imageUrl ? <img src={card.imageUrl} alt={card.name} loading="lazy" /> : <div className="noimg">{card.name}</div>}
-        </a>
+        <button className="imglink" onClick={() => onOpen(card.id)} aria-label={`Details for ${card.name}`}>
+          {card.imageUrl ? <img src={card.imageUrl} alt="" loading="lazy" /> : <div className="noimg">{card.name}</div>}
+        </button>
         {inDeck > 0 && <span className="badge">×{inDeck}</span>}
         {!stepper && owned > 0 && <span className="badge own" title="Copies in your collection">Own ×{owned}</span>}
         <span className="overlay">
@@ -79,6 +80,7 @@ export function App() {
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const refreshDecks = useCallback(async () => { try { setDecks(await api.listDecks()); } catch { /* server down: search shows the error */ } }, []);
@@ -190,7 +192,7 @@ export function App() {
             <p className="examples">Try: {EXAMPLES.map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>
           )}
           {view === 'collection' && data && data.total === 0 && !query && collection?.total ? <p className="muted">Nothing matches.</p> : null}
-          <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} stepper={view === 'collection'} onAdd={add} onOwn={own} />)}</div>
+          <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} stepper={view === 'collection'} onAdd={add} onOwn={own} onOpen={setDetailId} />)}</div>
         </main>
         <footer>
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
@@ -209,7 +211,18 @@ export function App() {
         onError={setError}
         collection={collection}
         collectionVersion={collectionVersion}
+        onOpenCard={setDetailId}
       />
+      {detailId && (
+        <CardDetailDialog
+          cardId={detailId}
+          canAddToDeck={!!current}
+          onClose={() => setDetailId(null)}
+          onAddToDeck={(card, board) => void add(card, board)}
+          onOwn={(card, qty) => void own(card, qty)}
+          onSearchTag={(slug) => { setDetailId(null); setView('cards'); setQuery(`otag:${slug}`); }}
+        />
+      )}
       {importing && <CollectionImportDialog onClose={() => setImporting(false)} onDone={() => void collectionChanged()} onError={setError} />}
     </div>
   );

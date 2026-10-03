@@ -7,7 +7,7 @@ import fastifyStatic from '@fastify/static';
 import { SearchError, formatDeckList, type Board, type ExportStyle } from '@grimoire/shared';
 import type { Db } from './db.js';
 import { DataManager } from './data.js';
-import { getCardByName, searchCards, type Order } from './cards.js';
+import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, renameDeck, setCardQty } from './decks.js';
 
@@ -42,15 +42,17 @@ export interface ServerOptions {
   /** true/false, or a level and stream for file logging. */
   logger?: boolean | { level: string; stream: NodeJS.WritableStream };
   data?: DataManager;
-  /** See DataManagerOptions.localFile. */
+  /** See DataManagerOptions.localFile / localRulings / localTags. */
   bulkFile?: string;
+  rulingsFile?: string;
+  tagsFile?: string;
 }
 
 const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
 export function buildServer(opts: ServerOptions) {
   const { db, dataDir, webRoot, token } = opts;
-  const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile });
+  const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile });
   const app = Fastify({ logger: opts.logger ?? process.env.NODE_ENV !== 'test' });
 
   if (!token) app.register(cors, { origin: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] });
@@ -93,6 +95,11 @@ export function buildServer(opts: ServerOptions) {
       if (err instanceof SearchError) return reply.code(400).send({ total: 0, cards: [], error: err.message });
       throw err;
     }
+  });
+
+  app.get<{ Params: { id: string } }>('/api/cards/:id/detail', async (req, reply) => {
+    const detail = getCardDetail(db, req.params.id);
+    return detail ?? reply.code(404).send({ error: 'Card not found' });
   });
 
   app.get<{ Params: { name: string } }>('/api/cards/by-name/:name', async (req, reply) => {

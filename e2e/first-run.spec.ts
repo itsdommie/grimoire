@@ -13,4 +13,10 @@ test('first run shows the setup screen, imports the card data, then the app work
   await expect(page.getByText('3 cards')).toBeVisible();
   await page.getByPlaceholder(/Search/).fill('sol ring');
   await expect(page.locator('.tile .name')).toHaveText(['Sol Ring']);
+
+  // Rulings and function tags came along with the cards.
+  await page.getByPlaceholder(/Search/).fill('otag:ramp');
+  await expect(page.locator('.tile .name')).toHaveText(['Sol Ring']); // mana-rock is a child of ramp
+  await page.locator('.tile').getByRole('button', { name: 'Details for Sol Ring' }).click();
+  await expect(page.getByRole('dialog', { name: 'Sol Ring details' })).toContainText('Fixture ruling: Sol Ring taps for two colourless mana.');
 });

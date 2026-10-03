@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DataStatus } from '@grimoire/shared';
 import { api } from './api';
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
 
+const ITEM_LABEL = { cards: 'card data', rulings: 'rulings', tags: 'function tags' } as const;
+
 export function describeProgress(p: NonNullable<DataStatus['progress']>): string {
+  const what = ITEM_LABEL[p.item ?? 'cards'];
   if (p.phase === 'checking') return 'Contacting Scryfall…';
-  if (p.phase === 'downloading') return p.total ? `Downloading card data… ${mb(p.received ?? 0)} of ${mb(p.total)}` : `Downloading card data… ${mb(p.received ?? 0)}`;
-  return `Importing cards… ${(p.cards ?? 0).toLocaleString()}`;
+  if (p.phase === 'downloading') return p.total ? `Downloading ${what}… ${mb(p.received ?? 0)} of ${mb(p.total)}` : `Downloading ${what}… ${mb(p.received ?? 0)}`;
+  return p.item && p.item !== 'cards' ? `Importing ${what}…` : `Importing cards… ${(p.cards ?? 0).toLocaleString()}`;
 }
 
 /** Polls /api/data/status; faster while an update is running. */
@@ -25,6 +28,12 @@ export function useDataStatus() {
     const id = setInterval(tick, updating ? 500 : 5000);
     return () => { stop = true; clearInterval(id); };
   }, [updating]);
+
+  // An app update can bring new data (e.g. rulings, tags): refresh it once, in the background, without the user asking.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (status?.state === 'ready' && status.outdated && !autoStarted.current) { autoStarted.current = true; void api.updateData().then(setStatus).catch(() => {}); }
+  }, [status]);
 
   const start = async (force = false) => { try { setStatus(await api.updateData(force)); } catch { setUnreachable(true); } };
   return { status, unreachable, start };
@@ -70,6 +79,7 @@ export function DataFooter({ status, onUpdate }: { status: DataStatus; onUpdate:
           <button className="linklike" onClick={onUpdate}>Check for card updates</button>
           {status.upToDate && ' (up to date)'}
           {status.state === 'error' && <span className="error"> Update failed: {status.error}</span>}
+          {status.warning && <span className="muted"> {status.warning}.</span>}
         </>
       )}
     </span>

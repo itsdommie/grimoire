@@ -222,6 +222,12 @@ function compileTerm(key: string, op: Op, value: string, params: Compiled['param
     params.push(n);
     return `${numCol} ${SQL_OP[op]} ?`;
   }
+  if (key === 'otag' || key === 'function' || key === 'oracletag') {
+    // Scryfall's community "Oracle Tags", including every descendant tag (otag:removal also matches otag:removal-destroy).
+    const slug = value.toLowerCase();
+    params.push(slug, slug);
+    return `EXISTS (SELECT 1 FROM card_tags ct WHERE ct.card_id = cards.id AND ct.tag IN (WITH RECURSIVE d(slug) AS (SELECT COALESCE((SELECT slug FROM tag_aliases WHERE alias = ?), ?) UNION SELECT e.child FROM tag_edges e JOIN d ON e.parent = d.slug) SELECT slug FROM d))`;
+  }
   if (key === 'owned') {
     const n = Number(value);
     if (!Number.isInteger(n)) throw new SearchError(`"owned" expects a whole number, got "${value}"`);
@@ -300,4 +306,17 @@ export function compileQuery(src: string): Compiled {
   if (!ast) return { where: '1=1', params: [] };
   const params: Compiled['params'] = [];
   return { where: compileNode(ast, params), params };
+}
+
+/** Every key:value term in a query (used by the server to validate things the compiler can't check, such as tag names). */
+export function termsOf(src: string): Array<{ key: string; op: Op; value: string }> {
+  const out: Array<{ key: string; op: Op; value: string }> = [];
+  const walk = (n: Node | null) => {
+    if (!n) return;
+    if (n.type === 'term') out.push({ key: n.key, op: n.op, value: n.value });
+    else if (n.type === 'not') walk(n.child);
+    else if (n.type === 'and' || n.type === 'or') n.children.forEach(walk);
+  };
+  walk(parse(src));
+  return out;
 }

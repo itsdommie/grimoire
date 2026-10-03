@@ -72,6 +72,7 @@ export function mapCard(raw: ScryfallCard): Card | null {
     edhrecRank: raw.edhrec_rank ?? null,
     usd: num(raw.prices?.usd ?? undefined),
     imageUrl: raw.image_uris?.normal ?? front?.image_uris?.normal ?? null,
+    imageUrlBack: !raw.image_uris && faces[1]?.image_uris?.normal ? faces[1].image_uris.normal : null,
     scryfallUri: raw.scryfall_uri,
     legalities: raw.legalities ?? {},
   };

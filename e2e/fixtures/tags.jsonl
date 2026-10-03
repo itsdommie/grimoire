@@ -1,0 +1,2 @@
+{"object": "tag", "id": "ft-ramp", "slug": "ramp", "label": "ramp", "type": "oracle", "description": "Effects that increase available mana.", "parent_ids": [], "child_ids": ["ft-rock"], "aliases": [], "taggings": []}
+{"object": "tag", "id": "ft-rock", "slug": "mana-rock", "label": "mana-rock", "type": "oracle", "description": "Mana rocks.", "parent_ids": ["ft-ramp"], "child_ids": [], "aliases": [], "taggings": [{"oracle_id": "fixture-1", "weight": "median"}]}

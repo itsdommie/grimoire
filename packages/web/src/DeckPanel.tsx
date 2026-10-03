@@ -27,9 +27,10 @@ interface Props {
   onError: (message: string) => void;
   collection: CollectionSummary | null;
   collectionVersion: number;
+  onOpenCard: (id: string) => void;
 }
 
-export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError, collection, collectionVersion }: Props) {
+export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError, collection, collectionVersion, onOpenCard }: Props) {
   const [showImport, setShowImport] = useState(false);
   // window.prompt() isn't available in Electron, so naming uses an in-app dialog.
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
@@ -78,7 +79,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
   const row = (e: DeckEntry, board: Board) => (
     <li className="row" key={e.card.id}>
       <span className="qty">{e.qty}</span>
-      <a className="rname" href={e.card.scryfallUri} target="_blank" rel="noreferrer" title={e.card.typeLine}>{e.card.name}</a>
+      <button className="rname linklike" onClick={() => onOpenCard(e.card.id)} title={e.card.typeLine}>{e.card.name}</button>
       {haveCollection && board !== 'sideboard' && !isBasicLand(e.card) && (e.card.owned ?? 0) < e.qty && <span className="missing" title="Not enough copies in your collection" aria-label="Missing from collection">✗</span>}
       <span className="cost">{e.card.manaCost}</span>
       <span className="actions">

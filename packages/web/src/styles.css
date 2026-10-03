@@ -182,3 +182,30 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .missingpanel summary { cursor: pointer; font-size: 12px; color: var(--muted); }
 .filebtn { cursor: pointer; display: inline-block; }
 .overlay button { padding: 4px 6px; }
+
+/* ---- card detail ---- */
+.imglink { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.row .linklike, .rname.linklike { text-align: left; font: inherit; font-size: 13px; color: var(--fg); text-decoration: none; }
+.row .linklike:hover { color: var(--accent); text-decoration: underline; }
+.dialog.carddetail { position: relative; width: min(900px, 94vw); }
+.closex { position: absolute; top: 8px; right: 10px; width: 30px; height: 30px; font-size: 20px; line-height: 1; color: var(--fg); background: none; border: 0; border-radius: 6px; cursor: pointer; }
+.closex:hover { background: var(--bg); }
+.cdlayout { display: grid; grid-template-columns: 300px 1fr; gap: 20px; }
+.cdimg img { width: 100%; border-radius: 4.5%; display: block; }
+.cdimg button, .carddetail .deckbar button, .carddetail .btn { padding: 4px 10px; font: inherit; font-size: 13px; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 6px; cursor: pointer; text-decoration: none; }
+.cdimg button { margin-top: 8px; }
+.carddetail h2 { margin: 0 0 4px; }
+.cdline { margin: 0; } .cdtype { margin: 2px 0 8px; color: var(--muted); }
+.cdtext { white-space: pre-wrap; padding: 8px 10px; background: var(--bg); border-radius: 8px; font-size: 14px; }
+.cdlegal { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 10px 0; font-size: 12px; }
+.legal { padding: 1px 8px; border: 1px solid #333650; border-radius: 999px; color: var(--muted); }
+.legal.legal { color: #6fd08c; border-color: #2f6a45; } .legal.banned { color: #ff7a7a; border-color: #7a3030; } .legal.restricted { color: #fab219; border-color: #7a5d10; }
+.carddetail h3 { margin: 14px 0 4px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.carddetail h3 small { font-weight: normal; }
+.tagchips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0; }
+.tagchip { padding: 2px 10px; font: inherit; font-size: 12px; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 999px; cursor: pointer; }
+.tagchip:hover { border-color: var(--accent); }
+.rulings { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+.rulings li { margin: 8px 0; }
+.carddetail .stepper { margin-top: 0; }
+@media (max-width: 760px) { .cdlayout { grid-template-columns: 1fr; } .cdimg { max-width: 300px; } }

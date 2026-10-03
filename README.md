@@ -40,6 +40,13 @@ npm run e2e:desktop   # launches the real Electron app (needs a display); GRIMOI
 Search syntax follows Scryfall: `t:creature c:rg cmc<=3 o:"draw a card"`, `f:commander id<=wubg`, `-c:u`, `(a or b)`.
 `c:` means "at least these colours", `id:` means "within this colour identity".
 
+## Card details and function search
+
+Click any card (in results or in a deck) for its details: image (with a flip for double-faced cards), text, legality, price,
+official rulings and community function tags, all offline once the data is downloaded. Search understands Scryfall's function
+tags too: `otag:ramp c:g cmc<=3`, `otag:sweeper f:commander`. Rulings and tags are downloaded alongside the card data and refresh
+with "Check for card updates".
+
 ## Analysis and simulation
 
 The **Analysis** tab shows the mana curve, colour pips, a suggested land count, how many sources of each colour you need,
@@ -63,7 +70,7 @@ Validation covers size, singleton, colour identity, Commander legality and comma
 ## Offline install
 
 Set `GRIMOIRE_BULK_FILE=/path/to/oracle-cards.jsonl[.gz]` (a Scryfall "Oracle Cards" bulk file) to import card data from disk
-instead of downloading it.
+instead of downloading it; `GRIMOIRE_RULINGS_FILE` and `GRIMOIRE_TAGS_FILE` do the same for rulings and Oracle Tags.
 
 ## Security notes
 

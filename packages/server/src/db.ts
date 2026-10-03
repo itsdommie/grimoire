@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS cards (
   edhrec_rank    INTEGER,
   usd            REAL,
   image_url      TEXT,
+  image_url_back TEXT,                   -- back face of transform / modal double-faced cards
   scryfall_uri   TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS cards_name ON cards(name COLLATE NOCASE);
@@ -71,8 +72,41 @@ CREATE TABLE IF NOT EXISTS collection (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Extra Scryfall data: official rulings, and community "Oracle Tags" (function labels such as ramp or removal).
+CREATE TABLE IF NOT EXISTS rulings (
+  oracle_id    TEXT NOT NULL,
+  source       TEXT NOT NULL,
+  published_at TEXT NOT NULL,
+  comment      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rulings_oracle ON rulings(oracle_id);
+CREATE TABLE IF NOT EXISTS tags (slug TEXT PRIMARY KEY, label TEXT NOT NULL, description TEXT, cards INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS tag_edges (parent TEXT NOT NULL, child TEXT NOT NULL, PRIMARY KEY (parent, child)) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS tag_aliases (alias TEXT PRIMARY KEY, slug TEXT NOT NULL) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS card_tags (card_id TEXT NOT NULL, tag TEXT NOT NULL, PRIMARY KEY (card_id, tag)) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS card_tags_tag ON card_tags(tag);
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
+
+/**
+ * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
+ * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
+ */
+export const SCHEMA_VERSION = 2;
+
+function hasColumn(db: Db, table: string, column: string): boolean {
+  return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);
+}
+
+/** Bring an existing database up to date. Every step is idempotent, so it's safe on fresh and partially upgraded files. */
+export function migrate(db: Db): void {
+  db.exec(SCHEMA);
+  // v2: back-face images for double-faced cards.
+  if (!hasColumn(db, 'cards', 'image_url_back')) db.exec('ALTER TABLE cards ADD COLUMN image_url_back TEXT');
+  const current = (db.prepare('PRAGMA user_version').get() as unknown as { user_version: number }).user_version;
+  if (current < SCHEMA_VERSION) db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+}
 
 export function openDb(path: string, opts: { readonly?: boolean } = {}): Db {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
@@ -80,7 +114,7 @@ export function openDb(path: string, opts: { readonly?: boolean } = {}): Db {
   if (!opts.readonly) {
     if (path !== ':memory:') db.exec('PRAGMA journal_mode = WAL');
     db.exec('PRAGMA foreign_keys = ON');
-    db.exec(SCHEMA);
+    migrate(db);
   }
   return db;
 }

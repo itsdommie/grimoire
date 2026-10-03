@@ -18,6 +18,8 @@ export interface Card {
   edhrecRank: number | null;
   usd: number | null;
   imageUrl: string | null;
+  /** Back face image of a double-faced card (transform / modal), else null. */
+  imageUrlBack?: string | null;
   scryfallUri: string;
   legalities: Record<string, string>;
   /** How many copies the user owns (set by the server; absent for cards built without a collection). */
@@ -59,8 +61,12 @@ export interface DataStatus {
   cardCount: number;
   /** Scryfall's `updated_at` for the bulk file currently loaded. */
   bulkUpdatedAt: string | null;
-  progress?: { phase: 'checking' | 'downloading' | 'importing'; received?: number; total?: number; cards?: number };
+  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags'; received?: number; total?: number; cards?: number };
   error?: string;
+  /** Something optional failed (rulings or tags) while the core card data is fine. */
+  warning?: string;
+  /** The loaded data predates this app version (older shape, or extras not fetched yet): the UI refreshes it automatically. */
+  outdated?: boolean;
   /** Set after an update check: true if Scryfall had nothing newer. */
   upToDate?: boolean;
 }
@@ -112,3 +118,9 @@ export interface CommanderIdea {
   /** Of those, how many are not lands. */
   spells: number;
 }
+
+// ------------------------------------------------------------ card detail
+
+export interface Ruling { source: string; publishedAt: string; comment: string }
+export interface TagInfo { slug: string; label: string; description: string | null; cards: number }
+export interface CardDetail { card: Card; rulings: Ruling[]; tags: TagInfo[] }
