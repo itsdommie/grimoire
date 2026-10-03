@@ -5,6 +5,8 @@ import { seedAliases } from '../../server/src/names.ts';
 import { loadPrintings, parsePrintingsFile } from '../../server/src/printings.ts';
 import { wrapDb, type Oo1Db } from './wasmDb.ts';
 import { createPhoneSemantic } from './semantic.ts';
+import { phoneKeyStore } from './keyStore.ts';
+import { keyFromEnvironment } from '../../server/src/advisor.ts';
 import { cacheStore } from './modelStore.ts';
 import { streamIntoPool } from './poolStream.ts';
 import { applyPendingCardData, CardUpdater, DEFAULT_DATA_BASE, type PoolFiles } from './cardUpdates.ts';
@@ -76,7 +78,7 @@ async function installPool(sqlite3: Awaited<ReturnType<typeof sqlite3InitModule>
   throw lastError;
 }
 
-async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; metered?: boolean; semanticBase?: string; modelBase?: string }): Promise<void> {
+async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; metered?: boolean; semanticBase?: string; modelBase?: string; advisorBase?: string }): Promise<void> {
   // The package's types declare no options, but Emscripten's loader takes locateFile (it must find sqlite3.wasm next to this file).
   const init = sqlite3InitModule as unknown as (o: { locateFile(name: string): string }) => ReturnType<typeof sqlite3InitModule>;
   const sqlite3 = await init({ locateFile: (name) => new URL(name, ctx.location.href).href });
@@ -110,6 +112,8 @@ async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; 
       db, store: cacheStore, native: opts.native ? askNative : null, ortBase: new URL('ort/', ctx.location.href).href,
       prebuiltBase: opts.semanticBase, modelBase: opts.modelBase,
     }),
+    // The advisor calls Anthropic straight from the phone (the API allows pages to, with this header) with the key held in the Keystore.
+    advisor: { keys: keyFromEnvironment(await phoneKeyStore(opts.native ? askNative : null), {}), directBrowserAccess: true, baseUrl: opts.advisorBase },
   });
   post({ ready: true, cards: Number(meta('card_count') ?? 0) });
   // Once a week the app looks for a newer card database by itself (a few seconds after start, so it never slows the first screen).

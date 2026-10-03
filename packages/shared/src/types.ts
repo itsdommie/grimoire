@@ -237,3 +237,24 @@ export interface RuleHit { id: string; kind: 'group' | 'rule' | 'subrule'; secti
 export interface RulesSearchResult { rules: RuleHit[]; glossary: Array<{ term: string; definition: string; rule: string | null }>; exact: RuleHit | null }
 export interface RuleDetail { rule: RuleHit; ancestors: RuleHit[]; children: RuleHit[] }
 export interface RulesToc { sections: Array<{ num: number; title: string; groups: Array<{ id: string; title: string }> }> }
+
+// ----------------------------------------------------------------- advisor
+
+/** The optional Claude advisor: a chat whose answers are built from lookups in the local card database. */
+export interface AdvisorStatus {
+  /** An API key is available (stored by the app, or supplied through the environment). */
+  configured: boolean;
+  source: 'stored' | 'environment' | null;
+  /** The app can keep a key for you (the desktop app, in the operating system's keychain). */
+  canStore: boolean;
+  model: string;
+  models: Array<{ id: string; label: string }>;
+}
+export interface AdvisorMessage { role: 'user' | 'assistant'; content: string }
+export interface AdvisorReply {
+  reply: string;
+  /** Cards the answer names that the advisor actually looked up in your card database (so they are real). */
+  cards: Array<{ id: string; name: string; imageUrl: string | null }>;
+  /** How many database lookups it made to answer. */
+  lookups: number;
+}

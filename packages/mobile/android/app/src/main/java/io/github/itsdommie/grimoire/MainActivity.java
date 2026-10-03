@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // Plugins written for this app are registered by hand (before super.onCreate); Capacitor finds the npm ones itself.
         registerPlugin(TextRecognitionPlugin.class);
+        registerPlugin(SecretStorePlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

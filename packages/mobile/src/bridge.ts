@@ -51,9 +51,18 @@ void ready.then(() => { settled = true; splash.remove(); });
  * the native Filesystem plugin isn't subject to CORS and streams to disk. The worker then reads the file back through the app's own
  * local file URL. (Outside the app there is no native side; the worker fetches directly.)
  */
+const secrets = registerPlugin<{ get(o: { name: string }): Promise<{ value: string | null }>; set(o: { name: string; value: string }): Promise<void>; clear(o: { name: string }): Promise<void> }>('SecretStore');
+
 async function doNative(id: number, request: NativeRequest): Promise<void> {
   const reply = (result: NativeResult) => send({ nativeResult: { id, result } });
   try {
+    if (request.op === 'secret-get') {
+      const { value } = await secrets.get({ name: request.name });
+      reply({ ok: true, ...(value ? { text: value } : {}) });
+      return;
+    }
+    if (request.op === 'secret-set') { await secrets.set({ name: request.name, value: request.value }); reply({ ok: true }); return; }
+    if (request.op === 'secret-clear') { await secrets.clear({ name: request.name }); reply({ ok: true }); return; }
     if (request.op === 'delete') {
       await Filesystem.deleteFile({ path: request.name, directory: Directory.Cache }).catch(() => {});
       reply({ ok: true });
@@ -99,9 +108,10 @@ try { dataBase = localStorage.getItem('grimoire.dataBase') ?? undefined; } catch
 const connection = (navigator as unknown as { connection?: { type?: string; saveData?: boolean } }).connection;
 let metered = !!connection && (connection.type === 'cellular' || connection.saveData === true);
 try { const forced = localStorage.getItem('grimoire.metered'); if (forced !== null) metered = forced === '1'; } catch { /* storage unavailable */ }
-let semanticBase: string | undefined, modelBase: string | undefined;
+let semanticBase: string | undefined, modelBase: string | undefined, advisorBase: string | undefined;
+try { advisorBase = localStorage.getItem('grimoire.advisorBase') ?? undefined; } catch { /* storage unavailable */ }
 try { semanticBase = localStorage.getItem('grimoire.semanticBase') ?? undefined; modelBase = localStorage.getItem('grimoire.modelBase') ?? undefined; } catch { /* storage unavailable */ }
-send({ init: { dbUrl: new URL('grimoire.db', location.href).href, native: Capacitor.isNativePlatform(), dataBase, metered, semanticBase, modelBase } });
+send({ init: { dbUrl: new URL('grimoire.db', location.href).href, native: Capacitor.isNativePlatform(), dataBase, metered, semanticBase, modelBase, advisorBase } });
 
 const realFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

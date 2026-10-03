@@ -6,6 +6,7 @@ import { exportUserData, restoreUserData } from './backup.js';
 import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
+import { Advisor, AdvisorError, keyFromEnvironment, type AdvisorOptions } from './advisor.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
 /**
@@ -44,7 +45,11 @@ export interface SemanticService {
   remove(): void;
 }
 
-export interface RouterDeps { db: Db; data: DataService; semantic: SemanticService }
+export interface RouterDeps {
+  db: Db; data: DataService; semantic: SemanticService;
+  /** The optional Claude advisor. Without it the advisor routes say it isn't configured. */
+  advisor?: Omit<AdvisorOptions, 'db' | 'rankerFor'>;
+}
 
 const ORDERS = new Set<Order>(['name', 'cmc', 'edhrec', 'usd']);
 
@@ -76,7 +81,7 @@ function nameIndexFor(db: Db, cache: { key: string; index: NameIndex } | null): 
   return { key, index: new NameIndex(names) };
 }
 
-export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiRequest) => Promise<ApiResponse> {
+export function createRouter({ db, data, semantic, advisor: advisorOptions }: RouterDeps): (req: ApiRequest) => Promise<ApiResponse> {
   const routes: Route[] = [];
   let names: { key: string; index: NameIndex } | null = null;
   const on = (method: string, pattern: string, handler: Handler) => routes.push({ method, segments: pattern.split('/').filter(Boolean), handler });
@@ -213,6 +218,14 @@ export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiReque
   on('POST', '/api/semantic/cancel', () => { semantic.cancel(); return semantic.status(); });
   on('DELETE', '/api/semantic', () => { semantic.remove(); return reply(204); });
 
+  // --------------------------------------------------------------- advisor
+  const advisor = new Advisor({ ...(advisorOptions ?? { keys: keyFromEnvironment(null) }), db, rankerFor: semanticFor });
+  on('GET', '/api/advisor/status', () => advisor.status());
+  on('PUT', '/api/advisor/key', ({ body }) => advisor.setKey(body?.key));
+  on('DELETE', '/api/advisor/key', () => advisor.clearKey());
+  on('PUT', '/api/advisor/model', ({ body }) => advisor.setModel(body?.model));
+  on('POST', '/api/advisor/chat', ({ body }) => advisor.chat(body?.messages, { deckId: Number.isInteger(body?.deck) ? body.deck : undefined }));
+
   // ----------------------------------------------------------------- backup
   on('GET', '/api/backup', () => {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -243,6 +256,7 @@ export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiReque
     } catch (err) {
       if (err instanceof NotFoundError) return { status: 404, body: { error: err.message } };
       if (err instanceof BadRequestError) return { status: 400, body: { error: err.message } };
+      if (err instanceof AdvisorError) return { status: err.status, body: { error: err.message } };
       // The card pool is being replaced by a writer connection; writes must wait for it.
       if (err instanceof Error && /database is locked|SQLITE_BUSY/i.test(err.message)) return { status: 503, body: { error: 'Card data is updating. Try again in a moment.' } };
       throw err;

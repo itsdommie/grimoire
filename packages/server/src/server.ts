@@ -7,6 +7,7 @@ import fastifyStatic from '@fastify/static';
 import type { NodeDb } from './db.js';
 import { DataManager } from './data.js';
 import { SemanticIndex } from './semantic.js';
+import { keyFromEnvironment, type KeyStore } from './advisor.js';
 import { createRouter } from './routes.js';
 
 export const TOKEN_HEADER = 'x-grimoire-token';
@@ -49,6 +50,10 @@ export interface ServerOptions {
   semantic?: SemanticIndex;
   /** Folder with ort.node.min.mjs and the .wasm files (shipped with the desktop app). */
   ortDir?: string;
+  /** Where the advisor's API key is kept between runs (the desktop app: the OS keychain). Without one, only ANTHROPIC_API_KEY works. */
+  keyStore?: KeyStore;
+  /** Where the advisor talks to (tests point it at a fake). */
+  advisor?: { fetch?: typeof fetch; baseUrl?: string };
 }
 
 const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
@@ -71,7 +76,7 @@ export function buildServer(opts: ServerOptions) {
   });
 
   // Every /api route lives in routes.ts so the Android app can share it; Fastify only adds HTTP around it.
-  const router = createRouter({ db, data, semantic });
+  const router = createRouter({ db, data, semantic, advisor: { keys: keyFromEnvironment(opts.keyStore ?? null, process.env), ...opts.advisor } });
   app.route({
     method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     url: '/api/*',

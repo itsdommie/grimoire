@@ -128,7 +128,7 @@ describe('the ready-made index download (inside the app, through the native down
     const urls = new Map<string, Uint8Array>();
     const fn = async (r: NativeRequest, onProgress?: (a: number, b: number) => void): Promise<NativeResult> => {
       calls.push(r);
-      if (r.op === 'delete') return { ok: true };
+      if (r.op !== 'download' && r.op !== 'text') return { ok: true };
       const name = r.url.split('/').pop()!;
       const body = files[name];
       if (body === undefined) return { ok: false, error: 'HTTP 404', status: 404 };

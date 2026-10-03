@@ -8,6 +8,7 @@ import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
 import { RulesView } from './RulesView';
+import { AdvisorView, type ChatItem } from './AdvisorView';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
@@ -93,7 +94,7 @@ export function App() {
   const [skipUsed, setSkipUsedState] = useState(() => { try { return localStorage.getItem('grimoire.skipUsed') === '1'; } catch { return false; } });
   const setSkipUsed = (v: boolean) => { setSkipUsedState(v); try { localStorage.setItem('grimoire.skipUsed', v ? '1' : '0'); } catch { /* storage unavailable */ } };
   const [onlyLegal, setOnlyLegal] = useState(true);
-  const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules'>('cards');
+  const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules' | 'advisor'>('cards');
   // On a phone the browse area and the deck are separate full-screen panes; on a wide screen they sit side by side and this is unused.
   const [pane, setPane] = useState<'browse' | 'deck'>('browse');
   // On a touch screen the search box must not take focus before the person has touched anything: it would raise the keyboard over the app
@@ -107,6 +108,8 @@ export function App() {
     return () => window.removeEventListener('pointerdown', mark, { capture: true });
   }, []);
   const [ruleToOpen, setRuleToOpen] = useState<string | null>(null);
+  // The advisor chat lives here so it survives switching views.
+  const [advice, setAdvice] = useState<ChatItem[]>([]);
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -202,9 +205,10 @@ export function App() {
             <button className={view === 'cards' ? 'active' : ''} aria-current={view === 'cards' ? 'page' : undefined} onClick={() => setView('cards')}>Cards</button>
             <button className={view === 'collection' ? 'active' : ''} aria-current={view === 'collection' ? 'page' : undefined} onClick={() => setView('collection')}>Collection</button>
             <button className={view === 'rules' ? 'active' : ''} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => setView('rules')}>Rules</button>
+            <button className={view === 'advisor' ? 'active' : ''} aria-current={view === 'advisor' ? 'page' : undefined} onClick={() => setView('advisor')}>Advisor</button>
             <button className={view === 'play' ? 'active' : ''} aria-current={view === 'play' ? 'page' : undefined} onClick={() => setView('play')}>Play</button>
           </nav>
-          {view !== 'play' && view !== 'rules' && <input
+          {(view === 'cards' || view === 'collection') && <input
             autoFocus={!touchScreen}
             onFocus={(e) => { if (touchScreen && !touched.current) e.currentTarget.blur(); }}
             value={query}
@@ -212,13 +216,13 @@ export function App() {
             placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}
             spellCheck={false}
           />}
-          {view !== 'play' && view !== 'rules' && recognizer && <button className="scanbtn" onClick={() => setScanning(true)} aria-label="Scan cards with the camera">Scan</button>}
-          {view !== 'play' && view !== 'rules' && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
+          {(view === 'cards' || view === 'collection') && recognizer && <button className="scanbtn" onClick={() => setScanning(true)} aria-label="Scan cards with the camera">Scan</button>}
+          {(view === 'cards' || view === 'collection') && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
             {ORDERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </select>}
         </header>
         <main>
-          {view === 'play' ? <PlayView /> : view === 'rules' ? <RulesView openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} /> : (<>
+          {view === 'play' ? <PlayView /> : view === 'advisor' ? <AdvisorView deck={current ? { id: current.deck.id, name: current.deck.name, format: rules.name } : null} chat={advice} setChat={setAdvice} onOpenCard={setDetailId} /> : view === 'rules' ? <RulesView openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} /> : (<>
           {error && <p className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></p>}
           <p className="status">
             {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}${/\b(?:about|meaning|sem):/.test(searchQuery) ? ', best matches first' : ''}` : ''}

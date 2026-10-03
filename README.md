@@ -20,8 +20,10 @@ the app's user-data folder (Help → Open data folder).
 
 ## Privacy
 
-No account, no analytics, no tracking. Grimoire contacts only: Scryfall (card data and images), GitHub (update checks, can be
-turned off) and, once and only if you enable semantic search, Hugging Face (a 34 MB model). What you create stays on your computer.
+No account, no analytics, no tracking. Grimoire contacts only: Scryfall (card data and images), GitHub (update checks, which can be
+turned off, and the ready-made semantic index and card data updates), and, only if you enable semantic search, Hugging Face (a 34 MB
+model, once). If you also set up the optional **Advisor** with your own API key, your questions and the cards and deck it looks up
+to answer them go to Anthropic, and only then. What you create stays on your computer.
 
 ## Code signing
 
@@ -84,6 +86,19 @@ drawing extra cards"`, `about:"protect my commander" c:w`. Setup downloads a sma
 against a pinned checksum) and indexes your cards on this computer in a few minutes; nothing you type leaves it. It works best
 on concrete rules-text descriptions. Uses [BGE-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) (MIT) via
 [onnxruntime-web](https://github.com/microsoft/onnxruntime) (MIT). Developers: `npm run semantic` builds the index for the dev database.
+
+## Advisor (optional)
+
+The **Advisor** tab is a chat with Claude about your decks. It is the one feature that sends anything off your computer, so it is off
+until you paste your own [Anthropic API key](https://console.anthropic.com/settings/keys) (Anthropic bills your account; Grimoire
+adds no charge and has no server). The key is encrypted with the operating system's keychain (Windows, or GNOME/KDE on Linux; on
+Android the Keystore) and is never shown again. Where there is no keychain, Grimoire refuses to store it and the
+`ANTHROPIC_API_KEY` environment variable works instead.
+
+Claude cannot make cards up: it reaches your card database only through three tools (search with Scryfall-style syntax, look up a
+card, read the open deck with its problems and analysis), and the cards shown under an answer are only ones it actually looked up.
+Open a deck first and it will review that deck; searches can use `owned:`/`spare:` so it can suggest from your collection. You can
+choose Sonnet, Opus or Haiku. Only your conversation and what those lookups return are sent.
 
 ## Analysis and simulation
 

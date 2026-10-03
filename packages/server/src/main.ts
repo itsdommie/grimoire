@@ -2,6 +2,7 @@ import { dbPathFor, openDb } from './db.js';
 import { DEFAULT_DATA_DIR } from './devpaths.js';
 import { HashingEmbedder, SemanticIndex } from './semantic.js';
 import { buildServer } from './server.js';
+import { fakeAnthropic, memoryKeyStore } from './advisor-fake.js';
 
 const dataDir = DEFAULT_DATA_DIR;
 const db = openDb(dbPathFor(dataDir));
@@ -10,6 +11,8 @@ const port = Number(process.env.PORT ?? 3001);
 const semantic = process.env.GRIMOIRE_FAKE_EMBEDDINGS
   ? new SemanticIndex({ db, dataDir, prebuiltBase: null, deps: { ensureModel: async () => {}, createEmbedder: async () => new HashingEmbedder() } })
   : undefined;
-buildServer({ db, dataDir, bulkFile: process.env.GRIMOIRE_BULK_FILE, rulingsFile: process.env.GRIMOIRE_RULINGS_FILE, tagsFile: process.env.GRIMOIRE_TAGS_FILE, pricesFile: process.env.GRIMOIRE_PRICES_FILE, rulesFile: process.env.GRIMOIRE_RULES_FILE, semantic })
+buildServer({ db, dataDir, bulkFile: process.env.GRIMOIRE_BULK_FILE, rulingsFile: process.env.GRIMOIRE_RULINGS_FILE, tagsFile: process.env.GRIMOIRE_TAGS_FILE, pricesFile: process.env.GRIMOIRE_PRICES_FILE, rulesFile: process.env.GRIMOIRE_RULES_FILE, semantic,
+  // GRIMOIRE_FAKE_ADVISOR=1: a scripted stand-in for Anthropic and a key store in memory (end-to-end tests).
+  ...(process.env.GRIMOIRE_FAKE_ADVISOR ? { keyStore: memoryKeyStore(), advisor: { fetch: fakeAnthropic() } } : {}) })
   .listen({ port, host: '127.0.0.1' })
   .catch((err) => { console.error(err); process.exit(1); });

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, session, shell } from 'electron';
+import { app, BrowserWindow, Menu, safeStorage, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { createWriteStream, mkdirSync, statSync, truncateSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -6,6 +6,7 @@ import type { AddressInfo } from 'node:net';
 import { buildServer } from '@grimoire/server/server';
 import { dbPathFor, openDb } from '@grimoire/server/db';
 import { startUpdater, updateMenuItems } from './updater';
+import { fileKeyStore } from './keyStore';
 
 // Tests (and portable installs) can relocate all app data.
 if (process.env.GRIMOIRE_USER_DATA) app.setPath('userData', process.env.GRIMOIRE_USER_DATA);
@@ -33,6 +34,13 @@ async function startServer(): Promise<string> {
   const ortDir = app.isPackaged ? join(process.resourcesPath, 'ort') : resolve(__dirname, '../build/ort');
   server = buildServer({
     db, dataDir, webRoot, token, ortDir,
+    // The advisor's API key, encrypted with the OS keychain. (On Linux without a keyring Electron falls back to a fixed password, which
+    // protects nothing, so then the app refuses to keep a key and the ANTHROPIC_API_KEY variable is the way.)
+    keyStore: fileKeyStore(join(app.getPath('userData'), 'advisor-key.bin'), {
+      available: () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'),
+      encrypt: (plain) => safeStorage.encryptString(plain),
+      decrypt: (data) => safeStorage.decryptString(data),
+    }),
     logger: { level: 'info', stream: openLogStream() },
     bulkFile: process.env.GRIMOIRE_BULK_FILE,
     rulingsFile: process.env.GRIMOIRE_RULINGS_FILE,
