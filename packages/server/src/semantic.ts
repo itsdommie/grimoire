@@ -5,8 +5,8 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { WordPieceTokenizer, type SemanticStatus } from '@grimoire/shared';
 import { PREBUILT_BASE, PREBUILT_MANIFEST, decodeIndex, encodeIndex, type IndexRow, type PrebuiltManifest } from './semantic-prebuilt.js';
-import type { Db } from './db.js';
-import { transaction } from './db.js';
+import type { Db } from './schema.js';
+import { transaction } from './schema.js';
 
 // Semantic search: BGE-small embeddings of every card, computed locally with onnxruntime-web (WASM, no native modules),
 // stored as int8 vectors in SQLite and scored by brute-force dot product (35k x 384 is ~15 ms).

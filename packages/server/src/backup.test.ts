@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { RestoreResult, UserDataBackup } from '@grimoire/shared';
-import { dbPathFor, openDb, SCHEMA_VERSION, type Db } from './db.js';
+import { dbPathFor, openDb, SCHEMA_VERSION, type NodeDb as Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { buildServer } from './server.js';
 import { exportUserData, parseBackup, restoreUserData } from './backup.js';

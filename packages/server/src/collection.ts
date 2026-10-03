@@ -1,6 +1,6 @@
 import { compileQuery, copiesInDecksSql, isBasicLand, parseCollection, reservesCopies, type AddToCollectionResult, type Card, type CollectionImportResult, type CollectionSummary, type CommanderIdea, type MissingCard, type MissingReport } from '@grimoire/shared';
 import { getCardsByIds, resolveCardName } from './cards.js';
-import { transaction, type Db } from './db.js';
+import { transaction, type Db } from './schema.js';
 import { getDeck, BadRequestError } from './decks.js';
 
 export function collectionSummary(db: Db): CollectionSummary {

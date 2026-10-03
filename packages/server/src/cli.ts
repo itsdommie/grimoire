@@ -31,8 +31,23 @@ if (command === 'semantic') {
   }
   process.exit(0);
 }
+if (command === 'names') {
+  // Build the alternate card names list (Universes Beyond renames etc.) from Scryfall's per-printing file.
+  // --export <dir> writes card-names.json for publishing; --bundle also refreshes the snapshot shipped inside the app.
+  const exportFlag = args.indexOf('--export');
+  const exportDir = exportFlag >= 0 ? args[exportFlag + 1] : undefined;
+  if (exportFlag >= 0 && !exportDir) { console.error('--export needs a folder'); process.exit(2); }
+  const ndb = openDb(dbPathFor(DEFAULT_DATA_DIR));
+  const file = await new DataManager({ dataDir: DEFAULT_DATA_DIR, db: ndb }).buildNames();
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  const json = JSON.stringify(file);
+  if (exportDir) { mkdirSync(exportDir, { recursive: true }); writeFileSync(`${exportDir}/card-names.json`, json); }
+  if (args.includes('--bundle')) writeFileSync(new URL('./card-names.json', import.meta.url), json + '\n');
+  console.log(`${file.names.length} alternate names (Scryfall ${file.version})${exportDir ? ` written to ${exportDir}` : ''}${args.includes('--bundle') ? ', bundled snapshot updated' : ''}.`);
+  process.exit(0);
+}
 if (command !== 'ingest') {
-  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>]');
+  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>] | cli names [--export <dir>] [--bundle]');
   process.exit(2);
 }
 

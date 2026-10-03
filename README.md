@@ -112,6 +112,10 @@ are building doesn't count against itself, and a Commander deck's maybeboard hol
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.
 Validation covers size, singleton, colour identity, Commander legality and commander/partner eligibility.
 
+Cards printed under another name import and search under either one: "Avengers Monitoring Station" is Herald's Horn, so a list or
+collection export that uses the Universes Beyond name still finds the card (Arena's "A-" rebalanced names work too). The names ship
+with the app and are refreshed weekly, so new sets are picked up.
+
 ## Offline install
 
 Set `GRIMOIRE_BULK_FILE=/path/to/oracle-cards.jsonl[.gz]` (a Scryfall "Oracle Cards" bulk file) to import card data from disk

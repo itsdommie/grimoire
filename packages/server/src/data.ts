@@ -2,10 +2,11 @@ import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSyn
 import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
-import { openDb, dbPathFor, type Db } from './db.js';
+import { openDb, dbPathFor, type NodeDb } from './db.js';
 import { clearPrices, loadJsonl, loadPrices, loadRulings, loadTags } from './ingest.js';
 import { parseComprehensiveRules, type DataStatus } from '@grimoire/shared';
 import { loadRules, rulesStatus } from './rules.js';
+import { collectAliases, loadAliases, parseNamesFile, type NamesFile } from './names.js';
 
 // Scryfall asks for a descriptive User-Agent and an Accept header on every API request.
 const HEADERS = {
@@ -32,12 +33,15 @@ type Kind = 'oracle_cards' | 'rulings' | 'oracle_tags' | 'default_cards';
 const FILE_PREFIX: Record<Kind, string> = { oracle_cards: 'oracle-cards', rulings: 'rulings', oracle_tags: 'oracle-tags', default_cards: 'default-cards' };
 const META_KEY = { rulings: 'rulings_updated_at', oracle_tags: 'tags_updated_at' } as const;
 const PRICE_REFRESH_DAYS = 7;
+/** Weekly CI publishes the alternate card names here (a rolling prerelease, so it never becomes the app's "latest" release). */
+export const NAMES_URL = 'https://github.com/itsdommie/grimoire/releases/download/card-names/card-names.json';
+const NAMES_REFRESH_DAYS = 7;
 
 export interface DataManagerOptions {
   /** Where the database and downloaded bulk files live. */
   dataDir: string;
   /** The server's main (reader) connection, used only to report status. */
-  db: Db;
+  db: NodeDb;
   fetch?: typeof fetch;
   /** Import from this local .jsonl / .jsonl.gz file instead of downloading (offline installs, tests). Set by GRIMOIRE_BULK_FILE. */
   localFile?: string;
@@ -48,6 +52,8 @@ export interface DataManagerOptions {
   localPrices?: string;
   /** The Comprehensive Rules from a local .txt file (GRIMOIRE_RULES_FILE). */
   localRules?: string;
+  /** Alternate card names from a local card-names.json (GRIMOIRE_NAMES_FILE). */
+  localNames?: string;
 }
 
 export interface UpdateOptions {
@@ -63,13 +69,14 @@ export interface UpdateOptions {
 
 export class DataManager {
   private readonly dataDir: string;
-  private readonly db: Db;
+  private readonly db: NodeDb;
   private readonly fetchImpl: typeof fetch;
   private readonly localFile: string | undefined;
   private readonly localRulings: string | undefined;
   private readonly localTags: string | undefined;
   private readonly localPrices: string | undefined;
   private readonly localRules: string | undefined;
+  private readonly localNames: string | undefined;
   private warning: string | undefined;
   private running: Promise<void> | null = null;
   private progress: DataStatus['progress'];
@@ -85,6 +92,7 @@ export class DataManager {
     this.localTags = opts.localTags;
     this.localPrices = opts.localPrices;
     this.localRules = opts.localRules;
+    this.localNames = opts.localNames;
   }
 
   private meta(key: string): string | null {
@@ -106,6 +114,54 @@ export class DataManager {
       ...(cardCount > 0 && this.outdated() ? { outdated: true } : {}),
       prices: { enabled: this.pricesEnabled(), updatedAt: this.meta('prices_updated_at') },
     };
+  }
+
+  /**
+   * Alternate card names (Universes Beyond printings) so imports can find "Avengers Monitoring Station". The app ships a snapshot;
+   * this refreshes it from the weekly published list, at most once a week unless asked. Nothing published yet is not an error.
+   */
+  private async updateNames(opts: UpdateOptions, cardsChanged: boolean, local: boolean): Promise<boolean> {
+    if (local && !this.localNames) return false;
+    const checkedAt = Date.parse(this.meta('names_checked_at') ?? '');
+    const recent = Number.isFinite(checkedAt) && Date.now() - checkedAt < NAMES_REFRESH_DAYS * 864e5;
+    if (!this.localNames && !opts.force && !cardsChanged && recent) return false;
+    let text: string;
+    if (this.localNames) {
+      text = readFileSync(this.localNames, 'utf8');
+    } else {
+      this.progress = { phase: 'downloading', item: 'names' };
+      this.setMeta('names_checked_at', new Date().toISOString()); // even a failed attempt waits a week: the bundled names cover the gap
+      const res = await this.fetchImpl(NAMES_URL, { headers: HEADERS });
+      if (res.status === 404) return false;
+      if (!res.ok) throw new Error(`download failed (HTTP ${res.status})`);
+      text = await res.text();
+    }
+    const file = parseNamesFile(text);
+    this.progress = { phase: 'importing', item: 'names' };
+    const writer = openDb(dbPathFor(this.dataDir));
+    try {
+      const same = writer.prepare("SELECT value FROM meta WHERE key = 'names_version'").get() as { value: string } | undefined;
+      writer.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('names_checked_at', ?)").run(new Date().toISOString());
+      if (!opts.force && same?.value === file.version) return false;
+      loadAliases(writer, file.names);
+      writer.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('names_version', ?)").run(file.version);
+    } finally {
+      writer.close();
+    }
+    return true;
+  }
+
+  private setMeta(key: string, value: string): void {
+    this.db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run(key, value);
+  }
+
+  /** Build the alternate card names list from Scryfall's per-printing file (what CI publishes, and what the app bundles). */
+  async buildNames(): Promise<NamesFile> {
+    mkdirSync(this.dataDir, { recursive: true });
+    const entry = (await this.fetchManifest()).default_cards;
+    if (!entry?.updated_at) throw new Error('Scryfall has no Default Cards file right now');
+    const file = await this.ensureFile('default_cards', entry, 'prices');
+    return { version: entry.updated_at.slice(0, 10), names: await collectAliases(this.lines(file)) };
   }
 
   /** The Comprehensive Rules, from Wizards (or a local file). Re-downloaded only when the current file's name changes. */
@@ -219,6 +275,12 @@ export class DataManager {
       if (await this.updateRules(opts, local)) imported = true;
     } catch (err) {
       failures.push(`rules: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    try {
+      if (await this.updateNames(opts, needCards, local)) imported = true;
+    } catch (err) {
+      // Not a warning for the user: the names shipped with the app still work, this only misses the newest sets.
+      console.warn(`Couldn't refresh the alternate card names: ${err instanceof Error ? err.message : String(err)}`);
     }
     if (this.pricesEnabled()) {
       try {

@@ -182,6 +182,16 @@ const contains = (col: string, value: string, params: Compiled['params']) => {
   return `lower(${col}) LIKE ? ESCAPE '\\'`;
 };
 
+/**
+ * A name match: the card's own name, or another name it is printed under (card_aliases: Universes Beyond renames). The alias side is an
+ * uncorrelated IN, evaluated once, so it stays cheap over every card.
+ */
+const nameLike = (value: string, params: Compiled['params']) => {
+  const pattern = `%${likeEscape(value.toLowerCase())}%`;
+  params.push(pattern, pattern);
+  return `(lower(name) LIKE ? ESCAPE '\\' OR cards.id IN (SELECT card_id FROM card_aliases WHERE lower(alias) LIKE ? ESCAPE '\\'))`;
+};
+
 const SQL_OP: Record<Op, string> = { ':': '=', '=': '=', '!=': '!=', '<': '<', '<=': '<=', '>': '>', '>=': '>=' };
 
 const RARITY: Record<string, number> = { common: 0, c: 0, uncommon: 1, u: 1, rare: 2, r: 2, mythic: 3, m: 3, special: 4, s: 4, bonus: 5, b: 5 };
@@ -260,7 +270,7 @@ function compileTerm(key: string, op: Op, value: string, params: Compiled['param
     return `(COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) - ${inDecks}) ${SQL_OP[op]} ?`;
   }
   switch (key) {
-    case 'n': case 'name': return contains('name', value, params);
+    case 'n': case 'name': return nameLike(value, params);
     case 'o': case 'oracle': case 'text': return contains('oracle_text', value, params);
     case 't': case 'type': return contains('type_line', value, params);
     case 'kw': case 'keyword': return contains('keywords', value, params);
@@ -319,8 +329,8 @@ function compileNode(node: Node, params: Compiled['params'], ctx: CompileContext
     case 'and': return `(${node.children.map((c) => compileNode(c, params, ctx)).join(' AND ')})`;
     case 'or': return `(${node.children.map((c) => compileNode(c, params, ctx)).join(' OR ')})`;
     case 'not': return `NOT (${compileNode(node.child, params, ctx)})`;
-    case 'name': return contains('name', node.value, params);
-    case 'exact': params.push(node.value.toLowerCase()); return `lower(name) = ?`;
+    case 'name': return nameLike(node.value, params);
+    case 'exact': params.push(node.value.toLowerCase(), node.value.toLowerCase()); return `(lower(name) = ? OR cards.id IN (SELECT card_id FROM card_aliases WHERE lower(alias) = ?))`;
     case 'term': return compileTerm(node.key, node.op, node.value, params, ctx);
   }
 }

@@ -1,7 +1,7 @@
 import type { RestoreResult, UserDataBackup } from '@grimoire/shared';
 import { BOARDS, asFormat, type Board } from '@grimoire/shared';
 import { getCardsByIds, resolveCardName } from './cards.js';
-import { transaction, type Db } from './db.js';
+import { transaction, type Db } from './schema.js';
 import { BadRequestError } from './decks.js';
 
 export function exportUserData(db: Db): UserDataBackup {

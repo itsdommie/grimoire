@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { AddToCollectionResult, ImportResult, MissingReport } from '@grimoire/shared';
-import { openDb, type Db } from './db.js';
+import { openDb, type NodeDb as Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { buildServer } from './server.js';
 import { addDeckToCollection, collectionSummary, commanderIdeas, deckMissing, setOwned } from './collection.js';

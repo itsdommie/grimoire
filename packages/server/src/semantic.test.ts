@@ -3,7 +3,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SearchError, type SearchResponse, type SemanticStatus } from '@grimoire/shared';
-import { dbPathFor, openDb, type Db } from './db.js';
+import { dbPathFor, openDb, type NodeDb as Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { searchCards } from './cards.js';
 import { HashingEmbedder, MODEL, NOT_SET_UP, OrtEmbedder, SemanticIndex, quantise, type Embedder, type ModelSpec } from './semantic.js';

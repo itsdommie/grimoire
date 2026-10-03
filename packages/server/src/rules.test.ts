@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { parseComprehensiveRules, type CardDetail, type RuleDetail, type RulesSearchResult, type RulesStatus, type RulesToc } from '@grimoire/shared';
-import { dbPathFor, openDb, type Db } from './db.js';
+import { dbPathFor, openDb, type NodeDb as Db } from './db.js';
 import { DataManager, findRulesUrl } from './data.js';
 import { loadJsonl } from './ingest.js';
 import { ftsAnyQuery, ftsQuery, getRuleDetail, keywordInfo, loadRules, rulesStatus, rulesToc, searchRules } from './rules.js';

@@ -1,4 +1,4 @@
-import { transaction, type Db } from './db.js';
+import { transaction, type Db } from './schema.js';
 import { BOARDS, FORMATS, asFormat, isFormatId, parseDeckList, validateDeck, type Board, type DeckEntry, type FormatId } from '@grimoire/shared';
 import type { DeckDetail, DeckSummary, ImportResult } from '@grimoire/shared';
 import { getCardsByIds, resolveCardName } from './cards.js';

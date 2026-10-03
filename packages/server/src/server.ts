@@ -4,7 +4,7 @@ import { timingSafeEqual } from 'node:crypto';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
-import type { Db } from './db.js';
+import type { NodeDb } from './db.js';
 import { DataManager } from './data.js';
 import { SemanticIndex } from './semantic.js';
 import { createRouter } from './routes.js';
@@ -26,7 +26,7 @@ export const CSP = [
 ].join('; ');
 
 export interface ServerOptions {
-  db: Db;
+  db: NodeDb;
   dataDir: string;
   /** Directory of the built web UI. When set, it is served at `/`. */
   webRoot?: string;

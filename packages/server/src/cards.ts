@@ -93,9 +93,25 @@ export function getCardsByIds(db: Db, ids: readonly string[]): Map<string, Card>
  */
 export function resolveCardName(db: Db, name: string): Card | null {
   const norm = name.replace(/\s*\/{1,2}\s*/g, ' // ').trim();
-  const exact = db.prepare(`${CARD_SELECT} WHERE name = ? COLLATE NOCASE`).get(norm) as Row | undefined;
-  const row = exact ?? (db.prepare(`${CARD_SELECT} WHERE name LIKE ? ESCAPE '\\' ORDER BY length(name) LIMIT 1`).get(`${norm.replace(/[\\%_]/g, (m) => `\\${m}`)} // %`) as Row | undefined);
+  const row = lookupName(db, norm) ?? lookupAlias(db, norm)
+    // Arena's rebalanced cards are exported as "A-Card Name"; they are the base card for our purposes.
+    ?? (/^A-/i.test(norm) ? lookupName(db, norm.slice(2).trim()) ?? lookupAlias(db, norm.slice(2).trim()) : undefined);
   return row ? rowToCard(db, row) : null;
+}
+
+const likeEscape = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
+
+/** The card's own name, or the front face of a double-faced card ("Fire" for "Fire // Ice"). Real names always win over aliases. */
+function lookupName(db: Db, norm: string): Row | undefined {
+  const exact = db.prepare(`${CARD_SELECT} WHERE name = ? COLLATE NOCASE`).get(norm) as Row | undefined;
+  return exact ?? (db.prepare(`${CARD_SELECT} WHERE name LIKE ? ESCAPE '\\' ORDER BY length(name) LIMIT 1`).get(`${likeEscape(norm)} // %`) as Row | undefined);
+}
+
+/** A name the card is printed under elsewhere (Universes Beyond): "Avengers Monitoring Station" is Herald's Horn. */
+function lookupAlias(db: Db, norm: string): Row | undefined {
+  const sql = `${CARD_SELECT} WHERE cards.id = (SELECT card_id FROM card_aliases WHERE alias = ? COLLATE NOCASE LIMIT 1)`;
+  return (db.prepare(sql).get(norm) as Row | undefined)
+    ?? (db.prepare(`${CARD_SELECT} WHERE cards.id = (SELECT card_id FROM card_aliases WHERE alias LIKE ? ESCAPE '\\' ORDER BY length(alias) LIMIT 1)`).get(`${likeEscape(norm)} // %`) as Row | undefined);
 }
 
 /** otag:foo for a tag that doesn't exist would silently match nothing, so say so instead. */

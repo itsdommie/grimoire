@@ -1,4 +1,4 @@
-import { transaction, type Db } from './db.js';
+import { transaction, type Db } from './schema.js';
 import { mapCard, num, popcount, RARITY_ORDER, type ScryfallCard } from './scryfall.js';
 
 /**

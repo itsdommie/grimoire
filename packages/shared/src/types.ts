@@ -68,7 +68,7 @@ export interface DataStatus {
   cardCount: number;
   /** Scryfall's `updated_at` for the bulk file currently loaded. */
   bulkUpdatedAt: string | null;
-  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices' | 'rules'; received?: number; total?: number; cards?: number };
+  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices' | 'rules' | 'names'; received?: number; total?: number; cards?: number };
   error?: string;
   /** Cheapest-printing prices (an optional 79 MB download). */
   prices?: { enabled: boolean; updatedAt: string | null };

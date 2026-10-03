@@ -1,5 +1,5 @@
 import { firstRuleReference, type ParsedRules, type RuleDetail, type RuleHit, type RulesSearchResult, type RulesStatus, type RulesToc } from '@grimoire/shared';
-import { transaction, type Db } from './db.js';
+import { transaction, type Db } from './schema.js';
 
 /** Replace the stored Comprehensive Rules with a freshly parsed copy. */
 export function loadRules(db: Db, parsed: ParsedRules): void {

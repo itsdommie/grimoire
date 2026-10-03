@@ -1,0 +1,36 @@
+name: Card names
+
+# Collects the other names cards are printed under (Universes Beyond: "Avengers Monitoring Station" is Herald's Horn) from Scryfall's
+# per-printing file and publishes a small JSON list, so imports can find those cards by either name. The app also ships a snapshot,
+# so this only keeps it current as new sets arrive. It lives on a PRERELEASE tagged "card-names": a normal release would become
+# "latest" and break the auto-updater and the download page, which both read the latest release.
+on:
+  schedule:
+    - cron: '41 4 * * 2' # Tuesdays
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-names:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Build the list from Scryfall's Default Cards
+        run: npx tsx src/cli.ts names --export "$RUNNER_TEMP/names"
+        working-directory: packages/server
+      - name: Publish to the card-names prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view card-names >/dev/null 2>&1 || gh release create card-names \
+            --prerelease --latest=false --title "Card names (rolling)" \
+            --notes "Alternate card names used by Grimoire's imports and search. Rebuilt weekly by the Card names workflow. Not an application release."
+          gh release upload card-names "$RUNNER_TEMP"/names/card-names.json --clobber

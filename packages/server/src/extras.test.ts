@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { CardDetail } from '@grimoire/shared';
-import { dbPathFor, migrate, openDb, SCHEMA_VERSION, type Db } from './db.js';
+import { dbPathFor, migrate, openDb, SCHEMA_VERSION, type NodeDb as Db } from './db.js';
 import { DataManager, DATA_VERSION } from './data.js';
 import { loadJsonl, loadRulings, loadTags } from './ingest.js';
 import { searchCards } from './cards.js';

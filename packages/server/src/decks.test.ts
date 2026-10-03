@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { DeckDetail, ImportResult, DeckSummary } from '@grimoire/shared';
-import { openDb, type Db } from './db.js';
+import { openDb, type NodeDb as Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { buildServer } from './server.js';
 import type { ScryfallCard } from './scryfall.js';

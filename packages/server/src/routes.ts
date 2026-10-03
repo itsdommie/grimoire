@@ -1,7 +1,5 @@
-import { SearchError, formatDeckList, semanticPhrases, type Board, type ExportStyle, type FormatId } from '@grimoire/shared';
+import { SearchError, formatDeckList, semanticPhrases, type Board, type DataStatus, type ExportStyle, type FormatId, type SemanticStatus } from '@grimoire/shared';
 import type { Db } from './db.js';
-import type { DataManager } from './data.js';
-import type { SemanticIndex } from './semantic.js';
 import { NOT_SET_UP } from './messages.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
@@ -29,9 +27,21 @@ export interface ApiResponse {
   headers?: Record<string, string>;
 }
 
-/** What the routes need from the card-data downloader and the semantic index (the Android app supplies its own). */
-export type DataService = Pick<DataManager, 'status' | 'start'>;
-export type SemanticService = Pick<SemanticIndex, 'isReady' | 'ensureLoaded' | 'embedQuery' | 'rank' | 'status' | 'start' | 'cancel' | 'remove'>;
+/** What the routes need from the card-data downloader and the semantic index. The desktop server and the Android app each supply their own. */
+export interface DataService {
+  status(): DataStatus;
+  start(opts?: { force?: boolean; prices?: boolean; refreshPrices?: boolean }): void;
+}
+export interface SemanticService {
+  isReady(): boolean;
+  ensureLoaded(): void;
+  embedQuery(text: string): Promise<Float32Array>;
+  rank(queryVector: Float32Array, ids: readonly string[]): Array<{ id: string; score: number }>;
+  status(): SemanticStatus;
+  start(): void;
+  cancel(): void;
+  remove(): void;
+}
 
 export interface RouterDeps { db: Db; data: DataService; semantic: SemanticService }
 
