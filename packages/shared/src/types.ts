@@ -162,7 +162,8 @@ export interface SemanticStatus {
   total: number;
   /** Cards that are new or changed since they were indexed. */
   pending: number;
-  progress?: { phase: 'downloading' | 'building'; received?: number; total?: number; done?: number; of?: number };
+  /** `what` says which download is running: the language model, or the pre-built card index. */
+  progress?: { phase: 'downloading' | 'building'; what?: 'model' | 'index'; received?: number; total?: number; done?: number; of?: number };
   error?: string;
   model: string;
 }

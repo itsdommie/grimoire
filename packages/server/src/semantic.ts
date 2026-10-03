@@ -4,6 +4,7 @@ import { availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { WordPieceTokenizer, type SemanticStatus } from '@grimoire/shared';
+import { PREBUILT_BASE, PREBUILT_MANIFEST, decodeIndex, encodeIndex, type IndexRow, type PrebuiltManifest } from './semantic-prebuilt.js';
 import type { Db } from './db.js';
 import { transaction } from './db.js';
 
@@ -115,6 +116,8 @@ export interface SemanticOptions {
   deps?: Partial<SemanticDeps>;
   /** Free the model's memory after this many idle ms (default 10 minutes). */
   idleMs?: number;
+  /** Where the pre-built index is published (default: this project's release). null turns the download off. */
+  prebuiltBase?: string | null;
 }
 
 const fnv1a = (s: string) => { let h = 0x811c9dc5; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return h >>> 0; };
@@ -163,12 +166,15 @@ export class SemanticIndex {
 
   /** The text a card is embedded as: name, types, rules text and its human-curated function tags. */
   private documents(): Array<{ id: string; doc: string; hash: number }> {
+    // The pre-built index is only usable if every machine writes the same text for a card, so the order here must not depend on
+    // anything that drifts (tag counts change daily): pick the 8 most used tags, then list them alphabetically.
     const tags = new Map<string, string[]>();
     for (const r of this.db.prepare(`SELECT ct.card_id AS id, t.label AS label FROM card_tags ct JOIN tags t ON t.slug = ct.tag
-        WHERE t.cards >= 25 AND t.slug NOT LIKE 'cycle-%' AND t.slug NOT IN ${NOISE} ORDER BY t.cards DESC`).all() as unknown as Array<{ id: string; label: string }>) {
+        WHERE t.cards >= 25 AND t.slug NOT LIKE 'cycle-%' AND t.slug NOT IN ${NOISE} ORDER BY t.cards DESC, t.slug`).all() as unknown as Array<{ id: string; label: string }>) {
       const l = tags.get(r.id) ?? [];
       if (l.length < 8) { l.push(r.label); tags.set(r.id, l); }
     }
+    for (const l of tags.values()) l.sort();
     return (this.db.prepare('SELECT id, name, type_line, oracle_text FROM cards').all() as unknown as Array<{ id: string; name: string; type_line: string; oracle_text: string }>).map((c) => {
       const t = tags.get(c.id);
       const doc = `${c.name}. ${c.type_line}. ${c.oracle_text.replace(/\s*\n\s*/g, ' ')}${t ? ` Tags: ${t.join(', ')}.` : ''}`;
@@ -230,6 +236,8 @@ export class SemanticIndex {
     await this.deps.ensureModel((received, total) => { this.progress = { phase: 'downloading', received, total }; });
     if (this.cancelled) return;
 
+    if (this.count('embeddings') < this.count('cards') * 0.75) await this.usePrebuilt();
+    if (this.cancelled) return;
     const embedder = await this.getEmbedder();
     const pending = this.pendingDocs().sort((a, b) => a.doc.length - b.doc.length); // similar lengths per batch = little padding = fast
     const stale = new Set((this.db.prepare('SELECT card_id FROM embeddings').all() as unknown as Array<{ card_id: string }>).map((r) => r.card_id));
@@ -247,6 +255,55 @@ export class SemanticIndex {
     }
     this.loadMatrix();
     this.scheduleIdle();
+  }
+
+  /**
+   * Download the published pre-built index and keep every row whose card text matches ours exactly. Anything that doesn't match
+   * (or can't be downloaded) is simply embedded locally afterwards, so this is purely a shortcut and never an error.
+   */
+  private async usePrebuilt(): Promise<void> {
+    const base = this.opts.prebuiltBase === undefined ? PREBUILT_BASE : this.opts.prebuiltBase;
+    if (!base) return;
+    const fetchImpl = this.opts.fetch ?? fetch;
+    const headers = { 'User-Agent': 'Grimoire/0.1 (open-source MTG deck lab)' };
+    try {
+      const mres = await fetchImpl(`${base}/${PREBUILT_MANIFEST}`, { headers });
+      if (!mres.ok) return;
+      const manifest = (await mres.json()) as PrebuiltManifest;
+      if (manifest.format !== 1 || manifest.model !== this.spec.id || manifest.dims !== this.spec.dims || !manifest.file || !/^[0-9a-f]{64}$/.test(manifest.sha256)) return;
+      this.progress = { phase: 'downloading', received: 0, total: manifest.size, what: 'index' };
+      const res = await fetchImpl(`${base}/${manifest.file}`, { headers });
+      if (!res.ok || !res.body) return;
+      const chunks: Buffer[] = [];
+      let received = 0;
+      const reader = res.body.getReader();
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(Buffer.from(value));
+        received += value.length;
+        this.progress = { phase: 'downloading', received, total: manifest.size, what: 'index' };
+        if (this.cancelled) return;
+      }
+      const gz = Buffer.concat(chunks);
+      if (gz.length !== manifest.size || createHash('sha256').update(gz).digest('hex') !== manifest.sha256) return; // corrupt or tampered: ignore
+      const rows = decodeIndex(gz, { model: this.spec.id, dims: this.spec.dims });
+      const ours = new Map(this.documents().map((d) => [d.id, d.hash]));
+      const put = this.db.prepare('INSERT OR REPLACE INTO embeddings (card_id, hash, vec) VALUES (?, ?, ?)');
+      transaction(this.db, () => { for (const r of rows) if (ours.get(r.id) === r.hash) put.run(r.id, r.hash, r.vec); });
+      this.pendingCache = null;
+    } catch {
+      /* offline, or the file was unusable: fall back to computing everything locally */
+    }
+  }
+
+  /** Everything needed to publish the current index as a pre-built one (run by CI). */
+  exportPrebuilt(): { manifest: PrebuiltManifest; data: Buffer } {
+    const rows = (this.db.prepare('SELECT card_id, hash, vec FROM embeddings ORDER BY card_id').all() as unknown as Array<{ card_id: string; hash: number; vec: Uint8Array }>)
+      .map((r): IndexRow => ({ id: r.card_id, hash: r.hash, vec: new Uint8Array(r.vec) }));
+    const data = encodeIndex(rows, this.spec.id, this.spec.dims);
+    const manifest: PrebuiltManifest = { format: 1, model: this.spec.id, dims: this.spec.dims, count: rows.length, createdAt: new Date().toISOString(), file: `semantic-${this.spec.id}.bin.gz`, sha256: createHash('sha256').update(data).digest('hex'), size: data.length };
+    return { manifest, data };
   }
 
   private loadMatrix(): void {

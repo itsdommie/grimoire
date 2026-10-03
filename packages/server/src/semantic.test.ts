@@ -33,7 +33,7 @@ let db: Db;
 let dataDir: string;
 let spy: SpyEmbedder;
 const make = (extra: Partial<ConstructorParameters<typeof SemanticIndex>[0]> = {}) =>
-  new SemanticIndex({ db, dataDir, deps: { ensureModel: async () => {}, createEmbedder: async () => spy }, ...extra });
+  new SemanticIndex({ db, dataDir, prebuiltBase: null, deps: { ensureModel: async () => {}, createEmbedder: async () => spy }, ...extra });
 
 beforeEach(async () => {
   dataDir = tmpDir();
@@ -102,7 +102,7 @@ describe('building the index', () => {
 
   it('reports errors from the model and can be retried', async () => {
     let fail = true;
-    const idx = new SemanticIndex({ db, dataDir, deps: { ensureModel: async () => { if (fail) throw new Error('no network'); }, createEmbedder: async () => spy } });
+    const idx = new SemanticIndex({ db, dataDir, prebuiltBase: null, deps: { ensureModel: async () => { if (fail) throw new Error('no network'); }, createEmbedder: async () => spy } });
     idx.start(); await idx.idle();
     expect(idx.status()).toMatchObject({ state: 'error', error: 'no network' });
     fail = false;
@@ -203,7 +203,7 @@ describe('the model download', () => {
 
   it('downloads, verifies the checksum, and does not download again', async () => {
     const calls: string[] = [];
-    const idx = new SemanticIndex({ db, dataDir, spec: spec(), fetch: fakeFetch(calls), deps: { createEmbedder: async () => spy } });
+    const idx = new SemanticIndex({ db, dataDir, prebuiltBase: null, spec: spec(), fetch: fakeFetch(calls), deps: { createEmbedder: async () => spy } });
     idx.start(); await idx.idle();
     expect(idx.status().state).toBe('ready');
     expect(readdirSync(join(dataDir, 'models', MODEL.dir)).sort()).toEqual(['model.onnx', 'tokenizer.json']);
@@ -214,7 +214,7 @@ describe('the model download', () => {
 
   it('discards a download whose checksum is wrong', async () => {
     const calls: string[] = [];
-    const idx = new SemanticIndex({ db, dataDir, spec: spec({ 'model.onnx': 'deadbeef' }), fetch: fakeFetch(calls), deps: { createEmbedder: async () => spy } });
+    const idx = new SemanticIndex({ db, dataDir, prebuiltBase: null, spec: spec({ 'model.onnx': 'deadbeef' }), fetch: fakeFetch(calls), deps: { createEmbedder: async () => spy } });
     idx.start(); await idx.idle();
     expect(idx.status()).toMatchObject({ state: 'error' });
     expect(idx.status().error).toMatch(/didn't match its expected checksum/);
@@ -223,7 +223,7 @@ describe('the model download', () => {
   });
 
   it('reports HTTP failures', async () => {
-    const idx = new SemanticIndex({ db, dataDir, spec: spec(), fetch: fakeFetch([], 503), deps: { createEmbedder: async () => spy } });
+    const idx = new SemanticIndex({ db, dataDir, prebuiltBase: null, spec: spec(), fetch: fakeFetch([], 503), deps: { createEmbedder: async () => spy } });
     idx.start(); await idx.idle();
     expect(idx.status().error).toMatch(/HTTP 503/);
   });
@@ -249,7 +249,7 @@ describe('vectors', () => {
 
 describe('semantic API', () => {
   it('status / enable / search / remove over HTTP', async () => {
-    const semantic = new SemanticIndex({ db, dataDir, deps: { ensureModel: async () => {}, createEmbedder: async () => spy } });
+    const semantic = new SemanticIndex({ db, dataDir, prebuiltBase: null, deps: { ensureModel: async () => {}, createEmbedder: async () => spy } });
     const app = buildServer({ db, dataDir, logger: false, semantic });
     const j = async <T>(method: 'GET' | 'POST' | 'DELETE', url: string) => { const r = await app.inject({ method, url }); return { status: r.statusCode, body: (r.body ? JSON.parse(r.body) : null) as T }; };
 
@@ -287,7 +287,7 @@ describe.skipIf(!haveReal)('real model on the dev database', () => {
     if (idx) return;
     real = openDb(dbPathFor(devData));
     embedder = await OrtEmbedder.create({ modelDir: join(devData, 'models', MODEL.dir) });
-    idx = new SemanticIndex({ db: real, dataDir: devData, deps: { ensureModel: async () => {}, createEmbedder: async () => embedder } });
+    idx = new SemanticIndex({ db: real, dataDir: devData, prebuiltBase: null, deps: { ensureModel: async () => {}, createEmbedder: async () => embedder } });
     idx.ensureLoaded();
   }, 60_000);
 

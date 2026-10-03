@@ -39,7 +39,7 @@ export function SemanticFooter({ status, onEnable, onCancel, onRemove }: { statu
     body = (
       <>
         <progress value={value ?? 0} max={max || 1} aria-label="Semantic search setup progress" />
-        {' '}{p?.phase === 'downloading' ? `Downloading the language model… ${mb(p.received ?? 0)} of ${mb(p.total ?? 0)}` : `Indexing cards… ${(p?.done ?? 0).toLocaleString()} of ${(p?.of ?? 0).toLocaleString()}`}
+        {' '}{p?.phase === 'downloading' ? `Downloading ${p.what === 'index' ? 'the card index' : 'the language model'}… ${mb(p.received ?? 0)} of ${mb(p.total ?? 0)}` : `Indexing cards… ${(p?.done ?? 0).toLocaleString()} of ${(p?.of ?? 0).toLocaleString()}`}
         {' · '}<button className="linklike" onClick={onCancel}>Cancel</button>
         <span className="muted"> You can keep using Grimoire meanwhile.</span>
       </>
@@ -60,7 +60,7 @@ export function SemanticFooter({ status, onEnable, onCancel, onRemove }: { statu
         <button className="linklike" onClick={onEnable}>{status.state === 'error' || status.indexed > 0 ? 'Try again' : 'Set up…'}</button>
         {' · '}<button className="linklike" onClick={() => setExplain((v) => !v)} aria-expanded={explain}>What is this?</button>
         {explain && (
-          <span className="muted"> Search by meaning (e.g. <code>about:"make treasure when creatures die"</code>) uses a small language model that runs on this computer. Setup downloads it once (about 34 MB, verified) and then indexes all cards, which takes a few minutes. Nothing you type leaves your computer.</span>
+          <span className="muted"> Search by meaning (e.g. <code>about:"make treasure when creatures die"</code>) uses a small language model that runs on this computer. Setup downloads it once (about 34 MB, verified) plus a ready-made card index (about 12 MB), then adds anything that's newer; without the index it would take several minutes. Nothing you type leaves your computer.</span>
         )}
       </>
     );
