@@ -25,3 +25,16 @@ export function fileKeyStore(file: string, cipher: Cipher): KeyStore {
     clear() { rmSync(file, { force: true }); },
   };
 }
+
+/**
+ * Which keychain Chromium should use on Linux. Left alone it only looks for one on desktops it knows (GNOME, KDE and a few others) and on
+ * anything else (Hyprland, i3, sway, ...) quietly settles for a fixed password, which protects nothing. Most such setups run a Secret
+ * Service (GNOME Keyring, KeePassXC, ...), so ask for that. KDE is left to its own choice (KWallet), and so is anyone who picked a
+ * backend themselves. If the Secret Service is not actually there, Chromium falls back and the app then refuses to store the key.
+ */
+export function linuxPasswordStore(platform: string, env: Record<string, string | undefined>, argv: readonly string[]): string | null {
+  if (platform !== 'linux') return null;
+  if (argv.some((a) => a.startsWith('--password-store'))) return null;
+  if (/\bKDE\b/i.test(env.XDG_CURRENT_DESKTOP ?? '')) return null;
+  return 'gnome-libsecret';
+}

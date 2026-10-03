@@ -42,3 +42,18 @@ describe('the advisor key store', () => {
     expect(fileKeyStore(f, broken).get()).toBeNull();
   });
 });
+
+import { linuxPasswordStore } from './keyStore.js';
+describe('choosing a Linux keychain', () => {
+  it('asks for the Secret Service on desktops Chromium does not recognise', () => {
+    expect(linuxPasswordStore('linux', { XDG_CURRENT_DESKTOP: 'Hyprland' }, [])).toBe('gnome-libsecret');
+    expect(linuxPasswordStore('linux', {}, [])).toBe('gnome-libsecret');
+    expect(linuxPasswordStore('linux', { XDG_CURRENT_DESKTOP: 'GNOME' }, [])).toBe('gnome-libsecret');
+  });
+  it('leaves KDE, an explicit choice, and other systems alone', () => {
+    expect(linuxPasswordStore('linux', { XDG_CURRENT_DESKTOP: 'KDE' }, [])).toBeNull();
+    expect(linuxPasswordStore('linux', { XDG_CURRENT_DESKTOP: 'Hyprland' }, ['--password-store=kwallet6'])).toBeNull();
+    expect(linuxPasswordStore('win32', {}, [])).toBeNull();
+    expect(linuxPasswordStore('darwin', {}, [])).toBeNull();
+  });
+});

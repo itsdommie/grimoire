@@ -6,10 +6,14 @@ import type { AddressInfo } from 'node:net';
 import { buildServer } from '@grimoire/server/server';
 import { dbPathFor, openDb } from '@grimoire/server/db';
 import { startUpdater, updateMenuItems } from './updater';
-import { fileKeyStore } from './keyStore';
+import { fileKeyStore, linuxPasswordStore } from './keyStore';
 
 // Tests (and portable installs) can relocate all app data.
 if (process.env.GRIMOIRE_USER_DATA) app.setPath('userData', process.env.GRIMOIRE_USER_DATA);
+
+// Must be set before the app is ready: which keychain Chromium uses is decided once, at start.
+const passwordStore = linuxPasswordStore(process.platform, process.env, process.argv);
+if (passwordStore) app.commandLine.appendSwitch('password-store', passwordStore);
 
 const isDev = !app.isPackaged;
 let server: ReturnType<typeof buildServer> | undefined;
