@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { _android as android, expect, test as base, type Page } from '@playwright/test';
 
 /**
@@ -11,6 +12,10 @@ export const test = base.extend<{ page: Page }>(
     ? {
         // The WebView has exactly one page; reuse it, and make '/' mean the app's own origin.
         page: async ({}, use) => {
+          // Every test starts from a freshly installed app: wipe its data (decks, collection, the copied card database) and relaunch.
+          const adb = (...args: string[]) => execFileSync('adb', args, { stdio: 'ignore' });
+          adb('shell', 'pm', 'clear', appId);
+          adb('shell', 'am', 'start', '-n', `${appId}/.MainActivity`);
           const [device] = await android.devices();
           if (!device) throw new Error('No Android device or emulator is connected (see `adb devices`).');
           const page = await (await device.webView({ pkg: appId })).page();

@@ -9,6 +9,7 @@ import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
 import { RulesView } from './RulesView';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
+import { Scanner } from './Scanner';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -94,6 +95,9 @@ export function App() {
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
   const [importing, setImporting] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  // Only the Android app has a text recognizer (ML Kit), so only it offers the scanner.
+  const recognizer = typeof window !== 'undefined' ? window.grimoireNative?.textRecognition : undefined;
   const [detailId, setDetailId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,6 +192,7 @@ export function App() {
             placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}
             spellCheck={false}
           />}
+          {view !== 'play' && view !== 'rules' && recognizer && <button className="scanbtn" onClick={() => setScanning(true)} aria-label="Scan cards with the camera">Scan</button>}
           {view !== 'play' && view !== 'rules' && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
             {ORDERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </select>}
@@ -260,6 +265,14 @@ export function App() {
           onOwn={(card, qty) => void own(card, qty)}
           onSearchTag={(slug) => { setDetailId(null); setView('cards'); setQuery(`otag:${slug}`); }}
           onOpenRule={(id) => { setDetailId(null); setRuleToOpen(id); setView('rules'); }}
+        />
+      )}
+      {scanning && recognizer && (
+        <Scanner
+          recognizer={recognizer}
+          deck={current}
+          onError={setError}
+          onClose={() => { setScanning(false); void refreshDecks(); void collectionChanged(); }}
         />
       )}
       {importing && <CollectionImportDialog onClose={() => setImporting(false)} onDone={() => void collectionChanged()} onError={setError} />}

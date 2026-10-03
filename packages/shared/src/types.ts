@@ -31,6 +31,14 @@ export interface Card {
   inDecks?: number;
 }
 
+/** A card a line of scanned text might be naming. */
+export interface CardMatchCandidate {
+  card: Card;
+  /** 0 to 1: how close the text is to the card's name. */
+  score: number;
+  line: string;
+}
+
 export interface SearchResponse {
   total: number;
   cards: Card[];

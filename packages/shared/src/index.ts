@@ -12,3 +12,4 @@ export * from './game.js';
 export * from './wordpiece.js';
 export * from './formats.js';
 export * from './rules.js';
+export * from './cardmatch.js';

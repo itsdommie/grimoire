@@ -1,4 +1,4 @@
-import type { AddToCollectionResult, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { AddToCollectionResult, CardMatchCandidate, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -60,6 +60,8 @@ export const api = {
   rulesSearch: (q: string, signal?: AbortSignal) => request<RulesSearchResult>('GET', `/api/rules/search?${new URLSearchParams({ q })}`, undefined, signal),
   rule: (id: string) => request<RuleDetail>('GET', `/api/rules/rule/${encodeURIComponent(id)}`),
   cardDetail: (id: string) => request<CardDetail>('GET', `/api/cards/${encodeURIComponent(id)}/detail`),
+  /** Which cards do these lines of text name? (The scanner sends the title it read off a card.) */
+  matchCards: (lines: string[]) => request<{ candidates: CardMatchCandidate[] }>('POST', '/api/cards/match', { lines }),
   collectionSummary: () => request<CollectionSummary>('GET', '/api/collection/summary'),
   importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),
   setOwned: (cardId: string, qty: number) => request<CollectionSummary>('PUT', '/api/collection/cards', { cardId, qty }),

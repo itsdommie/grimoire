@@ -1,7 +1,7 @@
-import { SearchError, formatDeckList, semanticPhrases, type Board, type DataStatus, type ExportStyle, type FormatId, type SemanticStatus } from '@grimoire/shared';
+import { NameIndex, SearchError, formatDeckList, semanticPhrases, type Board, type DataStatus, type ExportStyle, type FormatId, type SemanticStatus } from '@grimoire/shared';
 import type { Db } from './schema.js';
 import { NOT_SET_UP } from './messages.js';
-import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
+import { getCardByName, getCardDetail, getCardsByIds, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
 import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
@@ -58,8 +58,26 @@ const reply = (status: number, body?: unknown, extra: { type?: string; headers?:
 
 const num = (raw: string | undefined) => (raw ? Number(raw) : undefined);
 
+/**
+ * Every name a card goes by (its own, the faces of a double-faced card, and its aliases), prepared for matching OCR text. Built on
+ * first use and rebuilt when the card pool or the aliases change size, which is what a data update does.
+ */
+function nameIndexFor(db: Db, cache: { key: string; index: NameIndex } | null): { key: string; index: NameIndex } {
+  // A fingerprint of the names, not just how many there are: an update can swap cards and keep the total.
+  const fp = db.prepare(`SELECT (SELECT count(*) || ':' || sum(length(name)) || ':' || sum(unicode(name)) || ':' || sum(unicode(substr(name, -1))) FROM cards) AS c,
+    (SELECT count(*) || ':' || COALESCE(sum(length(alias)), 0) || ':' || COALESCE(sum(unicode(alias)), 0) FROM card_aliases) AS a`).get() as { c: string; a: string };
+  const key = `${fp.c}|${fp.a}`;
+  if (cache?.key === key) return cache;
+  const names = [
+    ...(db.prepare('SELECT id, name FROM cards').all() as Array<{ id: string; name: string }>),
+    ...(db.prepare('SELECT a.card_id AS id, a.alias AS name FROM card_aliases a JOIN cards c ON c.id = a.card_id').all() as Array<{ id: string; name: string }>),
+  ];
+  return { key, index: new NameIndex(names) };
+}
+
 export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiRequest) => Promise<ApiResponse> {
   const routes: Route[] = [];
+  let names: { key: string; index: NameIndex } | null = null;
   const on = (method: string, pattern: string, handler: Handler) => routes.push({ method, segments: pattern.split('/').filter(Boolean), handler });
 
   const deckId = (raw: string | undefined) => {
@@ -104,6 +122,25 @@ export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiReque
   on('GET', '/api/cards/search', (c) => {
     const { q = '', deck } = c.query;
     return runSearch(q, q, c, { excludeDeck: deck !== undefined && Number.isInteger(Number(deck)) ? Number(deck) : undefined });
+  });
+  /**
+   * Which cards do these lines of text name? The card scanner sends what it read off the title of a card. Returns the best match per
+   * card, best first, with the card itself (and how many are owned) so the scanner can show it.
+   */
+  on('POST', '/api/cards/match', ({ body }) => {
+    const lines = Array.isArray(body?.lines) ? (body.lines as unknown[]).filter((l): l is string => typeof l === 'string').slice(0, 40) : [];
+    const minScore = typeof body?.minScore === 'number' ? Math.min(Math.max(body.minScore, 0.5), 1) : 0.75;
+    names = nameIndexFor(db, names);
+    const best = new Map<string, { id: string; score: number; line: string }>();
+    for (const line of lines) {
+      for (const m of names.index.match(line, 5, minScore)) {
+        const cur = best.get(m.id);
+        if (!cur || m.score > cur.score) best.set(m.id, { id: m.id, score: m.score, line });
+      }
+    }
+    const top = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 5);
+    const cards = getCardsByIds(db, top.map((t) => t.id));
+    return { candidates: top.flatMap((t) => { const card = cards.get(t.id); return card ? [{ card, score: Math.round(t.score * 1000) / 1000, line: t.line }] : []; }) };
   });
   on('GET', '/api/cards/:id/detail', ({ params }) => getCardDetail(db, params.id!) ?? reply(404, { error: 'Card not found' }));
   on('GET', '/api/cards/by-name/:name', ({ params }) => getCardByName(db, params.name!) ?? reply(404, { error: 'Card not found' }));

@@ -98,8 +98,13 @@ colour-source numbers are a calibrated hypergeometric estimate, not Frank Karste
 `packages/mobile` wraps the same web UI in an Android app (Capacitor). There is no server on the phone: the shared API routes
 (`packages/server/src/routes.ts`) run in a web worker over SQLite compiled to WASM, in the app's private storage, with the card
 database bundled in the APK. Decks, collection, search, rules, imports and the spare-copies option all work as on the desktop; on a
-phone the card browser and the deck are separate panes behind a bar at the bottom. Search by meaning and the card scanner are not
-there yet.
+phone the card browser and the deck are separate panes behind a bar at the bottom. Search by meaning is not there yet.
+
+**Card scanner.** The **Scan** button opens the camera with a card-shaped outline. Hold a card in the outline and its name is read
+on the phone (Google ML Kit, offline) and matched against the card database; once the same card is seen in two frames, one copy is
+added to your collection or to the open deck, with a buzz and a green tick. Take the card away and show the next. Each scanned card
+has − and + to correct a mistake, and **Done** keeps everything. It reads only the title bar, so rules text that happens to be a
+card's name can't be picked up, and Universes Beyond names work too. It matches cards, not printings or foils.
 
 Building needs JDK 21 and the Android SDK (platform 36, build-tools 36). Then:
 

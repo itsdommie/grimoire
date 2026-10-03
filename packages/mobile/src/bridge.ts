@@ -1,4 +1,6 @@
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { FromWorker, ToWorker } from './protocol.ts';
+import type { OcrResult, TextRecognizer } from '../../web/src/scanner.ts';
 
 /**
  * Runs before the app. It starts the API worker and replaces `fetch` for `/api/...` URLs with a call into that worker, so the
@@ -56,3 +58,10 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
     send({ id, req: { method, path: url.pathname, query, body: typeof raw === 'string' && raw ? JSON.parse(raw) : undefined } });
   });
 };
+
+// The card scanner reads text with ML Kit through our own Capacitor plugin (TextRecognitionPlugin.java). The web UI only needs to
+// know there is a recognizer, so it is offered on `window` and the UI shows the Scan button when it is there.
+const mlkit = registerPlugin<{ recognize(options: { image: string }): Promise<OcrResult> }>('TextRecognition');
+const textRecognition: TextRecognizer = { recognize: (image) => mlkit.recognize({ image }) };
+// Only inside the app (a plain browser has no plugin), and never over a recognizer something else already provided (tests do).
+if (Capacitor.isNativePlatform() && !window.grimoireNative) window.grimoireNative = { textRecognition };

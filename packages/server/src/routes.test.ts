@@ -67,3 +67,29 @@ describe('the in-process router', () => {
     expect((await send('DELETE', '/api/collection')).status).toBe(204);
   });
 });
+
+describe('matching text to cards (the scanner)', () => {
+  const match = async (lines: unknown, extra: object = {}) => (await send('POST', '/api/cards/match', { lines, ...extra })).body as { candidates: Array<{ card: { name: string; owned?: number }; score: number; line: string }> };
+
+  it('finds the card named by a line of OCR text, with the card and how many are owned', async () => {
+    const cardId = ((await get('/api/cards/by-name/Sol%20Ring')).body as { id: string }).id;
+    await send('PUT', '/api/collection/cards', { cardId, qty: 3 });
+    const r = await match(['Sol Rlng', 'something else']);
+    expect(r.candidates[0]).toMatchObject({ score: expect.any(Number), line: 'Sol Rlng', card: { name: 'Sol Ring', owned: 3 } });
+    expect(r.candidates[0]!.score).toBeGreaterThan(0.85);
+  });
+  it('takes the best line, one entry per card, and finds nothing for noise, empty or malformed input', async () => {
+    const r = await match(['Sol Ring', 'sol ring', 'Ur-Dragon, The']);
+    expect(r.candidates.map((c) => c.card.name).sort()).toEqual(['Sol Ring', 'Ur-Dragon, The']);
+    expect((await match(['qzxv wjkp'])).candidates).toEqual([]);
+    expect((await match([])).candidates).toEqual([]);
+    expect((await match('not an array')).candidates).toEqual([]);
+    expect((await match([42, null, 'Sol Ring'])).candidates).toHaveLength(1);
+  });
+  it('can be told to be stricter, and sees aliases and cards added after the first call', async () => {
+    expect((await match(['Sol Rxng'], { minScore: 0.95 })).candidates).toEqual([]);
+    expect((await match(['Sol Rxng'], { minScore: 0.7 })).candidates[0]?.card.name).toBe('Sol Ring');
+    await loadJsonl(db, (async function* () { for (const c of [sfCard({ name: 'Sol Ring', type_line: 'Artifact' }), sfCard({ name: 'Brand New Card', type_line: 'Instant' })]) yield JSON.stringify(c); })());
+    expect((await match(['Brand New Card'])).candidates[0]?.card.name).toBe('Brand New Card');
+  });
+});

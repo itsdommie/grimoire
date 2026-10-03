@@ -6,7 +6,7 @@ export default defineConfig({
   testDir: 'e2e-mobile',
   workers: 1,
   timeout: 90_000,
-  use: { baseURL: 'http://127.0.0.1:8124', launchOptions: { executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium' } },
+  use: { baseURL: 'http://127.0.0.1:8124', launchOptions: { executablePath: process.env.CHROMIUM_PATH ?? '/usr/bin/chromium', args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } },
   projects: [
     { name: 'wide', use: {} },
     // A phone-sized touch screen: the layout the Android app actually shows (panes behind a bottom bar, no hover).
