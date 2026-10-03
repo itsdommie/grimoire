@@ -113,15 +113,23 @@ export function deckMissing(db: Db, deckId: number, opts: { excludeOtherDecks?: 
  */
 export function commanderIdeas(db: Db, limit = 24, spareOnly = false): CommanderIdea[] {
   const { where, params } = compileQuery(`is:commander f:commander ${spareOnly ? 'spare>0' : 'owned>0'}`);
-  const free = (card: string) => (spareOnly ? `AND col.qty > ${copiesInDecksSql(card, [])}` : '');
-  const rows = db.prepare(`SELECT cards.id AS id,
-      (SELECT count(*) FROM collection col JOIN cards k ON k.id = col.card_id
-         WHERE k.id != cards.id ${free('k.id')} AND (k.color_identity | cards.color_identity) = cards.color_identity
-           AND EXISTS (SELECT 1 FROM legality l WHERE l.card_id = k.id AND l.format = 'commander' AND l.status IN ('legal', 'restricted'))) AS playable,
-      (SELECT count(*) FROM collection col JOIN cards k ON k.id = col.card_id
-         WHERE k.id != cards.id ${free('k.id')} AND k.type_line NOT LIKE '%Land%' AND (k.color_identity | cards.color_identity) = cards.color_identity
-           AND EXISTS (SELECT 1 FROM legality l WHERE l.card_id = k.id AND l.format = 'commander' AND l.status IN ('legal', 'restricted'))) AS spells
-    FROM cards WHERE ${where} ORDER BY playable DESC, cards.name COLLATE NOCASE LIMIT ?`).all(...params, limit) as unknown as Array<{ id: string; playable: number; spells: number }>;
+  const commanders = db.prepare(`SELECT cards.id AS id, cards.color_identity AS ci, cards.name AS name FROM cards WHERE ${where}`).all(...params) as unknown as Array<{ id: string; ci: number; name: string }>;
+  if (commanders.length === 0) return [];
+  // Load the cards that could go in a deck once, then count per commander in memory: a correlated SQL count per commander
+  // re-scanned the whole collection each time and took seconds for a collection of a few thousand cards.
+  const pool = db.prepare(`SELECT cards.id AS id, cards.color_identity AS ci, cards.type_line LIKE '%Land%' AS land
+    FROM collection col JOIN cards ON cards.id = col.card_id
+    WHERE EXISTS (SELECT 1 FROM legality l WHERE l.card_id = cards.id AND l.format = 'commander' AND l.status IN ('legal', 'restricted'))
+      ${spareOnly ? `AND col.qty > ${copiesInDecksSql('cards.id', [])}` : ''}`).all() as unknown as Array<{ id: string; ci: number; land: number }>;
+  const rows = commanders.map((c) => {
+    let playable = 0, spells = 0;
+    for (const k of pool) {
+      if (k.id === c.id || (k.ci | c.ci) !== c.ci) continue;
+      playable++;
+      if (!k.land) spells++;
+    }
+    return { id: c.id, name: c.name, playable, spells };
+  }).sort((a, b) => b.playable - a.playable || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })).slice(0, limit);
   const cards = getCardsByIds(db, rows.map((r) => r.id));
   return rows.flatMap((r) => { const commander = cards.get(r.id) as Card | undefined; return commander ? [{ commander, playable: r.playable, spells: r.spells }] : []; });
 }
