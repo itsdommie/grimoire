@@ -39,7 +39,8 @@ export const MODEL: ModelSpec = {
   maxQueryTokens: 64,
 };
 
-export const NOT_SET_UP = 'Search by meaning (about:) isn\'t set up yet. Turn it on from "Semantic search" at the bottom of the page.';
+import { NOT_SET_UP } from './messages.js';
+export { NOT_SET_UP };
 
 // ----------------------------------------------------------------- embedders
 

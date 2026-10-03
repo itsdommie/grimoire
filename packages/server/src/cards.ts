@@ -1,5 +1,5 @@
 import type { Db } from './db.js';
-import { NOT_SET_UP } from './semantic.js';
+import { NOT_SET_UP } from './messages.js';
 import { keywordInfo } from './rules.js';
 import { compileQuery, copiesInDecksSql, SearchError, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
 
