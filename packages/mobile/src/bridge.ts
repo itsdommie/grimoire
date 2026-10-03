@@ -18,6 +18,7 @@ const send = (m: ToWorker) => worker.postMessage(m);
 worker.onmessage = (e: MessageEvent<FromWorker>) => {
   const m = e.data;
   if ('ready' in m) { markReady(); return; }
+  if ('progress' in m) { splash.textContent = m.progress; return; }
   if ('fatal' in m) { fatal = m.fatal; markReady(); window.dispatchEvent(new CustomEvent('grimoire-fatal', { detail: m.fatal })); return; }
   const call = pending.get(m.id);
   if (!call) return;

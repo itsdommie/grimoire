@@ -1,7 +1,8 @@
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
 import { createRouter, type DataService, type SemanticService } from '../../server/src/routes.ts';
-import { migrate } from '../../server/src/schema.ts';
+import { migrate, type Db } from '../../server/src/schema.ts';
 import { seedAliases } from '../../server/src/names.ts';
+import { loadPrintings, parsePrintingsFile } from '../../server/src/printings.ts';
 import { wrapDb, type Oo1Db } from './wasmDb.ts';
 import type { FromWorker, ToWorker } from './protocol.ts';
 
@@ -39,6 +40,23 @@ const semanticService: SemanticService = {
 
 let router: ReturnType<typeof createRouter> | null = null;
 
+/**
+ * The app ships every printing as a compact file next to the card database. Load it when this install has none, or an older one, so
+ * a fresh install and an app update both end up with current printings, offline. (Versions are ISO dates, so they compare as text.)
+ */
+async function loadBundledPrintings(db: Db, meta: (key: string) => string | null): Promise<void> {
+  const res = await fetch(new URL('bundled.json', ctx.location.href));
+  if (!res.ok) return;
+  const bundled = (await res.json()) as { printings?: string };
+  const have = meta('printings_version');
+  if (!bundled.printings || bundled.printings === 'none' || (have && have !== 'none' && have >= bundled.printings)) return;
+  post({ progress: 'Loading card printings… (once per update)' });
+  const file = await fetch(new URL('card-printings.json', ctx.location.href));
+  if (!file.ok) throw new Error(`couldn't load the card printings (HTTP ${file.status})`);
+  loadPrintings(db, parsePrintingsFile(await file.text()));
+  db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_version', ?)").run(bundled.printings);
+}
+
 async function start(dbUrl: string): Promise<void> {
   // The package's types declare no options, but Emscripten's loader takes locateFile (it must find sqlite3.wasm next to this file).
   const init = sqlite3InitModule as unknown as (o: { locateFile(name: string): string }) => ReturnType<typeof sqlite3InitModule>;
@@ -73,6 +91,7 @@ async function start(dbUrl: string): Promise<void> {
   migrate(db);
   seedAliases(db);
   const meta = (key: string) => (db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? null;
+  await loadBundledPrintings(db, meta);
   router = createRouter({ db, data: dataService(meta), semantic: semanticService });
   post({ ready: true, cards: Number(meta('card_count') ?? 0) });
 }
