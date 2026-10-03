@@ -23,6 +23,11 @@ the app's user-data folder (Help → Open data folder).
 No account, no analytics, no tracking. Grimoire contacts only: Scryfall (card data and images), GitHub (update checks, can be
 turned off) and, once and only if you enable semantic search, Hugging Face (a 34 MB model). What you create stays on your computer.
 
+## Code signing
+
+The Windows installer is being set up for free code signing through the SignPath Foundation; the policy is in
+[docs/code-signing-policy.md](docs/code-signing-policy.md) (also on the [website](https://itsdommie.github.io/grimoire/code-signing.html)).
+
 ## Releasing (maintainers)
 
 Bump `version` in `packages/desktop/package.json`, commit, then `git tag vX.Y.Z && git push --tags`. The *Release* workflow builds
