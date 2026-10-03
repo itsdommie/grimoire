@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
-import type { FromWorker, ToWorker } from './protocol.ts';
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protocol.ts';
 import type { OcrResult, TextRecognizer } from '../../web/src/scanner.ts';
 
 /**
@@ -19,6 +20,8 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
   const m = e.data;
   if ('ready' in m) { markReady(); return; }
   if ('progress' in m) { splash.textContent = m.progress; return; }
+  if ('reload' in m) { location.reload(); return; } // a card update was downloaded: the next start applies it
+  if ('native' in m) { void doNative(m.native.id, m.native.request); return; }
   if ('fatal' in m) { fatal = m.fatal; markReady(); window.dispatchEvent(new CustomEvent('grimoire-fatal', { detail: m.fatal })); return; }
   const call = pending.get(m.id);
   if (!call) return;
@@ -41,7 +44,47 @@ document.addEventListener('DOMContentLoaded', () => { if (!settled) document.bod
 let settled = false;
 void ready.then(() => { settled = true; splash.remove(); });
 
-send({ init: { dbUrl: new URL('grimoire.db', location.href).href } });
+/**
+ * Downloads for the worker. GitHub's release downloads redirect to a CDN that sends no CORS headers, so a web page can't fetch them;
+ * the native Filesystem plugin isn't subject to CORS and streams to disk. The worker then reads the file back through the app's own
+ * local file URL. (Outside the app there is no native side; the worker fetches directly.)
+ */
+async function doNative(id: number, request: NativeRequest): Promise<void> {
+  const reply = (result: NativeResult) => send({ nativeResult: { id, result } });
+  try {
+    if (request.op === 'delete') {
+      await Filesystem.deleteFile({ path: request.name, directory: Directory.Cache }).catch(() => {});
+      reply({ ok: true });
+      return;
+    }
+    const listener = await Filesystem.addListener('progress', (p) => { if (p.url === request.url) send({ nativeProgress: { id, received: p.bytes, total: p.contentLength } }); });
+    try {
+      await Filesystem.deleteFile({ path: request.name, directory: Directory.Cache }).catch(() => {});
+      await Filesystem.downloadFile({ url: request.url, path: request.name, directory: Directory.Cache, progress: request.op === 'download' });
+    } finally {
+      await listener.remove();
+    }
+    if (request.op === 'text') {
+      const file = await Filesystem.readFile({ path: request.name, directory: Directory.Cache, encoding: Encoding.UTF8 });
+      await Filesystem.deleteFile({ path: request.name, directory: Directory.Cache }).catch(() => {});
+      reply({ ok: true, text: String(file.data) });
+    } else {
+      const { uri } = await Filesystem.getUri({ path: request.name, directory: Directory.Cache });
+      reply({ ok: true, url: Capacitor.convertFileSrc(uri) });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    reply({ ok: false, error: message, ...(/\b404\b/.test(message) ? { status: 404 } : {}) });
+  }
+}
+
+let dataBase: string | undefined;
+try { dataBase = localStorage.getItem('grimoire.dataBase') ?? undefined; } catch { /* storage unavailable */ } // lets a test point updates at its own server
+// Mobile data or a data saver: the app then only says an update is waiting instead of downloading it. (A test can force it either way.)
+const connection = (navigator as unknown as { connection?: { type?: string; saveData?: boolean } }).connection;
+let metered = !!connection && (connection.type === 'cellular' || connection.saveData === true);
+try { const forced = localStorage.getItem('grimoire.metered'); if (forced !== null) metered = forced === '1'; } catch { /* storage unavailable */ }
+send({ init: { dbUrl: new URL('grimoire.db', location.href).href, native: Capacitor.isNativePlatform(), dataBase, metered } });
 
 const realFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

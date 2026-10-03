@@ -4,7 +4,9 @@ import { migrate, type Db } from '../../server/src/schema.ts';
 import { seedAliases } from '../../server/src/names.ts';
 import { loadPrintings, parsePrintingsFile } from '../../server/src/printings.ts';
 import { wrapDb, type Oo1Db } from './wasmDb.ts';
-import type { FromWorker, ToWorker } from './protocol.ts';
+import { streamIntoPool } from './poolStream.ts';
+import { applyPendingCardData, CardUpdater, DEFAULT_DATA_BASE, type PoolFiles } from './cardUpdates.ts';
+import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protocol.ts';
 
 /**
  * The app's whole API, running inside the phone: the same router the desktop server uses, over SQLite compiled to WASM and kept
@@ -15,14 +17,24 @@ const DB_FILE = '/grimoire.db';
 const ctx = self as unknown as { postMessage(m: FromWorker): void; onmessage: ((e: MessageEvent<ToWorker>) => void) | null; location: Location };
 const post = (m: FromWorker) => ctx.postMessage(m);
 
-/** Card data arrives as a ready-made database (below), so there is nothing to download or import on the phone. */
-function dataService(meta: (key: string) => string | null): DataService {
+/** Things the worker can't do itself (native downloads) are asked of the page, which answers with a message. */
+const natives = new Map<number, { resolve: (r: NativeResult) => void; onProgress?: (received: number, total: number) => void }>();
+let nextNative = 1;
+const askNative = (request: NativeRequest, onProgress?: (received: number, total: number) => void) =>
+  new Promise<NativeResult>((resolve) => { const id = nextNative++; natives.set(id, { resolve, onProgress }); post({ native: { id, request } }); });
+
+/**
+ * The card database ships inside the app, and card data updates come from CardUpdater (a downloaded update is applied at the next
+ * start). Everything about the card data's state comes from the database's own meta rows, so it survives restarts.
+ */
+function dataService(meta: (key: string) => string | null, updater: CardUpdater): DataService {
   return {
     status: () => {
       const cardCount = Number(meta('card_count') ?? 0);
-      return { state: cardCount > 0 ? 'ready' : 'empty', cardCount, bulkUpdatedAt: meta('bulk_updated_at'), prices: { enabled: false, updatedAt: null }, upToDate: true };
+      const u = updater.status();
+      return { ...u, state: cardCount > 0 ? u.state : 'empty', cardCount, bulkUpdatedAt: meta('bulk_updated_at'), prices: { enabled: false, updatedAt: null } };
     },
-    start: () => {},
+    start: () => updater.start(),
   };
 }
 
@@ -57,33 +69,22 @@ async function loadBundledPrintings(db: Db, meta: (key: string) => string | null
   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_version', ?)").run(bundled.printings);
 }
 
-async function start(dbUrl: string): Promise<void> {
+async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; metered?: boolean }): Promise<void> {
   // The package's types declare no options, but Emscripten's loader takes locateFile (it must find sqlite3.wasm next to this file).
   const init = sqlite3InitModule as unknown as (o: { locateFile(name: string): string }) => ReturnType<typeof sqlite3InitModule>;
   const sqlite3 = await init({ locateFile: (name) => new URL(name, ctx.location.href).href });
-  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: 'grimoire', initialCapacity: 6 });
+  // Room for the database, its journal and the downloaded update waiting to be applied.
+  const pool = await sqlite3.installOpfsSAHPoolVfs({ name: 'grimoire', initialCapacity: 10 });
   // First run: copy the bundled card database into private storage. After that it is only ever opened (the user's decks and
   // collection live in the same file, so it must never be replaced once it exists).
+  // (If the app was closed during this copy, the next start just copies again: the file store only shows a database once its whole
+  // import has finished, so a half-written one is never seen.)
   if (!pool.getFileNames().includes(DB_FILE)) {
-    const res = await fetch(dbUrl);
-    if (!res.ok) throw new Error(`couldn't load the card database (HTTP ${res.status})`);
-    // Streamed straight into storage, so the whole 100+ MB file is never held in memory (phones don't have much to spare).
-    const reader = res.body!.getReader();
-    let held: Uint8Array = new Uint8Array(0);
-    await pool.importDb(DB_FILE, async () => {
-      // The first chunk must hold the database header, so make sure it is at least a page before handing anything over.
-      while (held.length < 4096) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const next = new Uint8Array(held.length + value.length);
-        next.set(held); next.set(value, held.length);
-        held = next;
-      }
-      if (held.length === 0) return undefined;
-      const chunk = held;
-      held = new Uint8Array(0);
-      return chunk;
-    });
+    const res = await fetch(opts.dbUrl);
+    if (!res.ok || !res.body) throw new Error(`couldn't load the card database (HTTP ${res.status})`);
+    console.info('[grimoire] copying the card database into storage');
+    await streamIntoPool(pool, DB_FILE, res.body);
+    console.info('[grimoire] card database copied');
   }
   const raw = new pool.OpfsSAHPoolDb(DB_FILE) as unknown as Oo1Db;
   raw.exec('PRAGMA foreign_keys = ON; PRAGMA cache_size = -32768');
@@ -91,15 +92,25 @@ async function start(dbUrl: string): Promise<void> {
   migrate(db);
   seedAliases(db);
   const meta = (key: string) => (db.prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? null;
+  const setMeta = (key: string, value: string) => { db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)').run(key, value); };
+  const log = (message: string) => console.info(`[grimoire] ${message}`);
+  const files = pool as unknown as PoolFiles;
+  // A card update downloaded last time is swapped in first, before anything else uses the database.
+  applyPendingCardData({ db, pool: files, meta, setMeta, log }, (message) => post({ progress: message }));
   await loadBundledPrintings(db, meta);
-  router = createRouter({ db, data: dataService(meta), semantic: semanticService });
+  const updater = new CardUpdater({ db, pool: files, meta, setMeta, native: opts.native ? askNative : null, base: opts.dataBase ?? DEFAULT_DATA_BASE, metered: !!opts.metered, reload: () => post({ reload: true }), log });
+  router = createRouter({ db, data: dataService(meta, updater), semantic: semanticService });
   post({ ready: true, cards: Number(meta('card_count') ?? 0) });
+  // Once a week the app looks for a newer card database by itself (a few seconds after start, so it never slows the first screen).
+  if (updater.dueForAutoCheck()) setTimeout(() => updater.start({ auto: true }), 10_000);
 }
 
 ctx.onmessage = async (e: MessageEvent<ToWorker>) => {
   const m = e.data;
+  if ('nativeResult' in m) { const n = natives.get(m.nativeResult.id); natives.delete(m.nativeResult.id); n?.resolve(m.nativeResult.result); return; }
+  if ('nativeProgress' in m) { natives.get(m.nativeProgress.id)?.onProgress?.(m.nativeProgress.received, m.nativeProgress.total); return; }
   if ('init' in m) {
-    start(m.init.dbUrl).catch((err: unknown) => post({ fatal: err instanceof Error ? err.message : String(err) }));
+    start(m.init).catch((err: unknown) => post({ fatal: err instanceof Error ? err.message : String(err) }));
     return;
   }
   try {

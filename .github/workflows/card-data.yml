@@ -1,0 +1,44 @@
+name: Card data
+
+# Packages the current card data (cards, legality, rulings, function tags, the Comprehensive Rules, alternate names and every printing)
+# as one compact database for the Android app to download, so the phone's card data stays current without a new app version. The
+# app swaps it in next to the user's own decks and collection, which are never part of it.
+# It lives on a PRERELEASE tagged "card-data": a normal release would become "latest" and break the auto-updater and the download page,
+# which both read the latest release. A small manifest is published too, so the app only downloads the big file when the version changes.
+on:
+  schedule:
+    - cron: '47 5 * * 4' # Thursdays
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-card-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Download card data, tags, rulings and rules
+        run: npm run ingest
+      - name: Add every printing
+        run: npx tsx src/cli.ts printings --load
+        working-directory: packages/server
+      - name: Package it for the app
+        run: npx tsx src/cli.ts carddata --export "$RUNNER_TEMP/card-data"
+        working-directory: packages/server
+      - name: Publish to the card-data prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view card-data >/dev/null 2>&1 || gh release create card-data \
+            --prerelease --latest=false --title "Card data (rolling)" \
+            --notes "Card data for Grimoire's Android app. Rebuilt weekly by the Card data workflow. Not an application release."
+          # The big file first, then the manifest that points to it, so a reader never sees a manifest whose file isn't there yet.
+          gh release upload card-data "$RUNNER_TEMP"/card-data/card-data.db.gz --clobber
+          gh release upload card-data "$RUNNER_TEMP"/card-data/card-data.json --clobber

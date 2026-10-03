@@ -122,6 +122,8 @@ export interface DataStatus {
   outdated?: boolean;
   /** Set after an update check: true if Scryfall had nothing newer. */
   upToDate?: boolean;
+  /** A card update is waiting to be downloaded (the Android app doesn't fetch big files over mobile data on its own). Size in bytes. */
+  available?: { size: number };
 }
 
 // ------------------------------------------------------------ collection

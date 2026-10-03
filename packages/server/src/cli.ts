@@ -71,8 +71,18 @@ if (command === 'printings') {
   }
   process.exit(0);
 }
+if (command === 'carddata') {
+  // Package the dev database's card data for the Android app to download (CI publishes the result). --export <dir> is required.
+  const exportFlag = args.indexOf('--export');
+  const exportDir = exportFlag >= 0 ? args[exportFlag + 1] : undefined;
+  if (!exportDir) { console.error('Usage: cli carddata --export <dir>'); process.exit(2); }
+  const { buildCardData } = await import('./carddata-build.js');
+  const m = buildCardData(dbPathFor(DEFAULT_DATA_DIR), exportDir);
+  console.log(`Card data from Scryfall ${m.version}: ${m.cards} cards, ${(m.size / 1e6).toFixed(1)} MB, written to ${exportDir}.`);
+  process.exit(0);
+}
 if (command !== 'ingest') {
-  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>] | cli names [--export <dir>] [--bundle] | cli printings [--export <dir>] [--load]');
+  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>] | cli names [--export <dir>] [--bundle] | cli printings [--export <dir>] [--load] | cli carddata --export <dir>');
   process.exit(2);
 }
 

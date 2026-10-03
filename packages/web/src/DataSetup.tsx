@@ -8,8 +8,9 @@ const ITEM_LABEL = { cards: 'card data', rulings: 'rulings', tags: 'function tag
 
 export function describeProgress(p: NonNullable<DataStatus['progress']>): string {
   const what = ITEM_LABEL[p.item ?? 'cards'];
-  if (p.phase === 'checking') return 'Contacting Scryfall…';
+  if (p.phase === 'checking') return 'Checking for card updates…';
   if (p.phase === 'downloading') return p.total ? `Downloading ${what}… ${mb(p.received ?? 0)} of ${mb(p.total)}` : `Downloading ${what}… ${mb(p.received ?? 0)}`;
+  if (p.item === 'cards' && p.cards === undefined) return 'Preparing the card update…'; // (Android: the update is unpacked, then applied at the next start)
   return p.item && p.item !== 'cards' ? `Importing ${what}…` : `Importing cards… ${(p.cards ?? 0).toLocaleString()}`;
 }
 
@@ -79,6 +80,7 @@ export function DataFooter({ status, onUpdate }: { status: DataStatus; onUpdate:
         <>
           <button className="linklike" onClick={onUpdate}>Check for card updates</button>
           {status.upToDate && ' (up to date)'}
+          {status.available && <> · <strong>Update available</strong> ({mb(status.available.size)}) <button className="linklike" onClick={onUpdate}>Download</button></>}
           {status.state === 'error' && <span className="error"> Update failed: {status.error}</span>}
           {status.warning && <span className="muted"> {status.warning}.</span>}
         </>

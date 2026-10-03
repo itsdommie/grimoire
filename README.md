@@ -109,6 +109,13 @@ pick (or add the card without one). Take the card away and show the next. Each s
 **Done** keeps everything. It reads only the title bar and the bottom edge, so rules text that happens to be a card's name can't be
 picked up, and Universes Beyond names work too.
 
+**Card data updates.** The card database ships inside the app and then keeps itself current: once a week (a few seconds after the app
+starts) it looks for a newer one, and **Check for card updates** at the bottom of the page does the same on demand. A weekly job
+publishes the current card data (cards, legality, rulings, function tags, the rules, alternate names and every printing) as one
+compact file. The app downloads it, unpacks it next to the live database and swaps it in the next time it starts, which it does for
+you; your decks, collection and recorded printings are never part of it and come through untouched. On mobile data or with a data
+saver on, the weekly look only says an update is waiting (with its size) and downloads it when you tap Download.
+
 Building needs JDK 21 and the Android SDK (platform 36, build-tools 36). Then:
 
 ```
