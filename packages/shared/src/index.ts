@@ -8,3 +8,4 @@ export * from './roles.js';
 export * from './analysis.js';
 export * from './sim.js';
 export * from './collection.js';
+export * from './game.js';

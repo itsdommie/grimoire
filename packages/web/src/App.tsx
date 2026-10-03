@@ -6,6 +6,7 @@ import { DataFooter, DataSetup, useDataStatus } from './DataSetup';
 import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './CollectionView';
 import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
+import { PlayView } from './PlayView';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -77,7 +78,7 @@ export function App() {
   const [current, setCurrent] = useState<DeckDetail | null>(null);
   const [onlyIdentity, setOnlyIdentity] = useState(true);
   const [onlyOwned, setOnlyOwned] = useState(false);
-  const [view, setView] = useState<'cards' | 'collection'>('cards');
+  const [view, setView] = useState<'cards' | 'collection' | 'play'>('cards');
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -156,26 +157,28 @@ export function App() {
   }
 
   return (
-    <div className="layout">
+    <div className={view === 'play' ? 'layout noside' : 'layout'}>
       <div className="browse">
         <header>
           <h1>Grimoire</h1>
           <nav className="viewtabs" aria-label="Views">
             <button className={view === 'cards' ? 'active' : ''} aria-current={view === 'cards' ? 'page' : undefined} onClick={() => setView('cards')}>Cards</button>
             <button className={view === 'collection' ? 'active' : ''} aria-current={view === 'collection' ? 'page' : undefined} onClick={() => setView('collection')}>Collection</button>
+            <button className={view === 'play' ? 'active' : ''} aria-current={view === 'play' ? 'page' : undefined} onClick={() => setView('play')}>Play</button>
           </nav>
-          <input
+          {view !== 'play' && <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}
             spellCheck={false}
-          />
-          <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
+          />}
+          {view !== 'play' && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
             {ORDERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-          </select>
+          </select>}
         </header>
         <main>
+          {view === 'play' ? <PlayView /> : (<>
           {error && <p className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></p>}
           <p className="status">
             {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}` : ''}
@@ -194,6 +197,7 @@ export function App() {
           )}
           {view === 'collection' && data && data.total === 0 && !query && collection?.total ? <p className="muted">Nothing matches.</p> : null}
           <div className="grid">{data?.cards.map((c) => <CardTile key={c.id} card={c} inDeck={inDeck.get(c.id) ?? 0} canAdd={!!current} stepper={view === 'collection'} onAdd={add} onOwn={own} onOpen={setDetailId} />)}</div>
+          </>)}
         </main>
         <footer>
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
@@ -202,7 +206,7 @@ export function App() {
           Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.
         </footer>
       </div>
-      <DeckPanel
+      {view !== 'play' && <DeckPanel
         decks={decks}
         current={current}
         onSelect={open}
@@ -214,7 +218,7 @@ export function App() {
         collection={collection}
         collectionVersion={collectionVersion}
         onOpenCard={setDetailId}
-      />
+      />}
       {detailId && (
         <CardDetailDialog
           cardId={detailId}

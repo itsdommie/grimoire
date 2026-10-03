@@ -209,3 +209,39 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .rulings li { margin: 8px 0; }
 .carddetail .stepper { margin-top: 0; }
 @media (max-width: 760px) { .cdlayout { grid-template-columns: 1fr; } .cdimg { max-width: 300px; } }
+
+/* ---- play (life / commander damage tracker) ---- */
+.layout.noside { grid-template-columns: minmax(0, 1fr); }
+.play { padding-top: 8px; }
+.playbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; margin-bottom: 14px; background: var(--panel); border-radius: 10px; }
+.playbar button, .play .toggle, .play .cmdr button, .play .counter button { padding: 6px 12px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 8px; cursor: pointer; }
+.playbar button:hover:not(:disabled), .play button:hover:not(:disabled) { border-color: var(--accent); }
+.playbar button.primary { color: #12131a; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.playbar button:disabled { opacity: .45; cursor: default; }
+.playbar .grow { flex: 1; } .playbar .sep { width: 1px; height: 22px; background: #333650; margin: 0 4px; }
+.turninfo { font-size: 15px; margin-right: 6px; } .rollresult { min-width: 9em; font-weight: 600; }
+.players { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.player { padding: 12px 14px; background: var(--panel); border: 2px solid transparent; border-radius: 14px; }
+.player.active { border-color: var(--accent); }
+.player.out { opacity: .55; }
+.player header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+.pname { flex: 1; min-width: 7em; padding: 4px 8px; font: inherit; font-weight: 600; background: transparent; border: 1px solid transparent; border-radius: 6px; color: var(--fg); }
+.pname:hover, .pname:focus { border-color: #333650; background: var(--bg); }
+.play .toggle { padding: 3px 10px; font-size: 12px; } .play .toggle.on { color: #12131a; background: #fab219; border-color: #fab219; font-weight: 600; }
+.lifeblock { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 8px; margin: 6px 0; }
+.lifebtns { display: grid; gap: 8px; }
+.lifebtns button { min-width: 52px; min-height: 46px; font: inherit; font-size: 18px; font-weight: 600; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 10px; cursor: pointer; }
+.lifebtns button:hover { border-color: var(--accent); }
+.life { text-align: center; font-size: 72px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.outnote { margin: 4px 0; text-align: center; color: #ff7a7a; font-weight: 600; }
+.counters { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 8px 0; }
+.counter { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.counter .clabel { color: var(--muted); width: 5.6em; text-align: right; }
+.counter button, .cmdrrow button { min-width: 30px; min-height: 30px; padding: 0; }
+.cval { min-width: 2.2em; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; } .cval.warn { color: #fab219; } .cval.lethal { color: #ff7a7a; }
+.cmdr { margin-top: 6px; font-size: 13px; } .cmdr summary { cursor: pointer; color: var(--muted); }
+.cmdrrow { display: flex; align-items: center; gap: 8px; margin: 4px 0; } .cmdrrow .cname { flex: 1; }
+.field { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 10px 0; }
+.field select { padding: 6px 8px; } .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.check input { width: auto; flex: none; }
+.player header { position: static; padding: 0; background: none; border: 0; }

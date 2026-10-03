@@ -47,6 +47,11 @@ official rulings and community function tags, all offline once the data is downl
 tags too: `otag:ramp c:g cmc<=3`, `otag:sweeper f:commander`. Rulings and tags are downloaded alongside the card data and refresh
 with "Check for card updates".
 
+## Play
+
+The **Play** tab is a life and commander-damage tracker for 2-6 players: life, poison/energy/experience, commander damage per
+opponent, monarch, turn order, undo, dice and coin. The game is kept across restarts.
+
 ## Your data
 
 Decks and your collection live in the app's data folder (Help → Open data folder). **Back up to a file** in the footer saves them
