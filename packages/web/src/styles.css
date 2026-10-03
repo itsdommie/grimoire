@@ -1,8 +1,10 @@
 :root { color-scheme: dark; --bg: #12131a; --panel: #1c1e29; --fg: #e6e6ef; --muted: #8b8fa3; --accent: #9d7cf4; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.4 system-ui, sans-serif; }
-header { position: sticky; top: 0; z-index: 1; display: flex; gap: 12px; align-items: center; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid #2a2d3d; }
+header { position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid #2a2d3d; }
 h1 { margin: 0; font-size: 20px; color: var(--accent); }
+/* The search box takes what the row has left, and the row wraps rather than spilling over the deck panel when the views and sort order need more. */
+header > input { min-width: 180px; }
 input { flex: 1; padding: 10px 14px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 8px; }
 input:focus { outline: 2px solid var(--accent); }
 select { padding: 10px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 8px; }
