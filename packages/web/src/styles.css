@@ -72,9 +72,40 @@ textarea { width: 100%; padding: 10px; font: 13px ui-monospace, monospace; color
 input.small { flex: none; width: 180px; padding: 4px 8px; }
 .deckbar label input[type=radio] { width: auto; flex: none; }
 
+/* ---- small screens: one pane at a time, switched from a bar at the bottom ---- */
+.mobilebar { display: none; }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; }
-  .deck { position: static; height: auto; border-left: 0; border-top: 1px solid #2a2d3d; }
+  .deck { position: static; height: auto; border-left: 0; border-top: 0; padding-bottom: 88px; }
+  .layout:not(.noside):not(.show-deck) .deck { display: none; }
+  .layout:not(.noside).show-deck .browse { display: none; }
+
+  header { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  h1 { flex: none; font-size: 18px; }
+  /* Row 1: name and search. Row 2: the views. Row 3: sort order. */
+  h1 { order: 1; }
+  header input { order: 2; flex: 1 1 0; min-width: 0; }
+  .viewtabs { order: 3; flex: 1 1 100%; overflow-x: auto; }
+  .viewtabs button { white-space: nowrap; padding: 8px 12px; }
+  header select { order: 4; flex: 1 1 100%; }
+  main { padding: 8px 12px 88px; }
+  footer { padding-bottom: 88px; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .status .filter { display: block; margin: 6px 0 0; }
+  .dialog { max-height: 88vh; }
+
+  .mobilebar { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--panel); border-top: 1px solid #2a2d3d; padding-bottom: env(safe-area-inset-bottom); }
+  .mobilebar button { flex: 1; padding: 14px 0; font: inherit; font-weight: 600; color: var(--muted); background: none; border: 0; cursor: pointer; }
+  .mobilebar button.active { color: var(--fg); box-shadow: inset 0 2px 0 var(--accent); }
+}
+
+/* ---- touch: nothing to hover, so the card and row actions are always shown, and big enough to hit ---- */
+@media (hover: none) {
+  .art .overlay { position: static; display: flex; flex-wrap: wrap; justify-content: flex-start; padding: 6px 0 0; background: none; border-radius: 0; }
+  .overlay button { padding: 8px 10px; font-size: 13px; }
+  .row .actions { display: flex; }
+  .row .actions button { padding: 4px 10px; line-height: 26px; }
+  .deck button { padding: 8px 12px; }
 }
 
 /* ---- first-run setup ---- */

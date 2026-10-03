@@ -1,0 +1,39 @@
+name: Android
+
+# Builds the Android app (the web UI and the shared API running on SQLite WASM, wrapped by Capacitor) and tests it in a phone-sized
+# browser. The APK is signed with Android's debug key, so it can be sideloaded to try but is not a release build.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Card data for the on-device database
+        run: npm run ingest
+      - name: Build the app content and test it in desktop and phone-sized browsers
+        run: npm run e2e:mobile
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
+        # build.mjs runs first so the browsers test exactly what the APK will contain
+      - name: Build the debug APK
+        run: npm run apk -w @grimoire/mobile
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grimoire-android-debug
+          path: packages/mobile/android/app/build/outputs/apk/debug/app-debug.apk

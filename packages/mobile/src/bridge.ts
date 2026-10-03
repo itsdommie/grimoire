@@ -29,6 +29,15 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
   call.resolve(new Response(status === 204 || body === undefined ? null : asJson ? JSON.stringify(body) : String(body), { status, headers: h }));
 };
 
+// First launch copies the card database into the phone's storage, which takes a few seconds: say so instead of showing nothing.
+const splash = document.createElement('div');
+splash.setAttribute('role', 'status');
+splash.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:#12131a;color:#e6e6ef;font:16px system-ui,sans-serif;z-index:99999';
+splash.textContent = 'Setting up your card database… (first launch only)';
+document.addEventListener('DOMContentLoaded', () => { if (!settled) document.body.appendChild(splash); });
+let settled = false;
+void ready.then(() => { settled = true; splash.remove(); });
+
 send({ init: { dbUrl: new URL('grimoire.db', location.href).href } });
 
 const realFetch = window.fetch.bind(window);

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Grimoire's dark background (the same as the web UI background) -->
+    <color name="grimoireBackground">#12131A</color>
+</resources>

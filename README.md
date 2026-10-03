@@ -93,6 +93,25 @@ plays your deck alone thousands of times in a background worker and reports land
 trouble and when your commander can first be cast. Both tabs explain their assumptions in the app; in particular the
 colour-source numbers are a calibrated hypergeometric estimate, not Frank Karsten's published table.
 
+## Android (in development)
+
+`packages/mobile` wraps the same web UI in an Android app (Capacitor). There is no server on the phone: the shared API routes
+(`packages/server/src/routes.ts`) run in a web worker over SQLite compiled to WASM, in the app's private storage, with the card
+database bundled in the APK. Decks, collection, search, rules, imports and the spare-copies option all work as on the desktop; on a
+phone the card browser and the deck are separate panes behind a bar at the bottom. Search by meaning and the card scanner are not
+there yet.
+
+Building needs JDK 21 and the Android SDK (platform 36, build-tools 36). Then:
+
+```
+npm run ingest                        # once: the card database the APK bundles
+npm run apk -w @grimoire/mobile       # build the web content, sync, and assemble a debug APK
+npm run e2e:mobile                    # the UI on the on-device database, in a desktop and a phone-sized browser
+ANDROID_APP=io.github.itsdommie.grimoire npx playwright test -c playwright.mobile.config.ts --project=phone   # the same flow in the real WebView on an emulator or phone
+```
+
+The debug APK is signed with Android's debug key, so it can be sideloaded to try. A proper release build needs its own signing key.
+
 ## Collection
 
 The **Collection** view tracks the cards you own: import a CSV from ManaBox, Moxfield, Archidekt or Deckbox (or paste a list), and

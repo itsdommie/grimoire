@@ -49,7 +49,23 @@ async function start(dbUrl: string): Promise<void> {
   if (!pool.getFileNames().includes(DB_FILE)) {
     const res = await fetch(dbUrl);
     if (!res.ok) throw new Error(`couldn't load the card database (HTTP ${res.status})`);
-    await pool.importDb(DB_FILE, new Uint8Array(await res.arrayBuffer()));
+    // Streamed straight into storage, so the whole 100+ MB file is never held in memory (phones don't have much to spare).
+    const reader = res.body!.getReader();
+    let held: Uint8Array = new Uint8Array(0);
+    await pool.importDb(DB_FILE, async () => {
+      // The first chunk must hold the database header, so make sure it is at least a page before handing anything over.
+      while (held.length < 4096) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const next = new Uint8Array(held.length + value.length);
+        next.set(held); next.set(value, held.length);
+        held = next;
+      }
+      if (held.length === 0) return undefined;
+      const chunk = held;
+      held = new Uint8Array(0);
+      return chunk;
+    });
   }
   const raw = new pool.OpfsSAHPoolDb(DB_FILE) as unknown as Oo1Db;
   raw.exec('PRAGMA foreign_keys = ON; PRAGMA cache_size = -32768');

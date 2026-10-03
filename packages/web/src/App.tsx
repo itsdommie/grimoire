@@ -88,6 +88,8 @@ export function App() {
   const setSkipUsed = (v: boolean) => { setSkipUsedState(v); try { localStorage.setItem('grimoire.skipUsed', v ? '1' : '0'); } catch { /* storage unavailable */ } };
   const [onlyLegal, setOnlyLegal] = useState(true);
   const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules'>('cards');
+  // On a phone the browse area and the deck are separate full-screen panes; on a wide screen they sit side by side and this is unused.
+  const [pane, setPane] = useState<'browse' | 'deck'>('browse');
   const [ruleToOpen, setRuleToOpen] = useState<string | null>(null);
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
@@ -169,7 +171,7 @@ export function App() {
   }
 
   return (
-    <div className={view === 'play' || view === 'rules' ? 'layout noside' : 'layout'}>
+    <div className={`layout${view === 'play' || view === 'rules' ? ' noside' : ''}${pane === 'deck' ? ' show-deck' : ''}`}>
       <div className="browse">
         <header>
           <h1>Grimoire</h1>
@@ -242,6 +244,12 @@ export function App() {
         onOpenCard={setDetailId}
         cheapest={!!ds.prices?.enabled && !!ds.prices.updatedAt}
       />}
+      {view !== 'play' && view !== 'rules' && (
+        <nav className="mobilebar" aria-label="Browse cards or open the deck">
+          <button className={pane === 'browse' ? 'active' : ''} aria-pressed={pane === 'browse'} onClick={() => setPane('browse')}>Browse</button>
+          <button className={pane === 'deck' ? 'active' : ''} aria-pressed={pane === 'deck'} onClick={() => setPane('deck')}>{current ? `Deck (${current.deck.cardCount})` : 'Deck'}</button>
+        </nav>
+      )}
       {detailId && (
         <CardDetailDialog
           cardId={detailId}
