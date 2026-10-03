@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FORMATS, type Board, type Card, type CollectionSummary, type DeckDetail, type DeckSummary, type FormatId, type SearchResponse } from '@grimoire/shared';
 import { api } from './api';
 import { DeckPanel } from './DeckPanel';
@@ -11,6 +11,7 @@ import { RulesView } from './RulesView';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
+import { useBack } from './backstack';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -95,6 +96,16 @@ export function App() {
   const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules'>('cards');
   // On a phone the browse area and the deck are separate full-screen panes; on a wide screen they sit side by side and this is unused.
   const [pane, setPane] = useState<'browse' | 'deck'>('browse');
+  // On a touch screen the search box must not take focus before the person has touched anything: it would raise the keyboard over the app
+  // the moment it opens. (Android's WebView moves focus to the first field on its own when the window gains focus, so declining to autofocus
+  // is not enough: focus that arrives before the first touch is let go of.)
+  const touchScreen = useMemo(() => window.matchMedia('(hover: none)').matches, []);
+  const touched = useRef(false);
+  useEffect(() => {
+    const mark = () => { touched.current = true; };
+    window.addEventListener('pointerdown', mark, { capture: true, once: true });
+    return () => window.removeEventListener('pointerdown', mark, { capture: true });
+  }, []);
   const [ruleToOpen, setRuleToOpen] = useState<string | null>(null);
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
@@ -171,6 +182,9 @@ export function App() {
     try { changed(await api.setCard(current.deck.id, card.id, board, qty)); } catch (e) { setError((e as Error).message); }
   };
 
+  // With nothing open, Back walks up the app's own screens before leaving it: deck -> browsing, other views -> Cards.
+  useBack(view !== 'cards' || pane === 'deck', () => { if (pane === 'deck') setPane('browse'); else setView('cards'); }, 1);
+
   const ds = dataStatus.status;
   // First run (or a failed first download): nothing to search yet, so show the setup screen instead of an empty app.
   if (!ds || (ds.cardCount === 0 && ds.state !== 'ready')) {
@@ -191,7 +205,8 @@ export function App() {
             <button className={view === 'play' ? 'active' : ''} aria-current={view === 'play' ? 'page' : undefined} onClick={() => setView('play')}>Play</button>
           </nav>
           {view !== 'play' && view !== 'rules' && <input
-            autoFocus
+            autoFocus={!touchScreen}
+            onFocus={(e) => { if (touchScreen && !touched.current) e.currentTarget.blur(); }}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}

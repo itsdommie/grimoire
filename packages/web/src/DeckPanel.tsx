@@ -6,6 +6,7 @@ import { api } from './api';
 import { AnalysisView } from './AnalysisView';
 import { SimulateView } from './SimulateView';
 import { SkipUsedToggle, usd } from './CollectionView';
+import { useBack } from './backstack';
 
 const GROUPS = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Battle', 'Land'] as const;
 
@@ -228,6 +229,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
 function ImportDialog({ currentId, onClose, onImported, onError }: {
   currentId?: number; onClose: () => void; onImported: (d: DeckDetail, addedToCollection: boolean) => void; onError: (m: string) => void;
 }) {
+  useBack(true, onClose);
   const [text, setText] = useState('');
   const [name, setName] = useState('');
   const [target, setTarget] = useState<'new' | 'replace'>('new');
@@ -277,6 +279,7 @@ function ImportDialog({ currentId, onClose, onImported, onError }: {
 function NameDialog({ title, initial, confirmLabel, withFormat, onSubmit, onCancel }: {
   title: string; initial: string; confirmLabel: string; withFormat?: boolean; onSubmit: (name: string, format: FormatId) => void; onCancel: () => void;
 }) {
+  useBack(true, onCancel);
   const [name, setName] = useState(initial);
   const [format, setFormat] = useState<FormatId>('commander');
   const submit = () => { if (name.trim()) onSubmit(name.trim(), format); };

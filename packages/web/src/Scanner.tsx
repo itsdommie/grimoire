@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Card, DeckDetail, Finish, PrintingInfo } from '@grimoire/shared';
 import { api } from './api';
 import { ScanTracker, bottomLines, guideRect, pickCandidate, titleLines, type TextRecognizer } from './scanning';
+import { useBack } from './backstack';
 
 type Target = 'collection' | 'deck';
 
@@ -34,6 +35,7 @@ const year = (p: PrintingInfo) => p.released?.slice(0, 4) ?? '';
 export function Scanner({ recognizer, deck, onClose, onError }: {
   recognizer: TextRecognizer; deck: DeckDetail | null; onClose: () => void; onError: (message: string) => void;
 }) {
+  useBack(true, onClose, 2); // (the printing picker, when open, registers after this and so is closed first)
   const video = useRef<HTMLVideoElement>(null);
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const [target, setTarget] = useState<Target>('collection');
@@ -213,13 +215,14 @@ export function Scanner({ recognizer, deck, onClose, onError }: {
         ))}
       </ul>
 
-      {choosing && <PrintingPicker choosing={choosing} onChoose={(p) => void choose(p)} />}
+      {choosing && <PrintingPicker choosing={choosing} onChoose={(p) => void choose(p)} onDismiss={() => setChoosing(null)} />}
     </div>
   );
 }
 
 /** Which printing is it? Older cards don't print a set code or number, so the scanner asks, narrowing the list when it can. */
-function PrintingPicker({ choosing, onChoose }: { choosing: Choosing; onChoose: (printing: PrintingInfo | null) => void }) {
+function PrintingPicker({ choosing, onChoose, onDismiss }: { choosing: Choosing; onChoose: (printing: PrintingInfo | null) => void; onDismiss: () => void }) {
+  useBack(true, onDismiss, 3); // Back drops the question without adding the card; show it again to scan it
   const [filter, setFilter] = useState('');
   const f = filter.trim().toLowerCase();
   const shown = choosing.candidates.filter((p) => !f || p.setName.toLowerCase().includes(f) || p.set.includes(f) || year(p).includes(f));

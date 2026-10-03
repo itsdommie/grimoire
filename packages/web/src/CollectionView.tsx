@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Card, CollectionImportResult, CollectionSummary, CommanderIdea } from '@grimoire/shared';
 import { api } from './api';
+import { useBack } from './backstack';
 
 export const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -69,6 +70,7 @@ export function CommanderIdeas({ version, skipUsed, onSkipUsed, onBuild }: { ver
 }
 
 export function CollectionImportDialog({ onClose, onDone, onError }: { onClose: () => void; onDone: () => void; onError: (m: string) => void }) {
+  useBack(true, onClose);
   const [text, setText] = useState('');
   const [mode, setMode] = useState<'merge' | 'replace'>('merge');
   const [busy, setBusy] = useState(false);

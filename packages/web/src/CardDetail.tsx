@@ -3,6 +3,7 @@ import type { Board, Card, CardDetail } from '@grimoire/shared';
 import { api } from './api';
 import { usd } from './CollectionView';
 import { PrintingsSection } from './Printings';
+import { useBack } from './backstack';
 
 const FORMATS: Array<[string, string]> = [['commander', 'Commander'], ['brawl', 'Brawl'], ['standard', 'Standard'], ['pioneer', 'Pioneer'], ['modern', 'Modern'], ['legacy', 'Legacy'], ['vintage', 'Vintage'], ['pauper', 'Pauper']];
 const STATUS_LABEL: Record<string, string> = { legal: 'Legal', banned: 'Banned', restricted: 'Restricted' };
@@ -24,6 +25,7 @@ interface Props {
 
 /** Everything about one card, offline: image (with a flip for double-faced cards), text, legality, price, rulings and function tags. */
 export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClose, onAddToDeck, onOwn, onCardChanged, onSearchTag, onOpenRule }: Props) {
+  useBack(true, onClose);
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [back, setBack] = useState(false);

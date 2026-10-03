@@ -1,3 +1,4 @@
+import { App } from '@capacitor/app';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protocol.ts';
@@ -77,6 +78,19 @@ async function doNative(id: number, request: NativeRequest): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     reply({ ok: false, error: message, ...(/\b404\b/.test(message) ? { status: 404 } : {}) });
   }
+}
+
+/**
+ * The hardware Back button. The app has no page history, so left alone it would leave the app from anywhere, even with a card, a dialog
+ * or the scanner open. Instead the page is told (the web UI's back stack closes the topmost thing and cancels the event); the app only
+ * leaves when nothing wanted it.
+ */
+if (Capacitor.isNativePlatform()) {
+  void App.addListener('backButton', () => {
+    const back = new CustomEvent('grimoire-back', { cancelable: true });
+    window.dispatchEvent(back);
+    if (!back.defaultPrevented) void App.exitApp();
+  });
 }
 
 let dataBase: string | undefined;

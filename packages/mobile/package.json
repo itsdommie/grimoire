@@ -1,7 +1,7 @@
 {
   "name": "@grimoire/mobile",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.2",
     "@capacitor/filesystem": "^8.1.4",
     "@sqlite.org/sqlite-wasm": "3.53.4-build2"

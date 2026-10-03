@@ -1,4 +1,5 @@
 import { useEffect, useReducer, useState } from 'react';
+import { useBack } from './backstack';
 import {
   COMMANDER_DAMAGE_LETHAL, MAX_PLAYERS, MIN_PLAYERS, POISON_LETHAL, historyReducer, newGame, outReasons, rollDie, winner,
   type CounterKind, type GameHistory, type GameState, type OutReason, type Player,
@@ -129,6 +130,7 @@ function Counter({ label, value, onChange, name, warnAt, suffix }: { label: stri
 }
 
 function NewGameDialog({ game, onClose, onStart }: { game: GameState; onClose: () => void; onStart: (a: { playerCount: number; startingLife: number; names: string[]; commanderDamageReducesLife: boolean }) => void }) {
+  useBack(true, onClose);
   const [count, setCount] = useState(game.players.length);
   const [life, setLife] = useState(game.startingLife);
   const [reduces, setReduces] = useState(game.commanderDamageReducesLife);

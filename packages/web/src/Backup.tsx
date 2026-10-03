@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { RestoreResult, UserDataBackup } from '@grimoire/shared';
 import { api } from './api';
+import { useBack } from './backstack';
 
 /** Footer actions: save all decks and the collection to a file, or bring them back from one. */
 export function BackupControls({ onRestored, onError }: { onRestored: () => void | Promise<void>; onError: (m: string) => void }) {
@@ -28,6 +29,7 @@ export function BackupControls({ onRestored, onError }: { onRestored: () => void
 }
 
 function RestoreDialog({ onClose, onRestored, onError }: { onClose: () => void; onRestored: () => void | Promise<void>; onError: (m: string) => void }) {
+  useBack(true, onClose);
   const [data, setData] = useState<UserDataBackup | null>(null);
   const [fileProblem, setFileProblem] = useState<string | null>(null);
   const [mode, setMode] = useState<'merge' | 'replace'>('merge');
