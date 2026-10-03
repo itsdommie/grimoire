@@ -196,6 +196,16 @@ export interface CardDetail {
   wanted: number;
 }
 
+// ---------------------------------------------------------------- banlists
+
+export interface BanlistFormat { id: string; label: string; banned: number; restricted: number }
+export interface BanlistReport {
+  format: BanlistFormat;
+  banned: Card[];
+  /** Vintage and a few others allow one copy of a restricted card. */
+  restricted: Card[];
+}
+
 // ----------------------------------------------------------------- wishlist
 
 export interface WishlistItem {

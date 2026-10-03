@@ -194,6 +194,12 @@ details, or press **Add these to my wishlist** on a deck's missing cards (it nev
 stay listed under **Got them** until you remove them. The wishlist is part of backups; a backup made before the wishlist existed still
 restores.
 
+## Banlists
+
+In the **Rules** tab, switch from the Comprehensive Rules to **Banlists** and pick a format (Standard, Pioneer, Modern, Legacy, Vintage,
+Pauper, Commander, Brawl and a few more) to see everything banned or restricted there, with a note of which of those cards you own.
+It reads the legality Scryfall gives each card, so it is as current as your card data, which updates weekly.
+
 ## Decks
 
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.

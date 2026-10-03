@@ -7,6 +7,7 @@ import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
 import { getSet, listSets, type SetFilter } from './sets.js';
+import { getBanlist, listBanlistFormats } from './banlists.js';
 import { clearWishlist, getWishlist, setWanted, wishMissing } from './wishlist.js';
 import { Advisor, AdvisorError, keyFromEnvironment, type AdvisorOptions } from './advisor.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
@@ -219,6 +220,10 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
   on('POST', '/api/semantic/enable', () => { semantic.start(); return reply(202, semantic.status()); });
   on('POST', '/api/semantic/cancel', () => { semantic.cancel(); return semantic.status(); });
   on('DELETE', '/api/semantic', () => { semantic.remove(); return reply(204); });
+
+  // --------------------------------------------------------------- banlists
+  on('GET', '/api/formats', () => ({ formats: listBanlistFormats(db) }));
+  on('GET', '/api/formats/:id/banlist', ({ params }) => getBanlist(db, params.id!) ?? reply(404, { error: 'No banlist for that format' }));
 
   // --------------------------------------------------------------- wishlist
   on('GET', '/api/wishlist', () => getWishlist(db));

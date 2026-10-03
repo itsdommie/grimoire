@@ -7,10 +7,10 @@ import { CollectionBar, CollectionImportDialog, CommanderIdeas, SkipUsedToggle }
 import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
-import { RulesView } from './RulesView';
 import { AdvisorView, type ChatItem } from './AdvisorView';
 import { SetsView } from './SetsView';
 import { WishlistView } from './WishlistView';
+import { RulesHome } from './RulesHome';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
@@ -226,7 +226,7 @@ export function App() {
           </select>}
         </header>
         <main>
-          {view === 'play' ? <PlayView /> : view === 'wishlist' ? <WishlistView onOpenCard={setDetailId} version={collectionVersion} onChanged={() => void collectionChanged()} /> : view === 'sets' ? <SetsView onOpenCard={setDetailId} onSearchSet={(code) => { setQuery(`set:${code}`); setView('cards'); }} onCollectionChanged={() => void collectionChanged()} collectionVersion={collectionVersion} /> : view === 'advisor' ? <AdvisorView deck={current ? { id: current.deck.id, name: current.deck.name, format: rules.name } : null} chat={advice} setChat={setAdvice} onOpenCard={setDetailId} /> : view === 'rules' ? <RulesView openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} /> : (<>
+          {view === 'play' ? <PlayView /> : view === 'wishlist' ? <WishlistView onOpenCard={setDetailId} version={collectionVersion} onChanged={() => void collectionChanged()} /> : view === 'sets' ? <SetsView onOpenCard={setDetailId} onSearchSet={(code) => { setQuery(`set:${code}`); setView('cards'); }} onCollectionChanged={() => void collectionChanged()} collectionVersion={collectionVersion} /> : view === 'advisor' ? <AdvisorView deck={current ? { id: current.deck.id, name: current.deck.name, format: rules.name } : null} chat={advice} setChat={setAdvice} onOpenCard={setDetailId} /> : view === 'rules' ? <RulesHome openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} onOpenCard={setDetailId} /> : (<>
           {error && <p className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></p>}
           <p className="status">
             {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}${/\b(?:about|meaning|sem):/.test(searchQuery) ? ', best matches first' : ''}` : ''}
