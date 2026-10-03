@@ -1,10 +1,11 @@
-import { createReadStream, createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 import { openDb, dbPathFor, type Db } from './db.js';
 import { clearPrices, loadJsonl, loadPrices, loadRulings, loadTags } from './ingest.js';
-import type { DataStatus } from '@grimoire/shared';
+import { parseComprehensiveRules, type DataStatus } from '@grimoire/shared';
+import { loadRules, rulesStatus } from './rules.js';
 
 // Scryfall asks for a descriptive User-Agent and an Accept header on every API request.
 const HEADERS = {
@@ -12,6 +13,15 @@ const HEADERS = {
   Accept: 'application/json;q=0.9,*/*;q=0.8',
 };
 const MANIFEST_URL = 'https://api.scryfall.com/bulk-data';
+const RULES_PAGE = 'https://magic.wizards.com/en/rules';
+
+/** The current Comprehensive Rules .txt linked from Wizards' rules page (the file name carries a date and changes each release). */
+export function findRulesUrl(html: string): string | null {
+  const urls = [...html.matchAll(/https:\/\/media\.wizards\.com\/[^"'<>]*?MagicCompRules[^"'<>]*?\.txt/gi)].map((m) => m[0]);
+  if (urls.length === 0) return null;
+  const date = (u: string) => /(\d{8})\.txt$/i.exec(u)?.[1] ?? '';
+  return encodeURI(decodeURI(urls.sort((a, b) => date(b).localeCompare(date(a)))[0]!));
+}
 
 interface BulkEntry { type: string; updated_at: string; jsonl_download_uri?: string }
 
@@ -36,6 +46,8 @@ export interface DataManagerOptions {
   localTags?: string;
   /** Cheapest-printing prices from a local Default Cards file (GRIMOIRE_PRICES_FILE). */
   localPrices?: string;
+  /** The Comprehensive Rules from a local .txt file (GRIMOIRE_RULES_FILE). */
+  localRules?: string;
 }
 
 export interface UpdateOptions {
@@ -57,6 +69,7 @@ export class DataManager {
   private readonly localRulings: string | undefined;
   private readonly localTags: string | undefined;
   private readonly localPrices: string | undefined;
+  private readonly localRules: string | undefined;
   private warning: string | undefined;
   private running: Promise<void> | null = null;
   private progress: DataStatus['progress'];
@@ -71,6 +84,7 @@ export class DataManager {
     this.localRulings = opts.localRulings;
     this.localTags = opts.localTags;
     this.localPrices = opts.localPrices;
+    this.localRules = opts.localRules;
   }
 
   private meta(key: string): string | null {
@@ -94,6 +108,46 @@ export class DataManager {
     };
   }
 
+  /** The Comprehensive Rules, from Wizards (or a local file). Re-downloaded only when the current file's name changes. */
+  private async updateRules(opts: UpdateOptions, local: boolean): Promise<boolean> {
+    let text: string;
+    let url: string;
+    if (this.localRules) {
+      text = readFileSync(this.localRules, 'utf8');
+      url = `local:${this.localRules}`;
+    } else {
+      if (local) return false;
+      const page = await this.fetchImpl(RULES_PAGE, { headers: HEADERS });
+      if (!page.ok) throw new Error(`couldn't reach Wizards (HTTP ${page.status})`);
+      const found = findRulesUrl(await page.text());
+      if (!found) throw new Error("couldn't find the current Comprehensive Rules on Wizards' site");
+      if (!opts.force && this.meta('rules_url') === found && rulesStatus(this.db).loaded) return false;
+      this.progress = { phase: 'downloading', item: 'rules' };
+      const res = await this.fetchImpl(found, { headers: HEADERS });
+      if (!res.ok) throw new Error(`download failed (HTTP ${res.status})`);
+      text = await res.text();
+      url = found;
+    }
+    this.progress = { phase: 'importing', item: 'rules' };
+    const parsed = parseComprehensiveRules(text);
+    const writer = openDb(dbPathFor(this.dataDir));
+    try {
+      loadRules(writer, parsed);
+      const put = writer.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+      put.run('rules_url', url);
+      put.run('rules_effective', parsed.effective ?? '');
+    } finally {
+      writer.close();
+    }
+    if (!this.localRules) { // keep a copy of the source text next to the other bulk files (handy for debugging and tests)
+      const bulkDir = resolve(this.dataDir, 'bulk');
+      mkdirSync(bulkDir, { recursive: true });
+      for (const f of readdirSync(bulkDir)) if (f.startsWith('comprehensive-rules-')) rmSync(resolve(bulkDir, f), { force: true });
+      writeFileSync(resolve(bulkDir, `comprehensive-rules-${/(\d{8})\.txt$/i.exec(url)?.[1] ?? 'current'}.txt`), text);
+    }
+    return true;
+  }
+
   pricesEnabled(): boolean { return this.meta('prices_enabled') === '1'; }
 
   /** The loaded data predates this version of the app (older data shape, or extras that weren't fetched yet). */
@@ -102,6 +156,7 @@ export class DataManager {
     const wants = (local: string | undefined) => !this.localFile || !!local; // in local-file mode only configured extras count
     if (wants(this.localRulings) && !this.meta(META_KEY.rulings)) return true;
     if (wants(this.localTags) && !this.meta(META_KEY.oracle_tags)) return true;
+    if (wants(this.localRules) && !this.meta('rules_url')) return true;
     return false;
   }
 
@@ -159,6 +214,11 @@ export class DataManager {
       } catch (err) {
         failures.push(`${kind === 'rulings' ? 'rulings' : 'card tags'}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+    try {
+      if (await this.updateRules(opts, local)) imported = true;
+    } catch (err) {
+      failures.push(`rules: ${err instanceof Error ? err.message : String(err)}`);
     }
     if (this.pricesEnabled()) {
       try {

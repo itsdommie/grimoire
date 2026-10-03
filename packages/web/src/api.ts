@@ -1,4 +1,4 @@
-import type { Board, CardDetail, FormatId, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -55,6 +55,10 @@ export const api = {
   semanticEnable: () => request<SemanticStatus>('POST', '/api/semantic/enable'),
   semanticCancel: () => request<SemanticStatus>('POST', '/api/semantic/cancel'),
   semanticRemove: () => request<void>('DELETE', '/api/semantic'),
+  rulesStatus: () => request<RulesStatus>('GET', '/api/rules/status'),
+  rulesToc: () => request<RulesToc>('GET', '/api/rules/toc'),
+  rulesSearch: (q: string, signal?: AbortSignal) => request<RulesSearchResult>('GET', `/api/rules/search?${new URLSearchParams({ q })}`, undefined, signal),
+  rule: (id: string) => request<RuleDetail>('GET', `/api/rules/rule/${encodeURIComponent(id)}`),
   cardDetail: (id: string) => request<CardDetail>('GET', `/api/cards/${encodeURIComponent(id)}/detail`),
   collectionSummary: () => request<CollectionSummary>('GET', '/api/collection/summary'),
   importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),

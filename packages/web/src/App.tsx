@@ -7,6 +7,7 @@ import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './Collect
 import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
+import { RulesView } from './RulesView';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 
 const ORDERS = [
@@ -80,7 +81,8 @@ export function App() {
   const [onlyIdentity, setOnlyIdentity] = useState(true);
   const [onlyOwned, setOnlyOwned] = useState(false);
   const [onlyLegal, setOnlyLegal] = useState(true);
-  const [view, setView] = useState<'cards' | 'collection' | 'play'>('cards');
+  const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules'>('cards');
+  const [ruleToOpen, setRuleToOpen] = useState<string | null>(null);
   const [collection, setCollection] = useState<CollectionSummary | null>(null);
   const [collectionVersion, setCollectionVersion] = useState(0);
   const [importing, setImporting] = useState(false);
@@ -161,28 +163,29 @@ export function App() {
   }
 
   return (
-    <div className={view === 'play' ? 'layout noside' : 'layout'}>
+    <div className={view === 'play' || view === 'rules' ? 'layout noside' : 'layout'}>
       <div className="browse">
         <header>
           <h1>Grimoire</h1>
           <nav className="viewtabs" aria-label="Views">
             <button className={view === 'cards' ? 'active' : ''} aria-current={view === 'cards' ? 'page' : undefined} onClick={() => setView('cards')}>Cards</button>
             <button className={view === 'collection' ? 'active' : ''} aria-current={view === 'collection' ? 'page' : undefined} onClick={() => setView('collection')}>Collection</button>
+            <button className={view === 'rules' ? 'active' : ''} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => setView('rules')}>Rules</button>
             <button className={view === 'play' ? 'active' : ''} aria-current={view === 'play' ? 'page' : undefined} onClick={() => setView('play')}>Play</button>
           </nav>
-          {view !== 'play' && <input
+          {view !== 'play' && view !== 'rules' && <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}
             spellCheck={false}
           />}
-          {view !== 'play' && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
+          {view !== 'play' && view !== 'rules' && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
             {ORDERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
           </select>}
         </header>
         <main>
-          {view === 'play' ? <PlayView /> : (<>
+          {view === 'play' ? <PlayView /> : view === 'rules' ? <RulesView openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} /> : (<>
           {error && <p className="error" role="alert">{error} <button onClick={() => setError(null)}>dismiss</button></p>}
           <p className="status">
             {data?.error ? <span className="error">{data.error}</span> : data ? `${data.total.toLocaleString()} cards${data.total > data.cards.length ? ` (showing ${data.cards.length})` : ''}${/\b(?:about|meaning|sem):/.test(searchQuery) ? ', best matches first' : ''}` : ''}
@@ -215,7 +218,7 @@ export function App() {
           Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.
         </footer>
       </div>
-      {view !== 'play' && <DeckPanel
+      {view !== 'play' && view !== 'rules' && <DeckPanel
         decks={decks}
         current={current}
         onSelect={open}
@@ -238,6 +241,7 @@ export function App() {
           onAddToDeck={(card, board) => void add(card, board)}
           onOwn={(card, qty) => void own(card, qty)}
           onSearchTag={(slug) => { setDetailId(null); setView('cards'); setQuery(`otag:${slug}`); }}
+          onOpenRule={(id) => { setDetailId(null); setRuleToOpen(id); setView('rules'); }}
         />
       )}
       {importing && <CollectionImportDialog onClose={() => setImporting(false)} onDone={() => void collectionChanged()} onError={setError} />}

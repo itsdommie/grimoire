@@ -8,7 +8,7 @@ import { DataManager, DATA_VERSION } from './data.js';
 import { loadJsonl, loadRulings, loadTags } from './ingest.js';
 import { searchCards } from './cards.js';
 import { buildServer } from './server.js';
-import { sfCard, tmpDir, writeBulk } from './testutil.js';
+import { rulesResponse, sfCard, tmpDir, writeBulk } from './testutil.js';
 
 const solRing = sfCard({ name: 'Sol Ring', type_line: 'Artifact', oracle_id: 'o-sol' });
 const cultivate = sfCard({ name: 'Cultivate', type_line: 'Sorcery', color_identity: ['G'], colors: ['G'], oracle_id: 'o-cult' });
@@ -145,6 +145,8 @@ describe('DataManager with extras', () => {
     const bodies: Record<string, Buffer> = { cards: gz(jsonl(CARDS)), rulings: gz(jsonl(RULINGS)), tags: gz(jsonl(TAGS)) };
     const make = (failTags: boolean) => (async (url: string | URL | Request) => {
       const u = String(url);
+      const rules = rulesResponse(u);
+      if (rules) return rules;
       if (u.endsWith('/bulk-data')) return Response.json({ data: [
         { type: 'oracle_cards', updated_at: '2026-10-02T00:00:00Z', jsonl_download_uri: 'https://x/cards.jsonl.gz' },
         { type: 'rulings', updated_at: '2026-10-02T00:00:00Z', jsonl_download_uri: 'https://x/rulings.jsonl.gz' },

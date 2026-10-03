@@ -91,6 +91,14 @@ CREATE INDEX IF NOT EXISTS card_tags_tag ON card_tags(tag);
 -- Semantic search: one int8-quantised embedding per card (hash = the text it was computed from, so edits re-embed).
 CREATE TABLE IF NOT EXISTS embeddings (card_id TEXT PRIMARY KEY, hash INTEGER NOT NULL, vec BLOB NOT NULL) WITHOUT ROWID;
 
+-- The Comprehensive Rules (downloaded from Wizards), with full-text search over rules and the glossary.
+CREATE TABLE IF NOT EXISTS rule_sections (num INTEGER PRIMARY KEY, title TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS rules (id TEXT PRIMARY KEY, kind TEXT NOT NULL, section INTEGER NOT NULL, parent TEXT, text TEXT NOT NULL, ord INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS rules_parent ON rules(parent, ord);
+CREATE TABLE IF NOT EXISTS glossary (term TEXT PRIMARY KEY COLLATE NOCASE, definition TEXT NOT NULL);
+CREATE VIRTUAL TABLE IF NOT EXISTS rules_fts USING fts5(text, id UNINDEXED, tokenize = 'porter unicode61 remove_diacritics 2');
+CREATE VIRTUAL TABLE IF NOT EXISTS glossary_fts USING fts5(term, definition, tokenize = 'porter unicode61 remove_diacritics 2');
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
@@ -98,7 +106,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
  * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
  * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 function hasColumn(db: Db, table: string, column: string): boolean {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);

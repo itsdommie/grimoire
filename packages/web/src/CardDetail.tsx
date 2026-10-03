@@ -15,10 +15,12 @@ interface Props {
   onAddToDeck: (card: Card, board: Board) => void;
   onOwn: (card: Card, qty: number) => void;
   onSearchTag: (slug: string) => void;
+  /** Open a rule in the Rules view (from a keyword's explanation). */
+  onOpenRule: (id: string) => void;
 }
 
 /** Everything about one card, offline: image (with a flip for double-faced cards), text, legality, price, rulings and function tags. */
-export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClose, onAddToDeck, onOwn, onSearchTag }: Props) {
+export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClose, onAddToDeck, onOwn, onSearchTag, onOpenRule }: Props) {
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [back, setBack] = useState(false);
@@ -87,6 +89,19 @@ export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClos
                   <h3>Function tags</h3>
                   <p className="tagchips">{detail.tags.map((t) => <button key={t.slug} className="tagchip" title={t.description ?? t.label} onClick={() => onSearchTag(t.slug)}>{t.label}</button>)}</p>
                   <p className="muted small">Community labels from Scryfall's Tagger. Click one to search for similar cards.</p>
+                </section>
+              )}
+
+              {detail.keywords.length > 0 && (
+                <section aria-label="Keywords">
+                  <h3>Keywords</h3>
+                  {detail.keywords.map((k) => (
+                    <details key={k.term} className="keyword">
+                      <summary>{k.term}</summary>
+                      <p>{k.definition.replace(/\n/g, ' ')}</p>
+                      {k.rule && <button className="linklike" onClick={() => onOpenRule(k.rule!)}>Read rule {k.rule}</button>}
+                    </details>
+                  ))}
                 </section>
               )}
 

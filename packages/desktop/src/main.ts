@@ -38,6 +38,7 @@ async function startServer(): Promise<string> {
     rulingsFile: process.env.GRIMOIRE_RULINGS_FILE,
     tagsFile: process.env.GRIMOIRE_TAGS_FILE,
     pricesFile: process.env.GRIMOIRE_PRICES_FILE,
+    rulesFile: process.env.GRIMOIRE_RULES_FILE,
   });
   await server.listen({ port: 0, host: '127.0.0.1' }); // random free port, loopback only
   const { port } = server.server.address() as AddressInfo;

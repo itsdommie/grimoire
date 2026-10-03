@@ -4,7 +4,7 @@ import { api } from './api';
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
 
-const ITEM_LABEL = { cards: 'card data', rulings: 'rulings', tags: 'function tags', prices: 'prices' } as const;
+const ITEM_LABEL = { cards: 'card data', rulings: 'rulings', tags: 'function tags', prices: 'prices', rules: 'the rules' } as const;
 
 export function describeProgress(p: NonNullable<DataStatus['progress']>): string {
   const what = ITEM_LABEL[p.item ?? 'cards'];

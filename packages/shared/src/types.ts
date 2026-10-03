@@ -64,7 +64,7 @@ export interface DataStatus {
   cardCount: number;
   /** Scryfall's `updated_at` for the bulk file currently loaded. */
   bulkUpdatedAt: string | null;
-  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices'; received?: number; total?: number; cards?: number };
+  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices' | 'rules'; received?: number; total?: number; cards?: number };
   error?: string;
   /** Cheapest-printing prices (an optional 79 MB download). */
   prices?: { enabled: boolean; updatedAt: string | null };
@@ -128,7 +128,8 @@ export interface CommanderIdea {
 
 export interface Ruling { source: string; publishedAt: string; comment: string }
 export interface TagInfo { slug: string; label: string; description: string | null; cards: number }
-export interface CardDetail { card: Card; rulings: Ruling[]; tags: TagInfo[] }
+export interface KeywordInfo { term: string; definition: string; rule: string | null }
+export interface CardDetail { card: Card; rulings: Ruling[]; tags: TagInfo[]; keywords: KeywordInfo[] }
 
 // ----------------------------------------------------------------- backup
 
@@ -165,3 +166,11 @@ export interface SemanticStatus {
   error?: string;
   model: string;
 }
+
+// ------------------------------------------------------------------- rules
+
+export interface RulesStatus { loaded: boolean; effective: string | null; rules: number; glossary: number }
+export interface RuleHit { id: string; kind: 'group' | 'rule' | 'subrule'; section: number; sectionTitle: string; text: string }
+export interface RulesSearchResult { rules: RuleHit[]; glossary: Array<{ term: string; definition: string; rule: string | null }>; exact: RuleHit | null }
+export interface RuleDetail { rule: RuleHit; ancestors: RuleHit[]; children: RuleHit[] }
+export interface RulesToc { sections: Array<{ num: number; title: string; groups: Array<{ id: string; title: string }> }> }

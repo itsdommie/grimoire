@@ -1,5 +1,6 @@
 import type { Db } from './db.js';
 import { NOT_SET_UP } from './semantic.js';
+import { keywordInfo } from './rules.js';
 import { compileQuery, SearchError, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
 
 export type Order = 'name' | 'cmc' | 'edhrec' | 'usd';
@@ -119,5 +120,5 @@ export function getCardDetail(db: Db, id: string): CardDetail | null {
   const tags = (db.prepare(`SELECT t.slug, t.label, t.description, t.cards FROM card_tags ct JOIN tags t ON t.slug = ct.tag
       WHERE ct.card_id = ? AND t.cards >= 25 AND t.slug NOT LIKE 'cycle-%' ORDER BY t.cards DESC`).all(id) as unknown as TagInfo[])
     .filter((t) => !NOISE_TAGS.has(t.slug)).slice(0, 16);
-  return { card, rulings, tags };
+  return { card, rulings, tags, keywords: keywordInfo(db, card.keywords) };
 }

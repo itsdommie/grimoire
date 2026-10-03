@@ -11,3 +11,4 @@ export * from './collection.js';
 export * from './game.js';
 export * from './wordpiece.js';
 export * from './formats.js';
+export * from './rules.js';

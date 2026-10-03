@@ -10,6 +10,7 @@ import { DataManager } from './data.js';
 import { NOT_SET_UP, SemanticIndex } from './semantic.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
+import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
@@ -49,6 +50,7 @@ export interface ServerOptions {
   rulingsFile?: string;
   tagsFile?: string;
   pricesFile?: string;
+  rulesFile?: string;
   /** Semantic search index (defaults to one backed by the real model). Tests and the e2e server inject a fake embedder. */
   semantic?: SemanticIndex;
   /** Folder with ort.node.min.mjs and the .wasm files (shipped with the desktop app). */
@@ -60,7 +62,7 @@ const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeE
 export function buildServer(opts: ServerOptions) {
   const { db, dataDir, webRoot, token } = opts;
   const semantic = opts.semantic ?? new SemanticIndex({ db, dataDir, ortDir: opts.ortDir });
-  const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile, localPrices: opts.pricesFile });
+  const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile, localPrices: opts.pricesFile, localRules: opts.rulesFile });
   // Collection CSVs and backups can be several MB (Fastify's default limit is 1 MB).
   const app = Fastify({ logger: opts.logger ?? process.env.NODE_ENV !== 'test', bodyLimit: 50 * 1024 * 1024 });
 
@@ -180,6 +182,12 @@ export function buildServer(opts: ServerOptions) {
   app.delete('/api/collection', async (_req, reply) => { clearCollection(db); return reply.code(204).send(); });
   app.get('/api/collection/commanders', async () => commanderIdeas(db));
   app.get<{ Params: { id: string } }>('/api/decks/:id/missing', async (req) => deckMissing(db, deckId(req.params.id)));
+
+  // ----------------------------------------------------------------- rules
+  app.get('/api/rules/status', async () => rulesStatus(db));
+  app.get('/api/rules/toc', async () => rulesToc(db));
+  app.get<{ Querystring: { q?: string; limit?: string } }>('/api/rules/search', async (req) => searchRules(db, req.query.q ?? '', Math.min(Math.max(Number(req.query.limit) || 40, 1), 100)));
+  app.get<{ Params: { id: string } }>('/api/rules/rule/:id', async (req, reply) => getRuleDetail(db, req.params.id.toLowerCase()) ?? reply.code(404).send({ error: 'No such rule' }));
 
   // -------------------------------------------------------------- semantic
   app.get('/api/semantic/status', async () => semantic.status());

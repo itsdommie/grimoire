@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { dbPathFor, openDb } from './db.js';
 import { DataManager } from './data.js';
 import { loadJsonl } from './ingest.js';
-import { sfCard, tmpDir, toJsonl, writeBulk } from './testutil.js';
+import { rulesResponse, sfCard, tmpDir, toJsonl, writeBulk } from './testutil.js';
 
 const CARDS = [sfCard({ name: 'Sol Ring', type_line: 'Artifact' }), sfCard({ name: 'Island', type_line: 'Basic Land — Island' })];
 
@@ -16,6 +16,8 @@ function fakeScryfall(version: string, cards = CARDS, opts: { failDownload?: boo
   const impl = (async (url: string | URL | Request) => {
     const u = String(url);
     calls.push(u);
+    const rules = rulesResponse(u);
+    if (rules) return rules;
     if (u.endsWith('/bulk-data')) {
       return Response.json({ data: [{ type: 'oracle_cards', updated_at: version, jsonl_download_uri: 'https://data.scryfall.io/oracle.jsonl.gz' }] });
     }
@@ -54,7 +56,7 @@ describe('DataManager', () => {
 
     data.start(); await data.idle();
     expect(data.status()).toMatchObject({ state: 'ready', upToDate: true });
-    expect(fake.calls).toHaveLength(callsAfterFirst + 1); // manifest only
+    expect(fake.calls).toHaveLength(callsAfterFirst + 2); // the manifest and Wizards' rules page: no bulk file
 
     data.start({ force: true }); await data.idle();
     expect(data.status().upToDate).toBe(false);
@@ -88,7 +90,7 @@ describe('DataManager', () => {
     a.start(); await a.idle();
     const b = new DataManager({ dataDir, db, fetch: fakeScryfall('2026-02-02T00:00:00Z').impl });
     b.start(); await b.idle();
-    expect(readdirSync(join(dataDir, 'bulk'))).toEqual(['oracle-cards-2026-02-02.jsonl.gz']);
+    expect(readdirSync(join(dataDir, 'bulk')).filter((f) => f.startsWith('oracle-cards'))).toEqual(['oracle-cards-2026-02-02.jsonl.gz']);
   });
 
   it('imports from a local file (offline install), plain or gzipped', async () => {
