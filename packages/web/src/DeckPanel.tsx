@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { Board, Card, DeckDetail, DeckEntry, DeckSummary } from '@grimoire/shared';
 import { COMMANDER_DECK_SIZE } from '@grimoire/shared';
 import { api } from './api';
+import { AnalysisView } from './AnalysisView';
+import { SimulateView } from './SimulateView';
 
 const GROUPS = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Battle', 'Land'] as const;
 
@@ -27,6 +29,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
   const [showImport, setShowImport] = useState(false);
   // window.prompt() isn't available in Electron, so naming uses an in-app dialog.
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
+  const [tab, setTab] = useState<'deck' | 'analysis' | 'simulate'>('deck');
   const [copied, setCopied] = useState(false);
 
   const deck = current?.deck;
@@ -108,6 +111,17 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
             <button className="danger" onClick={() => { if (window.confirm(`Delete "${deck.name}"?`)) onDelete(deck.id); }}>Delete</button>
           </div>
 
+          <div className="tabs" role="tablist" aria-label="Deck views">
+            {([['deck', 'Deck'], ['analysis', 'Analysis'], ['simulate', 'Simulate']] as const).map(([id, label]) => (
+              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>
+            ))}
+          </div>
+
+          {tab === 'analysis' && <AnalysisView entries={current.entries} />}
+          {/* Kept mounted (just hidden) so results survive tab switches and can be flagged stale when the deck changes. */}
+          <div hidden={tab !== 'simulate'}><SimulateView key={deck.id} entries={current.entries} /></div>
+
+          {tab === 'deck' && <>
           {current.issues.length > 0 && (
             <ul className="issues" aria-label="Deck issues">
               {current.issues.map((i, k) => <li key={k} className={i.severity}>{i.message}</li>)}
@@ -134,6 +148,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
               <ul className="list">{side.map((e) => row(e, 'sideboard'))}</ul>
             </section>
           )}
+          </>}
         </>
       )}
       {!deck && <p className="empty">Create a deck to start building.</p>}

@@ -5,10 +5,10 @@ function readToken(): string | null {
   const content = document.querySelector('meta[name="grimoire-token"]')?.getAttribute('content');
   return content && content !== '__GRIMOIRE_TOKEN__' ? content : null;
 }
-const token = readToken();
+const token = typeof document === 'undefined' ? null : readToken();
 const authHeaders = (): Record<string, string> => (token ? { 'x-grimoire-token': token } : {});
 
-async function request<T>(method: string, url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+export async function request<T>(method: string, url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(url, {
     method,
     signal,
@@ -16,7 +16,13 @@ async function request<T>(method: string, url: string, body?: unknown, signal?: 
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (res.status === 204) return undefined as T;
-  const data = await res.json().catch(() => ({}));
+  let data: unknown = {};
+  try {
+    data = await res.json();
+  } catch (err) {
+    // An aborted request must stay an abort: swallowing it here would hand callers an empty object as if it were a result.
+    if (signal?.aborted || (err as Error).name === 'AbortError') throw err;
+  }
   if (!res.ok) throw new ApiError((data as { error?: string }).error ?? `Request failed (${res.status})`, res.status, data);
   return data as T;
 }

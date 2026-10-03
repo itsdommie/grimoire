@@ -2,3 +2,8 @@ export * from './colors.js';
 export * from './deck.js';
 export * from './search.js';
 export * from './types.js';
+export * from './mana.js';
+export * from './hypergeom.js';
+export * from './roles.js';
+export * from './analysis.js';
+export * from './sim.js';

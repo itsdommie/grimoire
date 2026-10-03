@@ -67,6 +67,32 @@ test.describe.serial('desktop app', () => {
     await app.close();
   });
 
+  test('analysis and the simulation worker run under the packaged CSP', async () => {
+    const app = await launch(userData);
+    const page = await app.firstWindow();
+    const errors: string[] = [];
+    page.on('console', (m) => { if (/Content Security Policy|Refused/i.test(m.text())) errors.push(m.text()); });
+
+    await page.getByRole('button', { name: 'Import' }).click();
+    await page.getByRole('radio', { name: /Replace current deck/ }).check();
+    await page.getByRole('dialog').locator('textarea').fill('Commander\n1 Fixture Commander\n\nDeck\n1 Sol Ring\n38 Forest');
+    await page.getByRole('dialog').getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.locator('.deck .rname', { hasText: 'Fixture Commander' })).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Analysis' }).click();
+    await expect(page.getByRole('img', { name: /Cards by mana value/ })).toBeVisible();
+    await expect(page.locator('.roles')).toContainText('Ramp');
+
+    await page.getByRole('tab', { name: 'Simulate' }).click();
+    await page.getByLabel('Games').selectOption('2000');
+    await page.getByRole('button', { name: 'Run simulation' }).click();
+    await expect(page.getByRole('heading', { name: 'Opening hands' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('img', { name: /Fixture Commander castable by turn/ })).toBeVisible();
+    expect(errors).toEqual([]);
+    await app.close();
+  });
+
   test('a second instance does not open another window', async () => {
     const first = await launch(userData);
     await first.firstWindow();

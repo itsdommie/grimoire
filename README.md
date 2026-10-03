@@ -40,6 +40,14 @@ npm run e2e:desktop   # launches the real Electron app (needs a display); GRIMOI
 Search syntax follows Scryfall: `t:creature c:rg cmc<=3 o:"draw a card"`, `f:commander id<=wubg`, `-c:u`, `(a or b)`.
 `c:` means "at least these colours", `id:` means "within this colour identity".
 
+## Analysis and simulation
+
+The **Analysis** tab shows the mana curve, colour pips, a suggested land count, how many sources of each colour you need,
+and a "you're short on X" report built from heuristic role tagging (ramp, draw, removal, wipes, ...). The **Simulate** tab
+plays your deck alone thousands of times in a background worker and reports land-drop consistency, mulligans, colour
+trouble and when your commander can first be cast. Both tabs explain their assumptions in the app; in particular the
+colour-source numbers are a calibrated hypergeometric estimate, not Frank Karsten's published table.
+
 ## Decks
 
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.

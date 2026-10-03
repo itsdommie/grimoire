@@ -21,8 +21,8 @@ function useSearch(query: string, order: string, commanderIdentity: string | nul
     setState((s) => ({ ...s, loading: true }));
     const timer = setTimeout(() => {
       api.search({ q, order, limit: 60 }, ctrl.signal)
-        .then((data) => setState({ data, loading: false }))
-        .catch((e) => { if (e.name !== 'AbortError') setState({ data: { total: 0, cards: [], error: 'Server unreachable' }, loading: false }); });
+        .then((data) => { if (!ctrl.signal.aborted) setState({ data, loading: false }); })
+        .catch((e) => { if (e.name !== 'AbortError' && !ctrl.signal.aborted) setState({ data: { total: 0, cards: [], error: 'Server unreachable' }, loading: false }); });
     }, 150);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [q, order, version]);
