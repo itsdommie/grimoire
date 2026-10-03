@@ -48,6 +48,13 @@ plays your deck alone thousands of times in a background worker and reports land
 trouble and when your commander can first be cast. Both tabs explain their assumptions in the app; in particular the
 colour-source numbers are a calibrated hypergeometric estimate, not Frank Karsten's published table.
 
+## Collection
+
+The **Collection** view tracks the cards you own: import a CSV from ManaBox, Moxfield, Archidekt or Deckbox (or paste a list), and
+adjust counts with the +/- buttons or by hovering cards in **Cards**. `owned>=1` works in search, decks show how much of them
+you own and what the rest would cost, and "What can I build?" ranks the commanders you own by how many of your cards fit them.
+Prices are Scryfall's for its featured printing of each card, so they're a rough guide rather than the cheapest copy.
+
 ## Decks
 
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.

@@ -64,6 +64,13 @@ CREATE TABLE IF NOT EXISTS deck_cards (
   PRIMARY KEY (deck_id, card_id, board)
 ) WITHOUT ROWID;
 
+-- What the user owns, by oracle id (printings and foils are not distinguished). Not a foreign key: re-ingest replaces cards.
+CREATE TABLE IF NOT EXISTS collection (
+  card_id    TEXT PRIMARY KEY,
+  qty        INTEGER NOT NULL CHECK (qty > 0),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 

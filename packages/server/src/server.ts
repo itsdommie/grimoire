@@ -8,6 +8,7 @@ import { SearchError, formatDeckList, type Board, type ExportStyle } from '@grim
 import type { Db } from './db.js';
 import { DataManager } from './data.js';
 import { getCardByName, searchCards, type Order } from './cards.js';
+import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, renameDeck, setCardQty } from './decks.js';
 
 const ORDERS = new Set<Order>(['name', 'cmc', 'edhrec', 'usd']);
@@ -124,6 +125,30 @@ export function buildServer(opts: ServerOptions) {
     const style: ExportStyle = req.query.style === 'plain' ? 'plain' : 'sectioned';
     return reply.type('text/plain; charset=utf-8').header('Content-Disposition', `attachment; filename="${deck.name.replace(/[^\w.-]+/g, '_')}.txt"`).send(formatDeckList(entries, style));
   });
+
+  // ------------------------------------------------------------ collection
+  app.get('/api/collection/summary', async () => collectionSummary(db));
+  app.get<{ Querystring: { q?: string; order?: string; limit?: string; offset?: string } }>('/api/collection', async (req, reply) => {
+    const { q = '', order, limit, offset } = req.query;
+    try {
+      return searchCards(db, { query: `${q} owned>0`, order: ORDERS.has(order as Order) ? (order as Order) : 'name', limit: limit ? Number(limit) : undefined, offset: offset ? Number(offset) : undefined });
+    } catch (err) {
+      if (err instanceof SearchError) return reply.code(400).send({ total: 0, cards: [], error: err.message });
+      throw err;
+    }
+  });
+  app.post<{ Body: { text?: string; mode?: string } }>('/api/collection/import', async (req, reply) => {
+    const { text = '', mode } = req.body ?? {};
+    return reply.code(201).send(importCollection(db, text, mode === 'replace' ? 'replace' : 'merge'));
+  });
+  app.put<{ Body: { cardId: string; qty: number } }>('/api/collection/cards', async (req) => {
+    const { cardId, qty } = req.body ?? ({} as never);
+    setOwned(db, cardId, qty);
+    return collectionSummary(db);
+  });
+  app.delete('/api/collection', async (_req, reply) => { clearCollection(db); return reply.code(204).send(); });
+  app.get('/api/collection/commanders', async () => commanderIdeas(db));
+  app.get<{ Params: { id: string } }>('/api/decks/:id/missing', async (req) => deckMissing(db, deckId(req.params.id)));
 
   // ------------------------------------------------------------- static UI
   if (webRoot) {

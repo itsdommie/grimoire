@@ -20,6 +20,8 @@ export interface Card {
   imageUrl: string | null;
   scryfallUri: string;
   legalities: Record<string, string>;
+  /** How many copies the user owns (set by the server; absent for cards built without a collection). */
+  owned?: number;
 }
 
 export interface SearchResponse {
@@ -61,4 +63,52 @@ export interface DataStatus {
   error?: string;
   /** Set after an update check: true if Scryfall had nothing newer. */
   upToDate?: boolean;
+}
+
+// ------------------------------------------------------------ collection
+
+export interface CollectionSummary {
+  unique: number;
+  total: number;
+  /** Rough value in USD: Scryfall's price for its featured printing of each card, times quantity. */
+  valueUsd: number;
+  /** Distinct cards with no price. */
+  unpriced: number;
+}
+
+export interface CollectionImportResult {
+  format: import('./collection.js').CollectionFormat;
+  /** Copies added (or set, when replacing). */
+  imported: number;
+  unique: number;
+  /** Names that didn't match any card. */
+  unresolved: string[];
+  skipped: string[];
+  summary: CollectionSummary;
+}
+
+export interface MissingCard {
+  card: Card;
+  need: number;
+  owned: number;
+  missing: number;
+  /** USD for the missing copies, or null if the card has no price. */
+  costUsd: number | null;
+}
+
+export interface MissingReport {
+  /** Non-basic cards in the deck / how many of them you own. */
+  needed: number;
+  have: number;
+  missing: MissingCard[];
+  totalUsd: number;
+  unpriced: number;
+}
+
+export interface CommanderIdea {
+  commander: Card;
+  /** Owned cards (other than the commander) that are legal in Commander and within its colour identity. */
+  playable: number;
+  /** Of those, how many are not lands. */
+  spells: number;
 }

@@ -153,3 +153,32 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .viz .viz-legend svg { width: 16px; height: 8px; flex: none; display: inline-block; }
 .viz .viz-tip svg { width: 10px; height: 10px; display: inline-block; vertical-align: -1px; }
 .viz-legend li { white-space: nowrap; }
+
+/* ---- collection ---- */
+.viewtabs { display: flex; gap: 2px; }
+.viewtabs button { padding: 6px 12px; font: inherit; color: var(--muted); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.viewtabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
+.collbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 6px 0 14px; padding: 12px 14px; background: var(--panel); border-radius: 10px; }
+.collbar p { margin: 4px 0 0; }
+.collbar button { padding: 6px 14px; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 6px; cursor: pointer; }
+.collbar button.primary { color: #12131a; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.collbar button.danger:hover { border-color: #ff7a7a; color: #ff7a7a; }
+.ideas h2 { font-size: 16px; margin: 4px 0; }
+.ideas ul { display: flex; gap: 12px; overflow-x: auto; margin: 8px 0 14px; padding: 0 0 8px; list-style: none; }
+.ideas li { display: flex; gap: 10px; flex: none; width: 290px; padding: 8px; background: var(--panel); border-radius: 10px; }
+.ideas img { width: 70px; height: 98px; border-radius: 5px; object-fit: cover; }
+.ideas li > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ideas strong { font-size: 13px; }
+.ideas meter { width: 100%; }
+.ideas button { align-self: flex-start; padding: 3px 10px; font: inherit; font-size: 12px; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 6px; cursor: pointer; }
+.ideas button:hover { border-color: var(--accent); }
+.badge.own { left: 6px; right: auto; background: #1c1e29e6; color: var(--fg); border: 1px solid #333650; }
+.stepper { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.stepper button { width: 26px; height: 24px; padding: 0; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid #333650; border-radius: 6px; cursor: pointer; }
+.stepper button:hover { border-color: var(--accent); }
+.row .missing { color: var(--warning, #fab219); font-size: 12px; }
+.missingpanel { margin: 8px 0; }
+.missingpanel details { margin-left: 22px; }
+.missingpanel summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+.filebtn { cursor: pointer; display: inline-block; }
+.overlay button { padding: 4px 6px; }

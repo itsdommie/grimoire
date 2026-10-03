@@ -26,7 +26,7 @@ const EXPECT: Record<string, string> = {
 };
 
 describe.skipIf(!have)('role tagger on real cards', () => {
-  const db = have ? openDb(path, { readonly: true }) : (undefined as never);
+  const db = have ? openDb(path) : (undefined as never);
   it.each(Object.entries(EXPECT))('%s', (name, want) => {
     const card = resolveCardName(db, name);
     expect(card, `${name} should exist in the card pool`).not.toBeNull();

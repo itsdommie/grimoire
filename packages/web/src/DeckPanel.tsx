@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import type { Board, Card, DeckDetail, DeckEntry, DeckSummary } from '@grimoire/shared';
-import { COMMANDER_DECK_SIZE } from '@grimoire/shared';
+import { useEffect } from 'react';
+import type { Board, Card, CollectionSummary, DeckDetail, DeckEntry, DeckSummary, MissingReport } from '@grimoire/shared';
+import { COMMANDER_DECK_SIZE, isBasicLand } from '@grimoire/shared';
 import { api } from './api';
 import { AnalysisView } from './AnalysisView';
 import { SimulateView } from './SimulateView';
+import { usd } from './CollectionView';
 
 const GROUPS = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Battle', 'Land'] as const;
 
@@ -23,9 +25,11 @@ interface Props {
   onChange: (detail: DeckDetail) => void;
   onDecksChanged: () => void;
   onError: (message: string) => void;
+  collection: CollectionSummary | null;
+  collectionVersion: number;
 }
 
-export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError }: Props) {
+export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChange, onDecksChanged, onError, collection, collectionVersion }: Props) {
   const [showImport, setShowImport] = useState(false);
   // window.prompt() isn't available in Electron, so naming uses an in-app dialog.
   const [naming, setNaming] = useState<'new' | 'rename' | null>(null);
@@ -70,10 +74,12 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
   const commanders = current?.entries.filter((e) => e.board === 'commander') ?? [];
   const side = current?.entries.filter((e) => e.board === 'sideboard') ?? [];
 
+  const haveCollection = (collection?.total ?? 0) > 0;
   const row = (e: DeckEntry, board: Board) => (
     <li className="row" key={e.card.id}>
       <span className="qty">{e.qty}</span>
       <a className="rname" href={e.card.scryfallUri} target="_blank" rel="noreferrer" title={e.card.typeLine}>{e.card.name}</a>
+      {haveCollection && board !== 'sideboard' && !isBasicLand(e.card) && (e.card.owned ?? 0) < e.qty && <span className="missing" title="Not enough copies in your collection" aria-label="Missing from collection">✗</span>}
       <span className="cost">{e.card.manaCost}</span>
       <span className="actions">
         <button onClick={() => setQty(e, board, e.qty - 1)} aria-label={`Remove one ${e.card.name}`}>−</button>
@@ -128,6 +134,8 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
             </ul>
           )}
           {current.issues.length === 0 && <p className="valid">Valid Commander deck ✓</p>}
+
+          {haveCollection && <MissingPanel deckId={deck.id} entries={current.entries} version={collectionVersion} />}
 
           <h3>Commander</h3>
           <ul className="list">{commanders.length ? commanders.map((e) => row(e, 'commander')) : <li className="empty">Use ★ on a card to set the commander.</li>}</ul>
@@ -236,5 +244,45 @@ function NameDialog({ title, initial, confirmLabel, onSubmit, onCancel }: {
         </div>
       </form>
     </div>
+  );
+}
+
+/** How much of the deck you own, and what the rest would cost (rough: Scryfall's featured-printing prices). */
+function MissingPanel({ deckId, entries, version }: { deckId: number; entries: DeckEntry[]; version: number }) {
+  const [report, setReport] = useState<MissingReport | null>(null);
+  const key = entries.filter((e) => e.board !== 'sideboard').map((e) => `${e.card.id}:${e.qty}:${e.card.owned ?? 0}`).join('|');
+  useEffect(() => {
+    let stop = false;
+    api.deckMissing(deckId).then((r) => { if (!stop) setReport(r); }).catch(() => { if (!stop) setReport(null); });
+    return () => { stop = true; };
+  }, [deckId, key, version]);
+  if (!report || report.needed === 0) return null;
+  const done = report.missing.length === 0;
+  return (
+    <section className="missingpanel" aria-label="Collection coverage">
+      <p className={`finding ${done ? 'ok' : 'info'}`}>
+        <span className="ficon" aria-hidden>{done ? '✓' : '\u2139\uFE0E'}</span>
+        <span>
+          {done
+            ? <strong>You own every card in this deck.</strong>
+            : <><strong>You own {report.have} of {report.needed}</strong> cards (basic lands excluded). Missing {report.missing.reduce((n, m) => n + m.missing, 0)} for about <strong>{usd(report.totalUsd)}</strong>{report.unpriced > 0 && ` + ${report.unpriced} unpriced`}.</>}
+        </span>
+      </p>
+      {!done && (
+        <details>
+          <summary>Missing cards</summary>
+          <ul className="list">
+            {report.missing.map((m) => (
+              <li key={m.card.id} className="row">
+                <span className="qty">{m.missing}</span>
+                <a className="rname" href={m.card.scryfallUri} target="_blank" rel="noreferrer">{m.card.name}</a>
+                <span className="cost">{m.costUsd === null ? 'no price' : usd(m.costUsd)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="muted small">Prices are Scryfall's for its featured printing of each card (USD), not the cheapest available copy.</p>
+        </details>
+      )}
+    </section>
   );
 }

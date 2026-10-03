@@ -222,6 +222,12 @@ function compileTerm(key: string, op: Op, value: string, params: Compiled['param
     params.push(n);
     return `${numCol} ${SQL_OP[op]} ?`;
   }
+  if (key === 'owned') {
+    const n = Number(value);
+    if (!Number.isInteger(n)) throw new SearchError(`"owned" expects a whole number, got "${value}"`);
+    params.push(n);
+    return `COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) ${SQL_OP[op]} ?`;
+  }
   switch (key) {
     case 'n': case 'name': return contains('name', value, params);
     case 'o': case 'oracle': case 'text': return contains('oracle_text', value, params);

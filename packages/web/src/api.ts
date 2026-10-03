@@ -1,4 +1,4 @@
-import type { Board, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, SearchResponse } from '@grimoire/shared';
+import type { Board, CollectionImportResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -35,14 +35,21 @@ export const api = {
   dataStatus: () => request<DataStatus>('GET', '/api/data/status'),
   updateData: (force = false) => request<DataStatus>('POST', '/api/data/update', { force }),
   /** Search errors (bad syntax) come back as a 400 with a SearchResponse body; surface them as data. */
-  async search(params: { q: string; order: string; limit: number }, signal: AbortSignal): Promise<SearchResponse> {
+  async search(params: { q: string; order: string; limit: number }, signal: AbortSignal, scope: 'all' | 'collection' = 'all'): Promise<SearchResponse> {
     try {
-      return await request<SearchResponse>('GET', `/api/cards/search?${new URLSearchParams({ q: params.q, order: params.order, limit: String(params.limit) })}`, undefined, signal);
+      const path = scope === 'collection' ? '/api/collection' : '/api/cards/search';
+      return await request<SearchResponse>('GET', `${path}?${new URLSearchParams({ q: params.q, order: params.order, limit: String(params.limit) })}`, undefined, signal);
     } catch (e) {
       if (e instanceof ApiError && e.status === 400) return e.body as SearchResponse;
       throw e;
     }
   },
+  collectionSummary: () => request<CollectionSummary>('GET', '/api/collection/summary'),
+  importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),
+  setOwned: (cardId: string, qty: number) => request<CollectionSummary>('PUT', '/api/collection/cards', { cardId, qty }),
+  clearCollection: () => request<void>('DELETE', '/api/collection'),
+  commanderIdeas: () => request<CommanderIdea[]>('GET', '/api/collection/commanders'),
+  deckMissing: (id: number) => request<MissingReport>('GET', `/api/decks/${id}/missing`),
   listDecks: () => request<DeckSummary[]>('GET', '/api/decks'),
   createDeck: (name: string) => request<DeckSummary>('POST', '/api/decks', { name }),
   getDeck: (id: number) => request<DeckDetail>('GET', `/api/decks/${id}`),
