@@ -1,9 +1,11 @@
 import sqlite3InitModule from '@sqlite.org/sqlite-wasm';
-import { createRouter, type DataService, type SemanticService } from '../../server/src/routes.ts';
+import { createRouter, type DataService } from '../../server/src/routes.ts';
 import { migrate, type Db } from '../../server/src/schema.ts';
 import { seedAliases } from '../../server/src/names.ts';
 import { loadPrintings, parsePrintingsFile } from '../../server/src/printings.ts';
 import { wrapDb, type Oo1Db } from './wasmDb.ts';
+import { createPhoneSemantic } from './semantic.ts';
+import { cacheStore } from './modelStore.ts';
 import { streamIntoPool } from './poolStream.ts';
 import { applyPendingCardData, CardUpdater, DEFAULT_DATA_BASE, type PoolFiles } from './cardUpdates.ts';
 import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protocol.ts';
@@ -37,18 +39,6 @@ function dataService(meta: (key: string) => string | null, updater: CardUpdater)
     start: () => updater.start(),
   };
 }
-
-/** Search by meaning needs the language model; not wired up on Android yet, so the UI shows it as off. */
-const semanticService: SemanticService = {
-  isReady: () => false,
-  ensureLoaded: () => {},
-  embedQuery: async () => { throw new Error('Search by meaning is not available on Android yet'); },
-  rank: () => [],
-  status: () => ({ state: 'off', enabled: false, indexed: 0, total: 0, pending: 0, model: '' }),
-  start: () => {},
-  cancel: () => {},
-  remove: () => {},
-};
 
 let router: ReturnType<typeof createRouter> | null = null;
 
@@ -86,7 +76,7 @@ async function installPool(sqlite3: Awaited<ReturnType<typeof sqlite3InitModule>
   throw lastError;
 }
 
-async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; metered?: boolean }): Promise<void> {
+async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; metered?: boolean; semanticBase?: string; modelBase?: string }): Promise<void> {
   // The package's types declare no options, but Emscripten's loader takes locateFile (it must find sqlite3.wasm next to this file).
   const init = sqlite3InitModule as unknown as (o: { locateFile(name: string): string }) => ReturnType<typeof sqlite3InitModule>;
   const sqlite3 = await init({ locateFile: (name) => new URL(name, ctx.location.href).href });
@@ -116,7 +106,11 @@ async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; 
   applyPendingCardData({ db, pool: files, meta, setMeta, log }, (message) => post({ progress: message }));
   await loadBundledPrintings(db, meta);
   const updater = new CardUpdater({ db, pool: files, meta, setMeta, native: opts.native ? askNative : null, base: opts.dataBase ?? DEFAULT_DATA_BASE, metered: !!opts.metered, reload: () => post({ reload: true }), log });
-  router = createRouter({ db, data: dataService(meta, updater), semantic: semanticService });
+  router = createRouter({ db, data: dataService(meta, updater), semantic: createPhoneSemantic({
+      db, store: cacheStore, native: opts.native ? askNative : null, ortBase: new URL('ort/', ctx.location.href).href,
+      prebuiltBase: opts.semanticBase, modelBase: opts.modelBase,
+    }),
+  });
   post({ ready: true, cards: Number(meta('card_count') ?? 0) });
   // Once a week the app looks for a newer card database by itself (a few seconds after start, so it never slows the first screen).
   if (updater.dueForAutoCheck()) setTimeout(() => updater.start({ auto: true }), 10_000);

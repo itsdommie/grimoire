@@ -29,7 +29,12 @@ copyFileSync(resolve(root, 'node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3.wa
 const indexPath = resolve(dist, 'index.html');
 writeFileSync(indexPath, readFileSync(indexPath, 'utf8').replace('<script type="module"', '<script src="/bridge.js"></script>\n    <script type="module"'));
 
-// A slim card database: no embeddings (semantic search isn't on Android yet), none of the developer's own decks or collection.
+// onnxruntime-web for search by meaning: the WASM-only loader, its worker script and the engine (loaded only when the feature is used).
+const ortSrc = resolve(root, 'node_modules/onnxruntime-web/dist');
+mkdirSync(resolve(dist, 'ort'), { recursive: true });
+for (const f of ['ort.wasm.min.mjs', 'ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm']) copyFileSync(resolve(ortSrc, f), resolve(dist, 'ort', f));
+
+// A slim card database: no embeddings (the app downloads a ready-made index when search by meaning is turned on), none of the developer's own decks or collection.
 const out = resolve(dist, 'grimoire.db');
 const full = new DatabaseSync(srcDb, { readOnly: true });
 full.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);

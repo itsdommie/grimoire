@@ -99,7 +99,9 @@ try { dataBase = localStorage.getItem('grimoire.dataBase') ?? undefined; } catch
 const connection = (navigator as unknown as { connection?: { type?: string; saveData?: boolean } }).connection;
 let metered = !!connection && (connection.type === 'cellular' || connection.saveData === true);
 try { const forced = localStorage.getItem('grimoire.metered'); if (forced !== null) metered = forced === '1'; } catch { /* storage unavailable */ }
-send({ init: { dbUrl: new URL('grimoire.db', location.href).href, native: Capacitor.isNativePlatform(), dataBase, metered } });
+let semanticBase: string | undefined, modelBase: string | undefined;
+try { semanticBase = localStorage.getItem('grimoire.semanticBase') ?? undefined; modelBase = localStorage.getItem('grimoire.modelBase') ?? undefined; } catch { /* storage unavailable */ }
+send({ init: { dbUrl: new URL('grimoire.db', location.href).href, native: Capacitor.isNativePlatform(), dataBase, metered, semanticBase, modelBase } });
 
 const realFetch = window.fetch.bind(window);
 window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {

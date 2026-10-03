@@ -7,6 +7,7 @@ import { dbPathFor, openDb, type NodeDb as Db } from './db.js';
 import { loadJsonl } from './ingest.js';
 import { searchCards } from './cards.js';
 import { HashingEmbedder, MODEL, NOT_SET_UP, OrtEmbedder, SemanticIndex, quantise, type Embedder, type ModelSpec } from './semantic.js';
+import { SemanticIndexCore } from './semantic-core.js';
 import { buildServer } from './server.js';
 import { sfCard, tmpDir } from './testutil.js';
 
@@ -62,6 +63,18 @@ describe('building the index', () => {
     idx.start(); await idx.idle();
     expect(spy.calls).toEqual([32, 32, 6]);
     expect(idx.status().indexed).toBe(70);
+  });
+
+  it('on a phone, refuses to embed more cards than it is allowed to and says to retry, instead of grinding for hours', async () => {
+    const core = (maxLocalEmbeds: number) => new SemanticIndexCore({ db, maxLocalEmbeds, deps: { ensureModel: async () => {}, createEmbedder: async () => spy, loadPrebuilt: async () => null, removeModel: () => {} } });
+    const idx = core(5);
+    idx.start(); await idx.idle();
+    expect(idx.status()).toMatchObject({ state: 'error' });
+    expect(idx.status().error).toMatch(/ready-made card index.*try again/s);
+    expect(spy.calls).toEqual([]); // nothing was embedded
+    const ok = core(6);
+    ok.start(); await ok.idle();
+    expect(ok.status()).toMatchObject({ state: 'ready', indexed: 6 });
   });
 
   it('resumes after being cancelled, only embedding what is left', async () => {

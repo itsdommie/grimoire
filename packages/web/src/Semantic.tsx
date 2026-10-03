@@ -60,7 +60,7 @@ export function SemanticFooter({ status, onEnable, onCancel, onRemove }: { statu
         <button className="linklike" onClick={onEnable}>{status.state === 'error' || status.indexed > 0 ? 'Try again' : 'Set up…'}</button>
         {' · '}<button className="linklike" onClick={() => setExplain((v) => !v)} aria-expanded={explain}>What is this?</button>
         {explain && (
-          <span className="muted"> Search by meaning (e.g. <code>about:"make treasure when creatures die"</code>) uses a small language model that runs on this computer. Setup downloads it once (about 34 MB, verified) plus a ready-made card index (about 12 MB), then adds anything that's newer; without the index it would take several minutes. Nothing you type leaves your computer.</span>
+          <span className="muted"> Search by meaning (e.g. <code>about:"make treasure when creatures die"</code>) uses a small language model that runs on this device. Setup downloads it once (about 34 MB, verified) plus a ready-made card index (about 12 MB), then adds anything that's newer; without the index it would take several minutes. Nothing you type leaves your device.</span>
         )}
       </>
     );

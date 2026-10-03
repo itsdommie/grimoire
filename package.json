@@ -12,7 +12,7 @@
     "dev:web": "npm run dev -w @grimoire/web",
     "test": "vitest run",
     "e2e": "playwright test",
-    "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/web && tsc -p packages/desktop && tsc -p packages/mobile",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/web && tsc -p packages/desktop && tsc -p packages/mobile && tsc -p packages/mobile/tsconfig.test.json",
     "desktop": "npm start -w @grimoire/desktop",
     "desktop:pack": "npm run pack -w @grimoire/desktop",
     "desktop:dist": "npm run dist -w @grimoire/desktop",

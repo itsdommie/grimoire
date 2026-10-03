@@ -14,7 +14,7 @@ export type NativeResult = { ok: true; url?: string; text?: string } | { ok: fal
 /** Messages between the page (bridge) and the worker that runs the app's API. */
 export type ToWorker =
   | { id: number; req: ApiRequest }
-  | { init: { dbUrl: string; /** the page is inside the native app (downloads go through the Filesystem plugin) */ native: boolean; /** where card data updates are published (a test can point it elsewhere) */ dataBase?: string; /** mobile data or a data saver is on */ metered?: boolean } }
+  | { init: { dbUrl: string; /** the page is inside the native app (downloads go through the Filesystem plugin) */ native: boolean; /** where card data updates are published (a test can point it elsewhere) */ dataBase?: string; /** mobile data or a data saver is on */ metered?: boolean; /** where the ready-made semantic index and the language model are published (tests only) */ semanticBase?: string; modelBase?: string } }
   | { nativeResult: { id: number; result: NativeResult } }
   | { nativeProgress: { id: number; received: number; total: number } };
 

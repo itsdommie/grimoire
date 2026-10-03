@@ -106,7 +106,9 @@ collection are kept when you update. Releases are built and signed by `android-r
 `packages/mobile` wraps the same web UI in an Android app (Capacitor). There is no server on the phone: the shared API routes
 (`packages/server/src/routes.ts`) run in a web worker over SQLite compiled to WASM, in the app's private storage, with the card
 database bundled in the APK. Decks, collection, search, rules, imports and the spare-copies option all work as on the desktop; on a
-phone the card browser and the deck are separate panes behind a bar at the bottom. Search by meaning is not there yet.
+phone the card browser and the deck are separate panes behind a bar at the bottom. Search by meaning works too: turn it on in the
+footer and the app downloads the language model (about 34 MB, checked against a fixed checksum) and the ready-made card index
+(about 10 MB), which takes under a minute on Wi-Fi; after that it works offline and a search takes about a quarter of a second.
 
 **Card scanner.** The **Scan** button opens the camera with a card-shaped outline. Hold a card in the outline and its name is read
 on the phone (Google ML Kit, offline) and matched against the card database; once the same card is seen in two frames, one copy is
