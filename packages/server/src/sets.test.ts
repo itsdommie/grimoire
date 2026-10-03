@@ -180,3 +180,30 @@ describe('set types', () => {
     expect(listSets(db).find((s) => s.code === 'tst')?.kind).toBeNull();
   });
 });
+
+describe('foil completion', () => {
+  it('counts the cards that come in foil in a set, and those you have a foil copy of recorded from it', () => {
+    const before = getSet(db, '2xm')!;
+    expect(before.foils).toEqual({ possible: 1, owned: 0 }); // Lightning Bolt comes in foil in Double Masters
+    expect(getSet(db, 'cmm')!.foils).toEqual({ possible: 1, owned: 0 }); // Sol Ring (the foil-only star printing); the rest are nonfoil only
+    expect(getSet(db, 'lea')!.foils).toEqual({ possible: 0, owned: 0 });
+
+    setOwnedPrinting(db, 'bolt-2xm', 'nonfoil', 1); // a nonfoil copy is not a foil
+    expect(getSet(db, '2xm')!.foils.owned).toBe(0);
+    setOwnedPrinting(db, 'bolt-2xm', 'foil', 2);
+    const after = getSet(db, '2xm')!;
+    expect(after.foils).toEqual({ possible: 1, owned: 1 });
+    expect(after.cards[0]).toMatchObject({ foilable: true, foilCopies: 2 });
+  });
+
+  it('only counts foil recorded as this set\'s printing', () => {
+    setOwnedPrinting(db, 'bolt-2xm', 'foil', 1);
+    expect(getSet(db, 'lea')!.cards.find((c) => c.card.id === BOLT)).toMatchObject({ foilable: false, foilCopies: 0 });
+  });
+
+  it('can list the cards that still need a foil', () => {
+    expect(getSet(db, 'cmm', { filter: 'nofoil' })!.cards.map((c) => c.card.id)).toEqual([SOL]);
+    setOwnedPrinting(db, 'sol-cmm-400s', 'foil', 1);
+    expect(getSet(db, 'cmm', { filter: 'nofoil' })).toMatchObject({ total: 0, cards: [] });
+  });
+});

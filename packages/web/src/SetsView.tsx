@@ -66,6 +66,7 @@ function SetTile({ c, onOpenCard, onCopies }: { c: SetCard; onOpenCard: (id: str
         <button className="imglink" onClick={() => onOpenCard(c.card.id)} aria-label={`Details for ${c.card.name}`}>
           <img src={c.imageUrl} alt="" loading="lazy" />
         </button>
+        {c.foilCopies > 0 && <span className="badge foil" title="Copies recorded from this set as foil or etched">Foil ×{c.foilCopies}</span>}
         {owned > 0 && <span className="badge own" title={elsewhere > 0 ? `${owned} owned, ${c.copiesHere} recorded as this set's printing` : 'Copies of this printing'}>Own ×{owned}</span>}
       </div>
       <span className="name">{c.card.name}</span>
@@ -81,7 +82,7 @@ function SetTile({ c, onOpenCard, onCopies }: { c: SetCard; onOpenCard: (id: str
 
 function SetPage({ code, onBack, onOpenCard, onSearch, onCollectionChanged, version }: { code: string; onBack: () => void; onOpenCard: (id: string) => void; onSearch: (code: string) => void; onCollectionChanged: () => void; version: number }) {
   useBack(true, onBack);
-  const [filter, setFilter] = useState<'all' | 'owned' | 'missing'>('all');
+  const [filter, setFilter] = useState<'all' | 'owned' | 'missing' | 'nofoil'>('all');
   const [detail, setDetail] = useState<SetDetail | null>(null);
   const [limit, setLimit] = useState(PAGE);
   const [error, setError] = useState<string | null>(null);
@@ -111,16 +112,22 @@ function SetPage({ code, onBack, onOpenCard, onSearch, onCollectionChanged, vers
             {' '}<strong>{s.owned.toLocaleString()}</strong> of {s.cards.toLocaleString()} cards ({pct(s.owned, s.cards)}%)
             {s.ownedHere > 0 && <span className="muted small"> · {s.ownedHere.toLocaleString()} recorded as this set's printing</span>}
           </p>
+          {detail.foils.possible > 0 && (
+            <p className="setprogress">
+              <meter min={0} max={detail.foils.possible} value={detail.foils.owned} aria-label={`${pct(detail.foils.owned, detail.foils.possible)}% of the foils owned`} />
+              {' '}<strong>{detail.foils.owned.toLocaleString()}</strong> of {detail.foils.possible.toLocaleString()} foils <span className="muted small">(cards that come in foil here, with a foil copy recorded as this set's printing)</span>
+            </p>
+          )}
           {detail.missingUsd !== null && s.owned < s.cards && (
             <p className="statline">About <strong>{usd(detail.missingUsd)}</strong> to buy the rest, each at its cheapest price in this set{detail.unpriced > 0 && <span className="muted small"> ({detail.unpriced} with no price)</span>}. <span className="muted small">Scryfall's prices: a rough guide.</span></p>
           )}
           <div className="deckbar">
             <span className="seg" role="group" aria-label="Which cards">
-              {(['all', 'owned', 'missing'] as const).map((f) => <button key={f} className={filter === f ? 'active' : ''} aria-pressed={filter === f} onClick={() => { setFilter(f); setLimit(PAGE); }}>{f === 'all' ? 'All' : f === 'owned' ? 'Owned' : 'Missing'}</button>)}
+              {(['all', 'owned', 'missing', ...(detail.foils.possible > 0 || filter === 'nofoil' ? ['nofoil' as const] : [])] as const).map((f) => <button key={f} className={filter === f ? 'active' : ''} aria-pressed={filter === f} onClick={() => { setFilter(f); setLimit(PAGE); }}>{f === 'all' ? 'All' : f === 'owned' ? 'Owned' : f === 'missing' ? 'Missing' : 'Needs foil'}</button>)}
             </span>
             <button onClick={() => onSearch(s.code)}>Search this set in Cards</button>
           </div>
-          {detail.cards.length === 0 && <p className="muted">{filter === 'owned' ? "You don't own any cards from this set yet." : filter === 'missing' ? 'You own every card in this set. 🎉' : 'Nothing here.'}</p>}
+          {detail.cards.length === 0 && <p className="muted">{filter === 'owned' ? "You don't own any cards from this set yet." : filter === 'missing' ? 'You own every card in this set. 🎉' : filter === 'nofoil' ? 'You have a foil of every card in this set that comes in foil. 🎉' : 'Nothing here.'}</p>}
           <div className="grid">{detail.cards.map((c) => <SetTile key={c.printingId} c={c} onOpenCard={onOpenCard} onCopies={setCopies} />)}</div>
           {detail.total > detail.cards.length && <p><button onClick={() => setLimit((l) => l + PAGE)}>Show more ({(detail.total - detail.cards.length).toLocaleString()} left)</button></p>}
         </>

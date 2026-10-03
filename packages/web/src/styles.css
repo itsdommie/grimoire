@@ -413,3 +413,4 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .sets > .seg, .setsbar + .seg { margin: 4px 0 6px; flex-wrap: wrap; }
 .seg.wrap { flex-wrap: wrap; gap: 6px; border: 0; overflow: visible; }
 .seg.wrap button { border: 1px solid #333650; border-radius: 999px; padding: 4px 12px; }
+.badge.foil { background: linear-gradient(135deg, #7a5cff, #2fb5d6); color: #fff; }

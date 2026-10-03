@@ -288,6 +288,10 @@ export interface SetCard {
   variants: number;
   /** Copies you have recorded as a printing from this set. */
   copiesHere: number;
+  /** The card comes in foil (or etched) in this set. */
+  foilable: boolean;
+  /** Of the copies recorded from this set, how many are foil or etched. */
+  foilCopies: number;
 }
 export interface SetDetail {
   set: SetSummary;
@@ -295,6 +299,8 @@ export interface SetDetail {
   missingUsd: number | null;
   /** Cards you don't own whose price is unknown. */
   unpriced: number;
+  /** Foil completion: cards that come in foil in this set, and how many of those you have a foil copy of (recorded as this set's printing). */
+  foils: { possible: number; owned: number };
   /** Cards matching the filter (the page below is part of these). */
   total: number;
   cards: SetCard[];

@@ -52,7 +52,7 @@ export const api = {
   },
   restore: (data: unknown, mode: 'merge' | 'replace') => request<RestoreResult>('POST', '/api/backup/restore', { data, mode }),
   sets: (q = '') => request<{ sets: SetSummary[] }>('GET', `/api/sets?q=${encodeURIComponent(q)}`),
-  set: (code: string, filter: 'all' | 'owned' | 'missing', limit: number, offset = 0, signal?: AbortSignal) => request<SetDetail>('GET', `/api/sets/${encodeURIComponent(code)}?filter=${filter}&limit=${limit}&offset=${offset}`, undefined, signal),
+  set: (code: string, filter: 'all' | 'owned' | 'missing' | 'nofoil', limit: number, offset = 0, signal?: AbortSignal) => request<SetDetail>('GET', `/api/sets/${encodeURIComponent(code)}?filter=${filter}&limit=${limit}&offset=${offset}`, undefined, signal),
   advisorStatus: () => request<AdvisorStatus>('GET', '/api/advisor/status'),
   advisorSetKey: (key: string) => request<AdvisorStatus>('PUT', '/api/advisor/key', { key }),
   advisorClearKey: () => request<AdvisorStatus>('DELETE', '/api/advisor/key'),

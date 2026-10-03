@@ -30,7 +30,8 @@ export function listSets(db: Db, q = ''): SetSummary[] {
     .map(toSummary);
 }
 
-export type SetFilter = 'all' | 'owned' | 'missing';
+/** `nofoil`: cards that come in foil in this set and that you have no foil copy of (recorded as this set's printing). */
+export type SetFilter = 'all' | 'owned' | 'missing' | 'nofoil';
 
 const priceOf = (r: { usd: number | null; usd_foil: number | null; usd_etched: number | null }) => [r.usd, r.usd_foil, r.usd_etched].filter((n): n is number => !!n && n > 0).sort((a, b) => a - b)[0] ?? null;
 const byCollector = (a: { collector: string }, b: { collector: string }) => Number(collectorDigits(a.collector) || Infinity) - Number(collectorDigits(b.collector) || Infinity) || a.collector.localeCompare(b.collector);
@@ -45,14 +46,19 @@ export function getSet(db: Db, code: string, opts: { filter?: SetFilter; limit?:
   const here = new Map<string, number>();
   for (const r of db.prepare('SELECT cp.card_id AS card_id, sum(cp.qty) AS n FROM collection_prints cp JOIN printings p ON p.id = cp.printing_id WHERE p.set_code = ? GROUP BY cp.card_id').all(row.code) as unknown as Array<{ card_id: string; n: number }>) here.set(r.card_id, r.n);
 
+  const foilHere = new Map<string, number>();
+  for (const r of db.prepare("SELECT cp.card_id AS card_id, sum(cp.qty) AS n FROM collection_prints cp JOIN printings p ON p.id = cp.printing_id WHERE p.set_code = ? AND cp.finish IN ('foil', 'etched') GROUP BY cp.card_id").all(row.code) as unknown as Array<{ card_id: string; n: number }>) foilHere.set(r.card_id, r.n);
+
   // One entry per card: the printing with the lowest collector number stands for it, and the cheapest price of any of its printings counts.
-  const byCard = new Map<string, { first: (typeof printings)[number]; usd: number | null; variants: number }>();
+  const byCard = new Map<string, { first: (typeof printings)[number]; usd: number | null; variants: number; foilable: boolean }>();
   for (const p of printings) {
     const cur = byCard.get(p.card_id);
     const price = priceOf(p);
-    if (!cur) byCard.set(p.card_id, { first: p, usd: price, variants: 1 });
+    const foilable = (p.finishes & 6) !== 0; // foil or etched
+    if (!cur) byCard.set(p.card_id, { first: p, usd: price, variants: 1, foilable });
     else {
       cur.variants++;
+      if (foilable) cur.foilable = true;
       if (byCollector(p, cur.first) < 0) cur.first = p;
       if (price !== null && (cur.usd === null || price < cur.usd)) cur.usd = price;
     }
@@ -64,8 +70,12 @@ export function getSet(db: Db, code: string, opts: { filter?: SetFilter; limit?:
     if (e.usd === null) unpriced++; else { missingUsd += e.usd; priced++; }
   }
 
+  let foilPossible = 0, foilOwned = 0;
+  for (const [id, e] of byCard) if (e.foilable) { foilPossible++; if (foilHere.get(id)) foilOwned++; }
+
   const filter = opts.filter ?? 'all';
-  const entries = [...byCard.entries()].filter(([id]) => filter === 'all' || (filter === 'owned') === !!owned.get(id)).sort((a, b) => byCollector(a[1].first, b[1].first));
+  const keep = (id: string, e: { foilable: boolean }) => filter === 'all' || (filter === 'nofoil' ? e.foilable && !foilHere.get(id) : (filter === 'owned') === !!owned.get(id));
+  const entries = [...byCard.entries()].filter(([id, e]) => keep(id, e)).sort((a, b) => byCollector(a[1].first, b[1].first));
   const limit = Math.min(Math.max(opts.limit ?? 300, 1), 1000);
   const offset = Math.max(opts.offset ?? 0, 0);
   const page = entries.slice(offset, offset + limit);
@@ -74,10 +84,11 @@ export function getSet(db: Db, code: string, opts: { filter?: SetFilter; limit?:
     set: toSummary(row),
     missingUsd: priced > 0 ? Math.round(missingUsd * 100) / 100 : null,
     unpriced,
+    foils: { possible: foilPossible, owned: foilOwned },
     total: entries.length,
     cards: page.flatMap(([id, e]): SetCard[] => {
       const card: Card | undefined = cards.get(id);
-      return card ? [{ card, printingId: e.first.id, collector: e.first.collector, imageUrl: printingImageUrl(e.first.id), finish: maskToFinishes(e.first.finishes)[0] ?? 'nonfoil', usd: e.usd, variants: e.variants, copiesHere: here.get(id) ?? 0 }] : [];
+      return card ? [{ card, printingId: e.first.id, collector: e.first.collector, imageUrl: printingImageUrl(e.first.id), finish: maskToFinishes(e.first.finishes)[0] ?? 'nonfoil', usd: e.usd, variants: e.variants, copiesHere: here.get(id) ?? 0, foilable: e.foilable, foilCopies: foilHere.get(id) ?? 0 }] : [];
     }),
   };
 }

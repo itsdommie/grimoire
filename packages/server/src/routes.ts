@@ -222,7 +222,7 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
   // ------------------------------------------------------------------ sets
   on('GET', '/api/sets', ({ query }) => ({ sets: listSets(db, query.q ?? '') }));
   on('GET', '/api/sets/:code', ({ params, query }) => getSet(db, params.code!, {
-    filter: query.filter === 'owned' || query.filter === 'missing' ? (query.filter as SetFilter) : 'all', limit: num(query.limit), offset: num(query.offset),
+    filter: query.filter === 'owned' || query.filter === 'missing' || query.filter === 'nofoil' ? (query.filter as SetFilter) : 'all', limit: num(query.limit), offset: num(query.offset),
   }) ?? reply(404, { error: 'No such set' }));
 
   // --------------------------------------------------------------- advisor

@@ -35,6 +35,20 @@ test('filter the list of sets by kind, and every set shows its symbol', async ({
   await expect(page.locator('.setlist li')).toHaveCount(1);
 });
 
+test('foil completion: how many foils of a set you have, and the cards that still need one', async ({ page }) => {
+  await page.goto('/');
+  await tab(page).click();
+  await page.getByLabel('Find a set').fill('2xm');
+  await page.getByRole('button', { name: /Double Masters \(2XM\)/ }).click();
+  await expect(page.getByRole('heading', { name: /Double Masters/ })).toBeVisible();
+  await expect(page.locator('.setprogress').nth(1)).toContainText(/\d+ of \d+ foils/);
+  const which = page.getByRole('group', { name: 'Which cards' });
+  await which.getByRole('button', { name: 'Needs foil' }).click();
+  await expect(which.getByRole('button', { name: 'Needs foil' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.settile').first()).toBeVisible();
+  await expect.poll(() => page.locator('.settile').count()).toBeLessThanOrEqual(120);
+});
+
 test('browse sets, open one, record a copy as that printing, and search the set', async ({ page }) => {
   await page.goto('/');
   await tab(page).click();
