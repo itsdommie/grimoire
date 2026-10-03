@@ -5,6 +5,7 @@ import { DeckPanel } from './DeckPanel';
 import { DataFooter, DataSetup, useDataStatus } from './DataSetup';
 import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './CollectionView';
 import { CardDetailDialog } from './CardDetail';
+import { BackupControls } from './Backup';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -196,6 +197,7 @@ export function App() {
         </main>
         <footer>
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
+          <p><BackupControls onError={setError} onRestored={async () => { const list = await api.listDecks(); setDecks(list); if (list[0]) await open(list[0].id); else setCurrent(null); await collectionChanged(); }} /></p>
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>. Magic: The Gathering is © Wizards of the Coast.
           Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.
         </footer>

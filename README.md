@@ -47,6 +47,12 @@ official rulings and community function tags, all offline once the data is downl
 tags too: `otag:ramp c:g cmc<=3`, `otag:sweeper f:commander`. Rulings and tags are downloaded alongside the card data and refresh
 with "Check for card updates".
 
+## Your data
+
+Decks and your collection live in the app's data folder (Help → Open data folder). **Back up to a file** in the footer saves them
+to one JSON file; **Restore from a file…** brings them back (adding to what you have, or replacing it). Grimoire also keeps a small
+copy of your decks and collection in a `backups` folder before it upgrades its database.
+
 ## Analysis and simulation
 
 The **Analysis** tab shows the mana curve, colour pips, a suggested land count, how many sources of each colour you need,

@@ -19,10 +19,13 @@ export function importCollection(db: Db, text: string, mode: 'merge' | 'replace'
 
   const totals = new Map<string, number>();
   const unresolved = new Set<string>();
+  const lookups = new Map<string, string | null>(); // exports repeat names (one row per printing), so resolve each name once
   for (const row of parsed.rows) {
-    const card = resolveCardName(db, row.name);
-    if (!card) { unresolved.add(row.name); continue; }
-    totals.set(card.id, (totals.get(card.id) ?? 0) + row.qty);
+    const key = row.name.toLowerCase();
+    let id = lookups.get(key);
+    if (id === undefined) { id = resolveCardName(db, row.name)?.id ?? null; lookups.set(key, id); }
+    if (!id) { unresolved.add(row.name); continue; }
+    totals.set(id, (totals.get(id) ?? 0) + row.qty);
   }
   if (totals.size === 0) throw new BadRequestError(`None of the ${parsed.rows.length} rows matched a card. Is this a collection export?`);
 

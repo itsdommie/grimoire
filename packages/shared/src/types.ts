@@ -124,3 +124,24 @@ export interface CommanderIdea {
 export interface Ruling { source: string; publishedAt: string; comment: string }
 export interface TagInfo { slug: string; label: string; description: string | null; cards: number }
 export interface CardDetail { card: Card; rulings: Ruling[]; tags: TagInfo[] }
+
+// ----------------------------------------------------------------- backup
+
+/** Everything the user created, in a form that survives card-data updates (cards are referenced by oracle id, with names as a fallback). */
+export interface UserDataBackup {
+  app: 'grimoire';
+  /** Backup format version, independent of the database schema. */
+  version: 1;
+  exportedAt: string;
+  decks: Array<{ name: string; format: string; cards: Array<{ id: string; name: string; board: 'commander' | 'main' | 'sideboard'; qty: number }> }>;
+  collection: Array<{ id: string; name: string; qty: number }>;
+}
+
+export interface RestoreResult {
+  decks: number;
+  deckCards: number;
+  collectionCards: number;
+  collectionCopies: number;
+  /** Cards that couldn't be found in the current card data (by id or name). */
+  unresolved: string[];
+}

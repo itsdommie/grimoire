@@ -8,6 +8,7 @@ import { SearchError, formatDeckList, type Board, type ExportStyle } from '@grim
 import type { Db } from './db.js';
 import { DataManager } from './data.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
+import { exportUserData, restoreUserData } from './backup.js';
 import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, renameDeck, setCardQty } from './decks.js';
 
@@ -53,7 +54,8 @@ const safeEqual = (a: string, b: string) => a.length === b.length && timingSafeE
 export function buildServer(opts: ServerOptions) {
   const { db, dataDir, webRoot, token } = opts;
   const data = opts.data ?? new DataManager({ dataDir, db, localFile: opts.bulkFile, localRulings: opts.rulingsFile, localTags: opts.tagsFile });
-  const app = Fastify({ logger: opts.logger ?? process.env.NODE_ENV !== 'test' });
+  // Collection CSVs and backups can be several MB (Fastify's default limit is 1 MB).
+  const app = Fastify({ logger: opts.logger ?? process.env.NODE_ENV !== 'test', bodyLimit: 50 * 1024 * 1024 });
 
   if (!token) app.register(cors, { origin: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] });
 
@@ -156,6 +158,15 @@ export function buildServer(opts: ServerOptions) {
   app.delete('/api/collection', async (_req, reply) => { clearCollection(db); return reply.code(204).send(); });
   app.get('/api/collection/commanders', async () => commanderIdeas(db));
   app.get<{ Params: { id: string } }>('/api/decks/:id/missing', async (req) => deckMissing(db, deckId(req.params.id)));
+
+  // ----------------------------------------------------------------- backup
+  app.get('/api/backup', async (_req, reply) => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    return reply.type('application/json; charset=utf-8').header('Content-Disposition', `attachment; filename="grimoire-backup-${stamp}.json"`).send(JSON.stringify(exportUserData(db), null, 1));
+  });
+  app.post<{ Body: { data?: unknown; mode?: string } }>('/api/backup/restore', async (req, reply) => {
+    return reply.code(201).send(restoreUserData(db, req.body?.data, req.body?.mode === 'replace' ? 'replace' : 'merge'));
+  });
 
   // ------------------------------------------------------------- static UI
   if (webRoot) {

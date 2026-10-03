@@ -1,4 +1,4 @@
-import type { Board, CardDetail, CollectionImportResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { Board, CardDetail, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -44,6 +44,12 @@ export const api = {
       throw e;
     }
   },
+  async backupText(): Promise<string> {
+    const res = await fetch('/api/backup', { headers: authHeaders() });
+    if (!res.ok) throw new ApiError('Backup failed', res.status, null);
+    return res.text();
+  },
+  restore: (data: unknown, mode: 'merge' | 'replace') => request<RestoreResult>('POST', '/api/backup/restore', { data, mode }),
   cardDetail: (id: string) => request<CardDetail>('GET', `/api/cards/${encodeURIComponent(id)}/detail`),
   collectionSummary: () => request<CollectionSummary>('GET', '/api/collection/summary'),
   importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),
