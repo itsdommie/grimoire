@@ -1,7 +1,7 @@
 import type { Db } from './db.js';
 import { NOT_SET_UP } from './semantic.js';
 import { keywordInfo } from './rules.js';
-import { compileQuery, SearchError, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
+import { compileQuery, copiesInDecksSql, SearchError, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
 
 export type Order = 'name' | 'cmc' | 'edhrec' | 'usd';
 
@@ -12,8 +12,8 @@ const ORDER_SQL: Record<Order, string> = {
   usd: 'COALESCE(usd_min, usd) IS NULL, COALESCE(usd_min, usd) DESC, name COLLATE NOCASE ASC',
 };
 
-/** Every card query selects the owned count too, so any Card handed out knows how many copies the user has. */
-export const CARD_SELECT = 'SELECT cards.*, COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) AS owned FROM cards';
+/** Every card query selects the owned count and how many copies sit in decks, so any Card handed out knows what is spare. */
+export const CARD_SELECT = `SELECT cards.*, COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) AS owned, ${copiesInDecksSql('cards.id', [])} AS in_decks FROM cards`;
 
 export interface Row {
   id: string; name: string; mana_cost: string; cmc: number; type_line: string; oracle_text: string;
@@ -21,7 +21,7 @@ export interface Row {
   power: string | null; toughness: string | null; loyalty: string | null;
   rarity: string; set_code: string; layout: string; edhrec_rank: number | null; usd: number | null;
   usd_min: number | null; usd_min_set: string | null;
-  image_url: string | null; image_url_back: string | null; scryfall_uri: string; owned: number;
+  image_url: string | null; image_url_back: string | null; scryfall_uri: string; owned: number; in_decks: number;
 }
 
 export function rowToCard(db: Db, r: Row): Card {
@@ -35,17 +35,19 @@ export function rowToCard(db: Db, r: Row): Card {
     keywords: r.keywords ? r.keywords.split(' ') : [],
     power: r.power, toughness: r.toughness, loyalty: r.loyalty, rarity: r.rarity, setCode: r.set_code,
     layout: r.layout, edhrecRank: r.edhrec_rank, usd: r.usd, usdMin: r.usd_min, usdMinSet: r.usd_min_set, imageUrl: r.image_url, imageUrlBack: r.image_url_back, scryfallUri: r.scryfall_uri,
-    legalities, owned: r.owned,
+    legalities, owned: r.owned, inDecks: r.in_decks,
   };
 }
 
 /** Ranks candidate cards by similarity to an already-embedded `about:` phrase. */
 export interface SemanticRanker { rank(ids: readonly string[]): Array<{ id: string; score: number }> }
-export interface SearchOptions { query: string; order?: Order; limit?: number; offset?: number; semantic?: SemanticRanker }
+export interface SearchOptions { query: string; order?: Order; limit?: number; offset?: number; semantic?: SemanticRanker;
+  /** The deck being built: `spare` leaves its own cards out of the "in use" count. */
+  excludeDeck?: number }
 
 /** Throws SearchError (from @grimoire/shared) on a malformed query. */
 export function searchCards(db: Db, opts: SearchOptions): SearchResponse {
-  const { where, params } = compileQuery(opts.query);
+  const { where, params } = compileQuery(opts.query, { excludeDeck: opts.excludeDeck });
   validateTags(db, opts.query);
   const phrases = semanticPhrases(opts.query);
   if (phrases.length > 1) throw new SearchError('Use one about:"…" phrase per search.');

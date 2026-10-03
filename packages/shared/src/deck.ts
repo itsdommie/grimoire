@@ -4,6 +4,9 @@ import type { Card } from './types.js';
 export type Board = 'commander' | 'main' | 'sideboard';
 export const BOARDS: readonly Board[] = ['commander', 'main', 'sideboard'];
 
+/** Whether copies on this board are physical cards taken out of the collection. A Commander sideboard is only a maybeboard. */
+export const reservesCopies = (format: string, board: Board): boolean => board !== 'sideboard' || format !== 'commander';
+
 export interface DeckEntry {
   card: Card;
   qty: number;

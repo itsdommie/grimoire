@@ -100,6 +100,13 @@ adjust counts with the +/- buttons or by hovering cards in **Cards**. `owned>=1`
 you own and what the rest would cost, and "What can I build?" ranks the commanders you own by how many of your cards fit them.
 Prices are Scryfall's for its featured printing of each card, so they're a rough guide rather than the cheapest copy.
 
+**Building a new deck without breaking up the others.** A collection export usually leaves out the cards sitting in built decks, so
+a deck has an **Add to collection** button (and an import option) that adds its cards to your owned counts as a separate step. Then
+tick **Skip copies already in my decks** and Grimoire counts *spare copies*: copies you own minus copies in decks. With 5 Sol Rings
+in the collection and 4 decks each running one, there is still one spare, so Sol Ring can still be suggested. The choice applies to
+"Only cards I own" in search (`spare>=1` works in queries too), the deck's missing-cards report and "What can I build?". The deck you
+are building doesn't count against itself, and a Commander deck's maybeboard holds no copies.
+
 ## Decks
 
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.

@@ -1,4 +1,4 @@
-import type { Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { AddToCollectionResult, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -36,10 +36,10 @@ export const api = {
   setPrices: (enabled: boolean, refresh = false) => request<DataStatus>('POST', '/api/data/prices', { enabled, refresh }),
   updateData: (force = false) => request<DataStatus>('POST', '/api/data/update', { force }),
   /** Search errors (bad syntax) come back as a 400 with a SearchResponse body; surface them as data. */
-  async search(params: { q: string; order: string; limit: number }, signal: AbortSignal, scope: 'all' | 'collection' = 'all'): Promise<SearchResponse> {
+  async search(params: { q: string; order: string; limit: number; deck?: number }, signal: AbortSignal, scope: 'all' | 'collection' = 'all'): Promise<SearchResponse> {
     try {
       const path = scope === 'collection' ? '/api/collection' : '/api/cards/search';
-      return await request<SearchResponse>('GET', `${path}?${new URLSearchParams({ q: params.q, order: params.order, limit: String(params.limit) })}`, undefined, signal);
+      return await request<SearchResponse>('GET', `${path}?${new URLSearchParams({ q: params.q, order: params.order, limit: String(params.limit), ...(params.deck !== undefined && scope === 'all' ? { deck: String(params.deck) } : {}) })}`, undefined, signal);
     } catch (e) {
       if (e instanceof ApiError && e.status === 400) return e.body as SearchResponse;
       throw e;
@@ -64,8 +64,9 @@ export const api = {
   importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),
   setOwned: (cardId: string, qty: number) => request<CollectionSummary>('PUT', '/api/collection/cards', { cardId, qty }),
   clearCollection: () => request<void>('DELETE', '/api/collection'),
-  commanderIdeas: () => request<CommanderIdea[]>('GET', '/api/collection/commanders'),
-  deckMissing: (id: number) => request<MissingReport>('GET', `/api/decks/${id}/missing`),
+  commanderIdeas: (spare = false) => request<CommanderIdea[]>('GET', `/api/collection/commanders${spare ? '?spare=1' : ''}`),
+  deckMissing: (id: number, spare = false) => request<MissingReport>('GET', `/api/decks/${id}/missing${spare ? '?spare=1' : ''}`),
+  addDeckToCollection: (id: number) => request<AddToCollectionResult>('POST', `/api/decks/${id}/add-to-collection`),
   listDecks: () => request<DeckSummary[]>('GET', '/api/decks'),
   createDeck: (name: string, format?: FormatId) => request<DeckSummary>('POST', '/api/decks', { name, format }),
   getDeck: (id: number) => request<DeckDetail>('GET', `/api/decks/${id}`),
@@ -74,7 +75,7 @@ export const api = {
   deleteDeck: (id: number) => request<void>('DELETE', `/api/decks/${id}`),
   /** `move` relocates the card (removing it from other boards) instead of adding a stack on this one. */
   setCard: (id: number, cardId: string, board: Board, qty: number, move = false) => request<DeckDetail>('PUT', `/api/decks/${id}/cards`, { cardId, board, qty, move }),
-  importDeck: (text: string, opts: { name?: string; deckId?: number; format?: FormatId }) => request<ImportResult>('POST', '/api/decks/import', { text, ...opts }),
+  importDeck: (text: string, opts: { name?: string; deckId?: number; format?: FormatId; addToCollection?: boolean }) => request<ImportResult>('POST', '/api/decks/import', { text, ...opts }),
   async exportText(id: number, style: ExportStyle): Promise<string> {
     const res = await fetch(`/api/decks/${id}/export?style=${style}`, { headers: authHeaders() });
     if (!res.ok) throw new ApiError('Export failed', res.status, null);

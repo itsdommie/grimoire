@@ -87,6 +87,77 @@ test.describe.serial('collection', () => {
     await expect(panel).toContainText('You own every card in this deck.');
   });
 
+  test('skipping copies already in decks counts spares, and a deck can be added to the collection', async ({ page }) => {
+    // Other specs share this database and some of their decks hold Command Tower, so everything is relative to what is in decks now.
+    await page.goto('/');
+    const views = page.getByRole('navigation', { name: 'Views' });
+    const found = await (await page.request.get('/api/cards/search?q=' + encodeURIComponent('!"command tower"'))).json() as { cards: Array<{ id: string; inDecks: number }> };
+    const base = found.cards[0]!.inDecks;
+    // Own 3 more than the other decks hold: after First and Second (2 each) exactly one is left for the deck being built.
+    await page.request.put('/api/collection/cards', { data: { cardId: found.cards[0]!.id, qty: base + 3 } });
+    await page.reload();
+    const owned = base + 3;
+
+    const importDeck = async (name: string) => {
+      await page.getByRole('button', { name: 'Import' }).click();
+      const imp = page.getByRole('dialog', { name: 'Import deck' });
+      await imp.locator('textarea').fill('Deck\n2 Command Tower');
+      await imp.getByPlaceholder('Deck name').fill(name);
+      await imp.getByRole('button', { name: 'Import', exact: true }).click();
+      await expect(imp).toHaveCount(0);
+      await expect(page.locator('.deckhead h2')).toHaveText(name);
+    };
+    await importDeck('First deck'); // 2 of the 3 towers
+    await importDeck('Second deck'); // wants 2 more, but only 1 is spare
+
+    // Counting everything you own, the deck is covered; counting only spare copies it isn't.
+    const panel = page.getByRole('region', { name: 'Collection coverage' });
+    await expect(panel).toContainText('You own every card in this deck.');
+    await panel.getByLabel('Skip copies already in my decks').check();
+    await expect(panel).toContainText('1 of 2 are free');
+    await expect(page.locator('.deck .row', { hasText: 'Command Tower' }).getByLabel('Missing from collection')).toBeVisible();
+
+    // Searching your cards (the option is shared, and already on): one tower is spare for this deck, so it is offered.
+    await page.getByPlaceholder(/Search/).fill('!"command tower"');
+    await page.getByLabel('Only cards I own').check();
+    await expect(page.locator('.tile', { hasText: 'Command Tower' })).toHaveCount(1);
+    // A third deck holding 2 more leaves none spare for a fourth: the card drops out of the results.
+    await importDeck('Third deck');
+    await expect(page.locator('.tile')).toHaveCount(0);
+    await page.locator('.status').getByLabel('Skip copies already in my decks').uncheck();
+    await expect(page.locator('.tile', { hasText: 'Command Tower' })).toHaveCount(1);
+    await expect(page.locator('.tile .badge.own')).toContainText(`Own ×${owned} · ${base + 6} in decks`);
+    await page.locator('.status').getByLabel('Skip copies already in my decks').check();
+    await page.getByLabel('Only cards I own').uncheck();
+
+    // The same choice drives the commander ideas: Atraxa already leads a deck.
+    await views.getByRole('button', { name: 'Collection' }).click();
+    const ideas = page.getByRole('region', { name: 'Commander ideas' });
+    await expect(ideas.getByLabel('Skip copies already in my decks')).toBeChecked();
+    await expect(ideas).toContainText('every copy you own is already in a deck');
+    await ideas.getByLabel('Skip copies already in my decks').uncheck();
+    await expect(ideas).toContainText("Atraxa, Praetors' Voice");
+    await views.getByRole('button', { name: 'Cards' }).click();
+
+    // A separate step adds a deck's cards to the collection (asks first).
+    page.once('dialog', (d) => { expect(d.message()).toContain('Add the 2 cards'); void d.accept(); });
+    await page.getByRole('button', { name: 'Add to collection' }).click();
+    await expect(page.getByRole('button', { name: 'Added 2 cards' })).toBeVisible();
+    await page.getByPlaceholder(/Search/).fill('!"command tower"');
+    const badge = page.locator('.tile', { hasText: 'Command Tower' }).locator('.badge.own');
+    await expect(badge).toContainText(`Own ×${owned + 2} · ${base + 6} in decks`);
+    await expect(badge).toHaveAttribute('title', /0 spare/);
+
+    // Tidy up: remove the decks this test made.
+    for (const name of ['Third deck', 'Second deck', 'First deck']) {
+      await page.locator('.deckbar select[aria-label="Deck"]').selectOption({ label: `${name} (2)` });
+      await expect(page.locator('.deckhead h2')).toHaveText(name);
+      page.once('dialog', (d) => void d.accept());
+      await page.getByRole('button', { name: 'Delete' }).click();
+      await expect(page.locator('.deckbar select[aria-label="Deck"] option', { hasText: name })).toHaveCount(0);
+    }
+  });
+
   test('clearing the collection leaves decks alone', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Collection' }).click();

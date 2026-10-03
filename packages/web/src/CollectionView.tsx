@@ -24,19 +24,33 @@ export function CollectionBar({ summary, cheapest, onImport, onClear }: { summar
   );
 }
 
+/**
+ * Whether suggestions and shortfalls count copies that are already in your decks. Off (the default) counts everything you own; on
+ * counts only the spare copies, so a new deck can be built without breaking an existing one apart.
+ */
+export function SkipUsedToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="filter" title="Counts copies, not cards: with 5 Sol Rings and 4 decks using one each, one is still free for a new deck.">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} /> Skip copies already in my decks
+    </label>
+  );
+}
+
 /** Owned commanders ranked by how many of your cards fit them; "Build" starts a deck with that commander. */
-export function CommanderIdeas({ version, onBuild }: { version: number; onBuild: (card: Card) => void }) {
+export function CommanderIdeas({ version, skipUsed, onSkipUsed, onBuild }: { version: number; skipUsed: boolean; onSkipUsed: (v: boolean) => void; onBuild: (card: Card) => void }) {
   const [ideas, setIdeas] = useState<CommanderIdea[] | null>(null);
   useEffect(() => {
     let stop = false;
-    api.commanderIdeas().then((r) => { if (!stop) setIdeas(r); }).catch(() => { if (!stop) setIdeas([]); });
+    api.commanderIdeas(skipUsed).then((r) => { if (!stop) setIdeas(r); }).catch(() => { if (!stop) setIdeas([]); });
     return () => { stop = true; };
-  }, [version]);
-  if (!ideas || ideas.length === 0) return null;
+  }, [version, skipUsed]);
+  if (!ideas) return null;
   return (
     <section className="ideas" aria-label="Commander ideas">
       <h2>What can I build?</h2>
       <p className="muted small">Commanders you own, ranked by how many of your other cards are legal in their colours. Basic lands are free, so ~63 non-land cards make a full deck.</p>
+      <p className="small"><SkipUsedToggle checked={skipUsed} onChange={onSkipUsed} /></p>
+      {ideas.length === 0 && <p className="muted">{skipUsed ? 'No commander is free: every copy you own is already in a deck. Turn the option off to see them anyway.' : 'No commanders in your collection yet.'}</p>}
       <ul>
         {ideas.slice(0, 12).map((i) => (
           <li key={i.commander.id}>

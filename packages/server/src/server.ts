@@ -11,7 +11,7 @@ import { NOT_SET_UP, SemanticIndex } from './semantic.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
 import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
-import { clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
+import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
 const ORDERS = new Set<Order>(['name', 'cmc', 'edhrec', 'usd']);
@@ -107,11 +107,12 @@ export function buildServer(opts: ServerOptions) {
     return { rank: (ids: readonly string[]) => semantic.rank(vector, ids) };
   };
 
-  app.get<{ Querystring: { q?: string; order?: string; limit?: string; offset?: string } }>('/api/cards/search', async (req, reply) => {
-    const { q = '', order, limit, offset } = req.query;
+  app.get<{ Querystring: { q?: string; order?: string; limit?: string; offset?: string; deck?: string } }>('/api/cards/search', async (req, reply) => {
+    const { q = '', order, limit, offset, deck } = req.query;
     try {
       return searchCards(db, {
         query: q,
+        excludeDeck: deck !== undefined && Number.isInteger(Number(deck)) ? Number(deck) : undefined,
         order: ORDERS.has(order as Order) ? (order as Order) : 'name',
         limit: limit ? Number(limit) : undefined,
         offset: offset ? Number(offset) : undefined,
@@ -149,10 +150,14 @@ export function buildServer(opts: ServerOptions) {
     const { cardId, board, qty, move } = req.body ?? ({} as never);
     return setCardQty(db, deckId(req.params.id), cardId, board, qty, { move: move === true });
   });
-  app.post<{ Body: { text?: string; name?: string; deckId?: number; format?: string } }>('/api/decks/import', async (req, reply) => {
-    const { text = '', name, deckId: target, format } = req.body ?? {};
-    return reply.code(201).send(importDeck(db, text, { name, deckId: target, format }));
+  app.post<{ Body: { text?: string; name?: string; deckId?: number; format?: string; addToCollection?: boolean } }>('/api/decks/import', async (req, reply) => {
+    const { text = '', name, deckId: target, format, addToCollection } = req.body ?? {};
+    const imported = importDeck(db, text, { name, deckId: target, format });
+    // A separate step after the import: the deck exists either way, and only ever adds to the collection.
+    const collection = addToCollection === true ? addDeckToCollection(db, imported.deck.id) : undefined;
+    return reply.code(201).send({ ...imported, ...(collection ? { addedToCollection: collection } : {}) });
   });
+  app.post<{ Params: { id: string } }>('/api/decks/:id/add-to-collection', async (req) => addDeckToCollection(db, deckId(req.params.id)));
   app.get<{ Params: { id: string }; Querystring: { style?: string } }>('/api/decks/:id/export', async (req, reply) => {
     const { deck, entries } = getDeck(db, deckId(req.params.id));
     const style: ExportStyle = req.query.style === 'plain' ? 'plain' : 'sectioned';
@@ -180,8 +185,8 @@ export function buildServer(opts: ServerOptions) {
     return collectionSummary(db);
   });
   app.delete('/api/collection', async (_req, reply) => { clearCollection(db); return reply.code(204).send(); });
-  app.get('/api/collection/commanders', async () => commanderIdeas(db));
-  app.get<{ Params: { id: string } }>('/api/decks/:id/missing', async (req) => deckMissing(db, deckId(req.params.id)));
+  app.get<{ Querystring: { spare?: string } }>('/api/collection/commanders', async (req) => commanderIdeas(db, 24, req.query.spare === '1'));
+  app.get<{ Params: { id: string }; Querystring: { spare?: string } }>('/api/decks/:id/missing', async (req) => deckMissing(db, deckId(req.params.id), { excludeOtherDecks: req.query.spare === '1' }));
 
   // ----------------------------------------------------------------- rules
   app.get('/api/rules/status', async () => rulesStatus(db));

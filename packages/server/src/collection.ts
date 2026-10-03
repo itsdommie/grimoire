@@ -1,4 +1,4 @@
-import { compileQuery, isBasicLand, parseCollection, type Card, type CollectionImportResult, type CollectionSummary, type CommanderIdea, type MissingCard, type MissingReport } from '@grimoire/shared';
+import { compileQuery, copiesInDecksSql, isBasicLand, parseCollection, reservesCopies, type AddToCollectionResult, type Card, type CollectionImportResult, type CollectionSummary, type CommanderIdea, type MissingCard, type MissingReport } from '@grimoire/shared';
 import { getCardsByIds, resolveCardName } from './cards.js';
 import { transaction, type Db } from './db.js';
 import { getDeck, BadRequestError } from './decks.js';
@@ -52,15 +52,47 @@ export function clearCollection(db: Db): void {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/** What a deck still needs from the collection, with a rough price. Basic lands are treated as free and always available. */
-export function deckMissing(db: Db, deckId: number): MissingReport {
+/**
+ * Add a deck's cards to the collection, for decks that live outside the collection export (built decks, say). A separate step from
+ * importing a collection, so it only ever adds. Basic lands and a Commander deck's maybeboard are skipped.
+ */
+export function addDeckToCollection(db: Db, deckId: number): AddToCollectionResult {
   const { entries, deck } = getDeck(db, deckId);
+  const totals = new Map<string, number>();
+  for (const { card, qty, board } of entries) {
+    if (isBasicLand(card) || !reservesCopies(deck.format, board)) continue;
+    totals.set(card.id, (totals.get(card.id) ?? 0) + qty);
+  }
+  let added = 0;
+  transaction(db, () => {
+    const upsert = db.prepare(`INSERT INTO collection (card_id, qty) VALUES (?, ?)
+      ON CONFLICT (card_id) DO UPDATE SET qty = MIN(?, collection.qty + excluded.qty), updated_at = datetime('now')`);
+    for (const [id, qty] of totals) { upsert.run(id, Math.min(qty, MAX_QTY), MAX_QTY); added += qty; }
+  });
+  return { added, unique: totals.size, summary: collectionSummary(db) };
+}
+
+/** Copies of each card sitting in decks other than `deckId`. */
+function copiesInOtherDecks(db: Db, deckId: number): Map<string, number> {
+  const rows = db.prepare(`SELECT dc.card_id AS id, SUM(dc.qty) AS n FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id
+    WHERE d.id != ? AND (dc.board != 'sideboard' OR d.format != 'commander') GROUP BY dc.card_id`).all(deckId) as unknown as Array<{ id: string; n: number }>;
+  return new Map(rows.map((r) => [r.id, r.n]));
+}
+
+/**
+ * What a deck still needs from the collection, with a rough price. Basic lands are treated as free and always available.
+ * With `excludeOtherDecks`, copies that other decks are using don't count as owned, so the report says what building this deck
+ * would take without breaking those apart (5 Sol Rings with 4 in other decks leaves 1 for this one).
+ */
+export function deckMissing(db: Db, deckId: number, opts: { excludeOtherDecks?: boolean } = {}): MissingReport {
+  const { entries, deck } = getDeck(db, deckId);
+  const elsewhere = opts.excludeOtherDecks ? copiesInOtherDecks(db, deckId) : new Map<string, number>();
   const sideboardCounts = deck.format !== 'commander'; // in Commander the sideboard is a maybeboard; in 60-card formats you need those cards too
   let needed = 0, have = 0, totalUsd = 0, unpriced = 0;
   const missing: MissingCard[] = [];
   for (const { card, qty, board } of entries) {
     if ((board === 'sideboard' && !sideboardCounts) || isBasicLand(card)) continue;
-    const owned = card.owned ?? 0;
+    const owned = Math.max(0, (card.owned ?? 0) - (elsewhere.get(card.id) ?? 0));
     needed += qty;
     have += Math.min(qty, owned);
     const short = Math.max(0, qty - owned);
@@ -71,18 +103,23 @@ export function deckMissing(db: Db, deckId: number): MissingReport {
     missing.push({ card, need: qty, owned, missing: short, costUsd });
   }
   missing.sort((a, b) => (b.costUsd ?? -1) - (a.costUsd ?? -1) || a.card.name.localeCompare(b.card.name));
-  return { needed, have, missing, totalUsd: round2(totalUsd), unpriced };
+  return { needed, have, missing, totalUsd: round2(totalUsd), unpriced, excludedOtherDecks: !!opts.excludeOtherDecks };
 }
 
-/** Owned commanders ranked by how many of your other cards could go in their deck. */
-export function commanderIdeas(db: Db, limit = 24): CommanderIdea[] {
-  const { where, params } = compileQuery('is:commander f:commander owned>0');
+/**
+ * Owned commanders ranked by how many of your other cards could go in their deck. With `spareOnly`, only copies no deck is using
+ * count (a commander already leading a deck, or a card whose every copy is in a deck, is left out), so a new deck doesn't break
+ * an existing one apart.
+ */
+export function commanderIdeas(db: Db, limit = 24, spareOnly = false): CommanderIdea[] {
+  const { where, params } = compileQuery(`is:commander f:commander ${spareOnly ? 'spare>0' : 'owned>0'}`);
+  const free = (card: string) => (spareOnly ? `AND col.qty > ${copiesInDecksSql(card, [])}` : '');
   const rows = db.prepare(`SELECT cards.id AS id,
       (SELECT count(*) FROM collection col JOIN cards k ON k.id = col.card_id
-         WHERE k.id != cards.id AND (k.color_identity | cards.color_identity) = cards.color_identity
+         WHERE k.id != cards.id ${free('k.id')} AND (k.color_identity | cards.color_identity) = cards.color_identity
            AND EXISTS (SELECT 1 FROM legality l WHERE l.card_id = k.id AND l.format = 'commander' AND l.status IN ('legal', 'restricted'))) AS playable,
       (SELECT count(*) FROM collection col JOIN cards k ON k.id = col.card_id
-         WHERE k.id != cards.id AND k.type_line NOT LIKE '%Land%' AND (k.color_identity | cards.color_identity) = cards.color_identity
+         WHERE k.id != cards.id ${free('k.id')} AND k.type_line NOT LIKE '%Land%' AND (k.color_identity | cards.color_identity) = cards.color_identity
            AND EXISTS (SELECT 1 FROM legality l WHERE l.card_id = k.id AND l.format = 'commander' AND l.status IN ('legal', 'restricted'))) AS spells
     FROM cards WHERE ${where} ORDER BY playable DESC, cards.name COLLATE NOCASE LIMIT ?`).all(...params, limit) as unknown as Array<{ id: string; playable: number; spells: number }>;
   const cards = getCardsByIds(db, rows.map((r) => r.id));

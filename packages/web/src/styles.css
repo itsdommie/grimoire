@@ -275,3 +275,4 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .keyword { margin: 4px 0; font-size: 14px; }
 .keyword summary { cursor: pointer; font-weight: 600; }
 .keyword p { margin: 4px 0; color: var(--muted); }
+.missingpanel .filter, .ideas .filter { margin-left: 0; }

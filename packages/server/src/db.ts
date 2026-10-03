@@ -67,6 +67,9 @@ CREATE TABLE IF NOT EXISTS deck_cards (
   PRIMARY KEY (deck_id, card_id, board)
 ) WITHOUT ROWID;
 
+-- Looking up which decks use a card (the "spare copies" maths) goes by card, not by deck.
+CREATE INDEX IF NOT EXISTS deck_cards_card ON deck_cards(card_id);
+
 -- What the user owns, by oracle id (printings and foils are not distinguished). Not a foreign key: re-ingest replaces cards.
 CREATE TABLE IF NOT EXISTS collection (
   card_id    TEXT PRIMARY KEY,

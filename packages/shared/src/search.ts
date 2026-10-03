@@ -160,6 +160,22 @@ export interface Compiled {
   params: Array<string | number>;
 }
 
+export interface CompileContext {
+  /** A deck being built: its own cards don't count as "in use" for the `spare` term, so they stay available to it. */
+  excludeDeck?: number;
+}
+
+/**
+ * SQL for how many copies of a card sit in decks: `cardId` is a column expression (e.g. `cards.id`). A Commander deck's sideboard is
+ * a maybeboard and holds no physical copies; in 60-card formats the sideboard does. Pass `excludeDeck` to leave one deck out.
+ * Any `?` placeholders it needs are pushed onto `params` in order.
+ */
+export function copiesInDecksSql(cardId: string, params: Compiled['params'], excludeDeck?: number): string {
+  let sql = `(SELECT COALESCE(SUM(dc.qty), 0) FROM deck_cards dc JOIN decks d ON d.id = dc.deck_id WHERE dc.card_id = ${cardId} AND (dc.board != 'sideboard' OR d.format != 'commander')`;
+  if (excludeDeck !== undefined) { sql += ' AND d.id != ?'; params.push(excludeDeck); }
+  return `${sql})`;
+}
+
 const likeEscape = (s: string) => s.replace(/[\\%_]/g, (m) => `\\${m}`);
 const contains = (col: string, value: string, params: Compiled['params']) => {
   params.push(`%${likeEscape(value.toLowerCase())}%`);
@@ -213,7 +229,7 @@ function colourClause(col: string, countCol: string, op: Op, raw: string, params
   }
 }
 
-function compileTerm(key: string, op: Op, value: string, params: Compiled['params']): string {
+function compileTerm(key: string, op: Op, value: string, params: Compiled['params'], ctx: CompileContext): string {
   if (value === '') throw new SearchError(`"${key}${op}" needs a value`);
   const numCol = NUMERIC[key];
   if (numCol) {
@@ -234,6 +250,14 @@ function compileTerm(key: string, op: Op, value: string, params: Compiled['param
     if (!Number.isInteger(n)) throw new SearchError(`"owned" expects a whole number, got "${value}"`);
     params.push(n);
     return `COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) ${SQL_OP[op]} ?`;
+  }
+  if (key === 'spare') {
+    // Copies you own that no deck is using: owned minus the copies in decks (the deck being built excluded).
+    const n = Number(value);
+    if (!Number.isInteger(n)) throw new SearchError(`"spare" expects a whole number, got "${value}"`);
+    const inDecks = copiesInDecksSql('cards.id', params, ctx.excludeDeck);
+    params.push(n);
+    return `(COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) - ${inDecks}) ${SQL_OP[op]} ?`;
   }
   switch (key) {
     case 'n': case 'name': return contains('name', value, params);
@@ -290,23 +314,23 @@ function compileIs(value: string): string {
   }
 }
 
-function compileNode(node: Node, params: Compiled['params']): string {
+function compileNode(node: Node, params: Compiled['params'], ctx: CompileContext): string {
   switch (node.type) {
-    case 'and': return `(${node.children.map((c) => compileNode(c, params)).join(' AND ')})`;
-    case 'or': return `(${node.children.map((c) => compileNode(c, params)).join(' OR ')})`;
-    case 'not': return `NOT (${compileNode(node.child, params)})`;
+    case 'and': return `(${node.children.map((c) => compileNode(c, params, ctx)).join(' AND ')})`;
+    case 'or': return `(${node.children.map((c) => compileNode(c, params, ctx)).join(' OR ')})`;
+    case 'not': return `NOT (${compileNode(node.child, params, ctx)})`;
     case 'name': return contains('name', node.value, params);
     case 'exact': params.push(node.value.toLowerCase()); return `lower(name) = ?`;
-    case 'term': return compileTerm(node.key, node.op, node.value, params);
+    case 'term': return compileTerm(node.key, node.op, node.value, params, ctx);
   }
 }
 
 /** Compile a Scryfall-style query to a SQL WHERE fragment over the `cards` table. */
-export function compileQuery(src: string): Compiled {
+export function compileQuery(src: string, ctx: CompileContext = {}): Compiled {
   const ast = parse(src);
   if (!ast) return { where: '1=1', params: [] };
   const params: Compiled['params'] = [];
-  return { where: compileNode(ast, params), params };
+  return { where: compileNode(ast, params, ctx), params };
 }
 
 /** Every key:value term in a query (used by the server to validate things the compiler can't check, such as tag names). */

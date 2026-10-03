@@ -27,6 +27,8 @@ export interface Card {
   usdMinSet?: string | null;
   /** How many copies the user owns (set by the server; absent for cards built without a collection). */
   owned?: number;
+  /** How many copies sit in decks (all of them; a Commander sideboard doesn't count). `owned - inDecks` is what's spare. */
+  inDecks?: number;
 }
 
 export interface SearchResponse {
@@ -54,6 +56,8 @@ export interface DeckDetail {
 export interface ImportResult extends DeckDetail {
   /** Lines whose card name could not be found, as written in the pasted list. */
   unresolved: string[];
+  /** Present when the import was asked to also add the deck's cards to the collection. */
+  addedToCollection?: AddToCollectionResult;
 }
 
 // ------------------------------------------------------------- card data
@@ -108,6 +112,8 @@ export interface MissingCard {
 }
 
 export interface MissingReport {
+  /** True when copies sitting in your other decks were not counted as available. */
+  excludedOtherDecks: boolean;
   /** Non-basic cards in the deck / how many of them you own. */
   needed: number;
   have: number;
@@ -122,6 +128,13 @@ export interface CommanderIdea {
   playable: number;
   /** Of those, how many are not lands. */
   spells: number;
+}
+
+export interface AddToCollectionResult {
+  /** Copies added and distinct cards touched (basic lands are skipped). */
+  added: number;
+  unique: number;
+  summary: CollectionSummary;
 }
 
 // ------------------------------------------------------------ card detail

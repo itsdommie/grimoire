@@ -3,7 +3,7 @@ import { FORMATS, type Board, type Card, type CollectionSummary, type DeckDetail
 import { api } from './api';
 import { DeckPanel } from './DeckPanel';
 import { DataFooter, DataSetup, PricesFooter, useDataStatus } from './DataSetup';
-import { CollectionBar, CollectionImportDialog, CommanderIdeas } from './CollectionView';
+import { CollectionBar, CollectionImportDialog, CommanderIdeas, SkipUsedToggle } from './CollectionView';
 import { CardDetailDialog } from './CardDetail';
 import { BackupControls } from './Backup';
 import { PlayView } from './PlayView';
@@ -19,18 +19,18 @@ const ORDERS = [
 
 const EXAMPLES = ['t:creature c:rg cmc<=3 o:"draw a card"', 'f:commander id<=wubg is:commander', 'otag:ramp c:g cmc<=3', 'otag:sweeper f:commander', 'kw:flying r:mythic'];
 
-function useSearch(query: string, order: string, version: string | null, scope: 'all' | 'collection') {
+function useSearch(query: string, order: string, version: string | null, scope: 'all' | 'collection', deck?: number) {
   const [state, setState] = useState<{ data: SearchResponse | null; loading: boolean }>({ data: null, loading: true });
   useEffect(() => {
     const ctrl = new AbortController();
     setState((s) => ({ ...s, loading: true }));
     const timer = setTimeout(() => {
-      api.search({ q: query, order, limit: 60 }, ctrl.signal, scope)
+      api.search({ q: query, order, limit: 60, deck }, ctrl.signal, scope)
         .then((data) => { if (!ctrl.signal.aborted) setState({ data, loading: false }); })
         .catch((e) => { if (e.name !== 'AbortError' && !ctrl.signal.aborted) setState({ data: { total: 0, cards: [], error: 'Server unreachable' }, loading: false }); });
     }, 150);
     return () => { clearTimeout(timer); ctrl.abort(); };
-  }, [query, order, version, scope]);
+  }, [query, order, version, scope, deck]);
   /** Reflect a collection edit in the visible results without refetching (cards owned 0 leave the collection view). */
   const patchOwned = (id: string, qty: number) => setState((s) => {
     if (!s.data) return s;
@@ -47,6 +47,8 @@ function CardTile({ card, inDeck, canAdd, commanderFormat, stepper, onAdd, onOwn
   card: Card; inDeck: number; canAdd: boolean; commanderFormat: boolean; stepper: boolean; onAdd: (card: Card, board: Board) => void; onOwn: (card: Card, qty: number) => void; onOpen: (id: string) => void;
 }) {
   const owned = card.owned ?? 0;
+  const inDecks = card.inDecks ?? 0;
+  const spare = Math.max(0, owned - inDecks);
   return (
     <div className="tile" title={`${card.name}\n${card.typeLine}`}>
       <div className="art">
@@ -54,7 +56,7 @@ function CardTile({ card, inDeck, canAdd, commanderFormat, stepper, onAdd, onOwn
           {card.imageUrl ? <img src={card.imageUrl} alt="" loading="lazy" /> : <div className="noimg">{card.name}</div>}
         </button>
         {inDeck > 0 && <span className="badge">×{inDeck}</span>}
-        {!stepper && owned > 0 && <span className="badge own" title="Copies in your collection">Own ×{owned}</span>}
+        {!stepper && owned > 0 && <span className="badge own" title={inDecks > 0 ? `${owned} in your collection, ${inDecks} in decks, ${spare} spare` : 'Copies in your collection'}>Own ×{owned}{inDecks > 0 && ` · ${inDecks} in decks`}</span>}
         <span className="overlay">
           {canAdd && <button onClick={() => onAdd(card, 'main')}>+ Deck</button>}
           {canAdd && (commanderFormat ? <button onClick={() => onAdd(card, 'commander')}>★ Cmdr</button> : <button onClick={() => onAdd(card, 'sideboard')}>+ Side</button>)}
@@ -67,6 +69,7 @@ function CardTile({ card, inDeck, canAdd, commanderFormat, stepper, onAdd, onOwn
           <button onClick={() => onOwn(card, owned - 1)} aria-label={`Own one fewer ${card.name}`}>−</button>
           <span>{owned}</span>
           <button onClick={() => onOwn(card, owned + 1)} aria-label={`Own one more ${card.name}`}>+</button>
+          {inDecks > 0 && <span className="muted small" title="Copies sitting in your decks">{inDecks} in decks</span>}
         </span>
       )}
     </div>
@@ -80,6 +83,9 @@ export function App() {
   const [current, setCurrent] = useState<DeckDetail | null>(null);
   const [onlyIdentity, setOnlyIdentity] = useState(true);
   const [onlyOwned, setOnlyOwned] = useState(false);
+  // Whether to leave out copies that are already in decks when suggesting cards (remembered between sessions).
+  const [skipUsed, setSkipUsedState] = useState(() => { try { return localStorage.getItem('grimoire.skipUsed') === '1'; } catch { return false; } });
+  const setSkipUsed = (v: boolean) => { setSkipUsedState(v); try { localStorage.setItem('grimoire.skipUsed', v ? '1' : '0'); } catch { /* storage unavailable */ } };
   const [onlyLegal, setOnlyLegal] = useState(true);
   const [view, setView] = useState<'cards' | 'collection' | 'play' | 'rules'>('cards');
   const [ruleToOpen, setRuleToOpen] = useState<string | null>(null);
@@ -117,9 +123,9 @@ export function App() {
   const dataStatus = useDataStatus();
   const semantic = useSemanticStatus();
   const searchQuery = view === 'cards'
-    ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', current && !rules.commander && onlyLegal ? `f:${rules.legality}` : '', onlyOwned ? 'owned>0' : ''].filter(Boolean).join(' ')
+    ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', current && !rules.commander && onlyLegal ? `f:${rules.legality}` : '', onlyOwned ? (skipUsed ? 'spare>0' : 'owned>0') : ''].filter(Boolean).join(' ')
     : query;
-  const { data, loading, patchOwned } = useSearch(searchQuery, order, dataStatus.status?.bulkUpdatedAt ?? null, view === 'collection' ? 'collection' : 'all');
+  const { data, loading, patchOwned } = useSearch(searchQuery, order, dataStatus.status?.bulkUpdatedAt ?? null, view === 'collection' ? 'collection' : 'all', view === 'cards' && onlyOwned && skipUsed ? current?.deck.id : undefined);
   const inDeck = useMemo(() => new Map((current?.entries ?? []).map((e) => [e.card.id, e.qty])), [current]);
 
   const refreshCollection = useCallback(async () => { try { setCollection(await api.collectionSummary()); } catch { /* shown elsewhere */ } }, []);
@@ -199,9 +205,10 @@ export function App() {
             {view === 'cards' && collection && collection.total > 0 && (
               <label className="filter"><input type="checkbox" checked={onlyOwned} onChange={(e) => setOnlyOwned(e.target.checked)} /> Only cards I own</label>
             )}
+            {view === 'cards' && collection && collection.total > 0 && onlyOwned && <SkipUsedToggle checked={skipUsed} onChange={setSkipUsed} />}
           </p>
           {view === 'collection' && <CollectionBar cheapest={!!ds.prices?.enabled && !!ds.prices.updatedAt} summary={collection} onImport={() => setImporting(true)} onClear={async () => { try { await api.clearCollection(); await collectionChanged(); } catch (e) { setError((e as Error).message); } }} />}
-          {view === 'collection' && <CommanderIdeas version={collectionVersion} onBuild={startDeck} />}
+          {view === 'collection' && <CommanderIdeas version={collectionVersion} skipUsed={skipUsed} onSkipUsed={setSkipUsed} onBuild={startDeck} />}
           {view === 'cards' && !query && (
             <p className="examples">Try: {(semantic.status?.state === 'ready' ? [...EXAMPLES, 'about:"punish opponents for drawing extra cards"'] : EXAMPLES).map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>
           )}
@@ -229,6 +236,9 @@ export function App() {
         onError={setError}
         collection={collection}
         collectionVersion={collectionVersion}
+        onCollectionChanged={collectionChanged}
+        skipUsed={skipUsed}
+        onSkipUsed={setSkipUsed}
         onOpenCard={setDetailId}
         cheapest={!!ds.prices?.enabled && !!ds.prices.updatedAt}
       />}
