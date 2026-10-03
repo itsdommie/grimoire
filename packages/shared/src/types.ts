@@ -265,6 +265,8 @@ export interface SetSummary {
   code: string;
   name: string;
   released: string | null;
+  /** Scryfall's set type ("core", "expansion", "commander", "masters", "promo", ...); null until the printings data that carries it is loaded. */
+  kind: string | null;
   /** Different cards printed in the set. */
   cards: number;
   /** Of those, cards you own in any printing. */

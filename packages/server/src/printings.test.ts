@@ -45,7 +45,7 @@ const printing = (db2: Db, id: string) => (listPrintings(db2, id.startsWith('sol
 describe('building the printings file', () => {
   it('keeps paper printings, with finishes, prices and the earliest date of each set', async () => {
     const lines = [
-      { id: 'a', oracle_id: 'o', set: 'tst', set_name: 'Test Set', collector_number: '5', released_at: '2020-05-01', finishes: ['nonfoil', 'foil'], prices: { usd: '1.50', usd_foil: '4' } },
+      { id: 'a', oracle_id: 'o', set: 'tst', set_name: 'Test Set', set_type: 'expansion', collector_number: '5', released_at: '2020-05-01', finishes: ['nonfoil', 'foil'], prices: { usd: '1.50', usd_foil: '4' } },
       { id: 'b', oracle_id: 'o', set: 'tst', set_name: 'Test Set', collector_number: '6', released_at: '2020-01-01', finishes: ['etched'], prices: {} },
       { id: 'c', oracle_id: 'o', set: 'dig', set_name: 'Arena', collector_number: '1', digital: true },
       { id: 'd', oracle_id: 'o', set: 'tok', set_name: 'Tokens', collector_number: '1', layout: 'token' },
@@ -56,7 +56,8 @@ describe('building the printings file', () => {
     expect(file.rows.map((r) => r[0])).toEqual(['b', 'a']); // sorted by card then date; digital, token, online-only and idless dropped
     expect(file.rows.find((r) => r[0] === 'a')).toEqual(['a', 'o', 'tst', '5', 3, 1.5, 4, 0, '2020-05-01']);
     expect(file.rows.find((r) => r[0] === 'b')![4]).toBe(4);
-    expect(file.sets).toEqual([['tst', 'Test Set', '2020-01-01']]);
+    expect(file.sets).toEqual([['tst', 'Test Set', '2020-01-01', 'expansion']]);
+    expect(file.format).toBe(2);
   });
   it('defaults an unlisted finish to nonfoil and treats missing prices as unknown', () => {
     expect(printingRow({ id: 'a', oracle_id: 'o', set: 's', collector_number: '1' } as RawPrinting)).toEqual(['a', 'o', 's', '1', 1, 0, 0, 0, '']);
@@ -338,7 +339,7 @@ describe('getting the printings', () => {
       ? Response.json({ data: [{ type: 'oracle_cards', updated_at: 'x', jsonl_download_uri: 'https://x/o.gz' }, { type: 'default_cards', updated_at: '2026-10-03T09:00:00+00:00', jsonl_download_uri: 'https://x/d.gz' }] })
       : new Response(body)) as typeof fetch;
     const file = await new DataManager({ dataDir, db: dbm, fetch: impl }).buildPrintings();
-    expect(file).toMatchObject({ version: '2026-10-03', sets: [['abc', 'Abc', '2024-01-01']] });
+    expect(file).toMatchObject({ version: '2026-10-03', sets: [['abc', 'Abc', '2024-01-01', '']] });
     expect(file.rows).toEqual([['p1', 'o', 'abc', '7', 1, 0, 0, 0, '2024-01-01']]);
   });
 });

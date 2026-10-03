@@ -406,3 +406,8 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .seg button.active { color: var(--fg); background: #2a2540; }
 .settile.missing .art img { opacity: .4; filter: grayscale(.6); }
 .settile.missing:hover .art img { opacity: .9; filter: none; }
+.seticon { width: 20px; height: 20px; vertical-align: -4px; filter: invert(1) opacity(.85); }
+.seticon.big { width: 30px; height: 30px; vertical-align: -6px; }
+.sets > .seg, .setsbar + .seg { margin: 4px 0 6px; flex-wrap: wrap; }
+.seg.wrap { flex-wrap: wrap; gap: 6px; border: 0; overflow: visible; }
+.seg.wrap button { border: 1px solid #333650; border-radius: 999px; padding: 4px 12px; }

@@ -40,7 +40,7 @@ const NAMES_REFRESH_DAYS = 7;
 /** Weekly CI publishes every paper printing here as a manifest plus a gzipped file (a prerelease, so it is never the app's "latest"). */
 export const PRINTINGS_BASE = 'https://github.com/itsdommie/grimoire/releases/download/card-printings';
 export const PRINTINGS_MANIFEST = 'card-printings.json';
-export interface PrintingsManifest { version: string; file: string; count: number; size: number }
+export interface PrintingsManifest { version: string; /** The file's format (see PRINTINGS_FORMAT); absent means 1. */ format?: number; file: string; count: number; size: number }
 const PRINTINGS_REFRESH_DAYS = 7;
 
 export interface DataManagerOptions {
@@ -180,7 +180,8 @@ export class DataManager {
       if (res.status === 404) { this.setMeta('printings_checked_at', new Date().toISOString()); this.setMeta('printings_version', 'none'); return false; }
       if (!res.ok) throw new Error(`couldn't check (HTTP ${res.status})`);
       const manifest = (await res.json()) as PrintingsManifest;
-      if (!opts.force && this.meta('printings_version') === manifest.version) { this.setMeta('printings_checked_at', new Date().toISOString()); return false; }
+      // (The same version in a newer format is still news: it carries something the one we hold lacks.)
+      if (!opts.force && this.meta('printings_version') === manifest.version && (manifest.format ?? 1) <= Number(this.meta('printings_format') ?? 1)) { this.setMeta('printings_checked_at', new Date().toISOString()); return false; }
       this.progress = { phase: 'downloading', item: 'printings' };
       const body = await this.fetchImpl(`${PRINTINGS_BASE}/${manifest.file}`, { headers: HEADERS });
       if (!body.ok) throw new Error(`download failed (HTTP ${body.status})`);
@@ -192,6 +193,7 @@ export class DataManager {
       loadPrintings(writer, file);
       const put = writer.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
       put.run('printings_version', file.version);
+      put.run('printings_format', String(file.format ?? 1));
       put.run('printings_checked_at', new Date().toISOString());
     } finally {
       writer.close();

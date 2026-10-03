@@ -6,10 +6,10 @@ import type { Db } from './schema.js';
 // Browsing by set, with how much of each you own. Built on the printings tables, so it needs the printings data (the app loads it with
 // the card data) and says nothing for a set it has no printings of.
 
-interface SummaryRow { code: string; name: string; released: string | null; cards: number; owned: number; here: number }
+interface SummaryRow { code: string; name: string; released: string | null; kind: string | null; cards: number; owned: number; here: number }
 
 const SUMMARY_SQL = `
-  SELECT s.code AS code, s.name AS name, s.released AS released,
+  SELECT s.code AS code, s.name AS name, s.released AS released, s.kind AS kind,
          count(DISTINCT p.card_id) AS cards,
          count(DISTINCT CASE WHEN c.qty > 0 THEN p.card_id END) AS owned,
          count(DISTINCT CASE WHEN cp.printing_id IS NOT NULL THEN p.card_id END) AS here
@@ -18,7 +18,7 @@ const SUMMARY_SQL = `
   LEFT JOIN collection c ON c.card_id = p.card_id
   LEFT JOIN collection_prints cp ON cp.printing_id = p.id`;
 
-const toSummary = (r: SummaryRow): SetSummary => ({ code: r.code, name: r.name, released: r.released || null, cards: r.cards, owned: r.owned, ownedHere: r.here });
+const toSummary = (r: SummaryRow): SetSummary => ({ code: r.code, name: r.name, released: r.released || null, kind: r.kind || null, cards: r.cards, owned: r.owned, ownedHere: r.here });
 
 /** Every set with printings, newest first. `q` narrows by name or code. */
 export function listSets(db: Db, q = ''): SetSummary[] {

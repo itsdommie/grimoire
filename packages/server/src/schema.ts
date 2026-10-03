@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
  * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
  * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 function hasColumn(db: Db, table: string, column: string): boolean {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);
@@ -158,6 +158,8 @@ export function migrate(db: Db): void {
   // v4: cheapest-printing prices.
   if (!hasColumn(db, 'cards', 'usd_min')) db.exec('ALTER TABLE cards ADD COLUMN usd_min REAL');
   if (!hasColumn(db, 'cards', 'usd_min_set')) db.exec('ALTER TABLE cards ADD COLUMN usd_min_set TEXT');
+  // v8: each set's type (core, commander, promo, ...), from the printings data.
+  if (!hasColumn(db, 'sets', 'kind')) db.exec('ALTER TABLE sets ADD COLUMN kind TEXT');
   const current = (db.prepare('PRAGMA user_version').get() as unknown as { user_version: number }).user_version;
   if (current < SCHEMA_VERSION) db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }

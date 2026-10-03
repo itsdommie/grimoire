@@ -17,6 +17,24 @@ async function reveal(page: import('@playwright/test').Page, name: string) {
 }
 const owned = async (page: import('@playwright/test').Page) => Number(/^\s*([\d,]+)\s+of/.exec(await page.locator('.setprogress').innerText())![1]!.replace(/,/g, ''));
 
+test('filter the list of sets by kind, and every set shows its symbol', async ({ page }) => {
+  await page.goto('/');
+  await tab(page).click();
+  const kinds = page.getByRole('group', { name: 'Kind of set' });
+  await expect(kinds).toBeVisible();
+  await expect(page.locator('.setlist li').first().locator('img.seticon')).toHaveAttribute('src', /^https:\/\/svgs\.scryfall\.io\/sets\/.+\.svg$/);
+  const all = await page.locator('.setlist li').count();
+  await kinds.getByRole('button', { name: 'Commander' }).click();
+  await expect(kinds.getByRole('button', { name: 'Commander' })).toHaveAttribute('aria-pressed', 'true');
+  const commander = await page.locator('.setlist li').count();
+  expect(commander).toBeGreaterThan(0);
+  expect(commander).toBeLessThan(all);
+  await page.getByLabel('Find a set').fill('limited edition alpha'); // a core set, so not among the Commander ones
+  await expect(page.locator('.setlist li')).toHaveCount(0);
+  await kinds.getByRole('button', { name: 'Main sets' }).click();
+  await expect(page.locator('.setlist li')).toHaveCount(1);
+});
+
 test('browse sets, open one, record a copy as that printing, and search the set', async ({ page }) => {
   await page.goto('/');
   await tab(page).click();

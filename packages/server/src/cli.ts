@@ -61,13 +61,14 @@ if (command === 'printings') {
     mkdirSync(exportDir, { recursive: true });
     const gz = gzipSync(JSON.stringify(file));
     writeFileSync(`${exportDir}/card-printings.json.gz`, gz);
-    writeFileSync(`${exportDir}/card-printings.json`, JSON.stringify({ version: file.version, file: 'card-printings.json.gz', count: file.rows.length, size: gz.length }));
+    writeFileSync(`${exportDir}/card-printings.json`, JSON.stringify({ version: file.version, format: file.format, file: 'card-printings.json.gz', count: file.rows.length, size: gz.length }));
     console.log(`Written to ${exportDir} (${(gz.length / 1e6).toFixed(1)} MB).`);
   }
   if (args.includes('--load')) {
     const { loadPrintings } = await import('./printings.js');
     console.log(`Loaded ${loadPrintings(pdb, file)} printings of the cards in the dev database.`);
     pdb.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_version', ?)").run(file.version);
+    pdb.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_format', ?)").run(String(file.format ?? 1));
   }
   process.exit(0);
 }

@@ -18,7 +18,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://cards.scryfall.io",
+  "img-src 'self' data: https://cards.scryfall.io https://svgs.scryfall.io",
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",

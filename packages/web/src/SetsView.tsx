@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { SetCard, SetDetail, SetSummary } from '@grimoire/shared';
+import { SET_GROUPS, setGroup, setIconUrl, type SetCard, type SetDetail, type SetGroupId, type SetSummary } from '@grimoire/shared';
 import { api } from './api';
 import { useBack } from './backstack';
 import { usd } from './CollectionView';
@@ -8,10 +8,16 @@ const PAGE = 120;
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 const year = (d: string | null) => (d ? d.slice(0, 4) : '');
 
+/** A set's symbol, hotlinked from Scryfall (black on transparent, so it is inverted for the dark theme). A set without one just shows nothing. */
+function SetIcon({ code, big }: { code: string; big?: boolean }) {
+  return <img className={`seticon${big ? ' big' : ''}`} src={setIconUrl(code)} alt="" loading="lazy" onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }} />;
+}
+
 function SetList({ onOpen }: { onOpen: (code: string) => void }) {
   const [sets, setSets] = useState<SetSummary[] | null>(null);
   const [q, setQ] = useState('');
   const [mine, setMine] = useState(false);
+  const [group, setGroupFilter] = useState<SetGroupId | 'all'>('all');
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { api.sets().then((r) => setSets(r.sets)).catch((e: Error) => setError(e.message)); }, []);
 
@@ -19,19 +25,27 @@ function SetList({ onOpen }: { onOpen: (code: string) => void }) {
   if (!sets) return <p className="muted">Loading sets…</p>;
   if (sets.length === 0) return <p className="muted">No printings are loaded yet, so there are no sets to browse. Update the card data first (the footer shows how).</p>;
   const needle = q.trim().toLowerCase();
-  const shown = sets.filter((s) => (!mine || s.owned > 0) && (!needle || s.name.toLowerCase().includes(needle) || s.code === needle));
+  const shown = sets.filter((s) => (!mine || s.owned > 0) && (group === 'all' || setGroup(s.kind) === group) && (!needle || s.name.toLowerCase().includes(needle) || s.code === needle));
+  // The type filter only appears once the printings data that carries set types is loaded.
+  const groups = SET_GROUPS.filter((g) => sets.some((s) => setGroup(s.kind) === g.id));
   return (
     <>
       <div className="setsbar">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a set by name or code" aria-label="Find a set" spellCheck={false} />
         <label className="filter"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Only sets I own cards from</label>
       </div>
-      <p className="muted small">{shown.length.toLocaleString()} sets{mine || needle ? ` (of ${sets.length.toLocaleString()})` : ''}. "Owned" counts cards you have in any printing.</p>
+      {groups.length > 0 && (
+        <span className="seg wrap" role="group" aria-label="Kind of set">
+          <button className={group === 'all' ? 'active' : ''} aria-pressed={group === 'all'} onClick={() => setGroupFilter('all')}>All</button>
+          {groups.map((g) => <button key={g.id} className={group === g.id ? 'active' : ''} aria-pressed={group === g.id} onClick={() => setGroupFilter(g.id)}>{g.label}</button>)}
+        </span>
+      )}
+      <p className="muted small">{shown.length.toLocaleString()} sets{mine || needle || group !== 'all' ? ` (of ${sets.length.toLocaleString()})` : ''}. "Owned" counts cards you have in any printing.</p>
       <ul className="setlist">
         {shown.map((s) => (
           <li key={s.code}>
             <button onClick={() => onOpen(s.code)} aria-label={`${s.name} (${s.code.toUpperCase()})`}>
-              <span className="setname"><strong>{s.name}</strong> <span className="muted small">{s.code.toUpperCase()}{s.released ? ` · ${year(s.released)}` : ''}</span></span>
+              <span className="setname"><SetIcon code={s.code} /> <strong>{s.name}</strong> <span className="muted small">{s.code.toUpperCase()}{s.released ? ` · ${year(s.released)}` : ''}</span></span>
               <meter min={0} max={s.cards} value={s.owned} aria-hidden />
               <span className="setcount">{s.owned.toLocaleString()} / {s.cards.toLocaleString()}</span>
             </button>
@@ -91,7 +105,7 @@ function SetPage({ code, onBack, onOpenCard, onSearch, onCollectionChanged, vers
       {!detail && !error && <p className="muted">Loading…</p>}
       {detail && s && (
         <>
-          <h2>{s.name} <span className="muted small">{s.code.toUpperCase()}{s.released ? ` · ${s.released}` : ''}</span></h2>
+          <h2><SetIcon code={s.code} big /> {s.name} <span className="muted small">{s.code.toUpperCase()}{s.released ? ` · ${s.released}` : ''}</span></h2>
           <p className="setprogress">
             <meter min={0} max={s.cards} value={s.owned} aria-label={`${pct(s.owned, s.cards)}% of the set owned`} />
             {' '}<strong>{s.owned.toLocaleString()}</strong> of {s.cards.toLocaleString()} cards ({pct(s.owned, s.cards)}%)

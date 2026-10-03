@@ -19,6 +19,7 @@ export interface RawPrinting {
   oracle_id?: string;
   set?: string;
   set_name?: string;
+  set_type?: string;
   collector_number?: string;
   released_at?: string;
   layout?: string;
@@ -32,10 +33,13 @@ const SKIP_LAYOUTS = new Set(['token', 'double_faced_token', 'emblem', 'art_seri
 
 /** One row of the compact file: [id, oracleId, set, collector, finishesMask, usd, usdFoil, usdEtched, released]. Prices are 0 when unknown. */
 export type PrintingRow = [id: string, cardId: string, set: string, collector: string, finishes: number, usd: number, usdFoil: number, usdEtched: number, released: string];
+export const PRINTINGS_FORMAT = 2;
 export interface PrintingsFile {
   version: string;
-  /** [code, name, released] */
-  sets: Array<[string, string, string]>;
+  /** 2 added each set's type. Absent means 1. */
+  format?: number;
+  /** [code, name, released, type]. (Older files stop after the date.) */
+  sets: Array<[string, string, string] | [string, string, string, string]>;
   rows: PrintingRow[];
 }
 
@@ -51,7 +55,7 @@ export function printingRow(p: RawPrinting): PrintingRow | null {
 
 /** Stream a per-printing JSONL file (Scryfall's Default Cards) into the compact file. */
 export async function collectPrintings(lines: AsyncIterable<string>, version: string): Promise<PrintingsFile> {
-  const sets = new Map<string, [string, string, string]>();
+  const sets = new Map<string, [string, string, string, string]>();
   const rows: PrintingRow[] = [];
   for await (const line of lines) {
     if (!line.trim()) continue;
@@ -60,11 +64,11 @@ export async function collectPrintings(lines: AsyncIterable<string>, version: st
     if (!row) continue;
     rows.push(row);
     const cur = sets.get(row[2]);
-    if (!cur) sets.set(row[2], [row[2], raw.set_name ?? row[2], row[8]]);
+    if (!cur) sets.set(row[2], [row[2], raw.set_name ?? row[2], row[8], raw.set_type ?? '']);
     else if (row[8] && (!cur[2] || row[8] < cur[2])) cur[2] = row[8];
   }
   rows.sort((a, b) => (a[1] < b[1] ? -1 : a[1] > b[1] ? 1 : a[8] < b[8] ? -1 : a[8] > b[8] ? 1 : a[0] < b[0] ? -1 : 1));
-  return { version, sets: [...sets.values()].sort((a, b) => a[0].localeCompare(b[0])), rows };
+  return { version, format: PRINTINGS_FORMAT, sets: [...sets.values()].sort((a, b) => a[0].localeCompare(b[0])), rows };
 }
 
 export function parsePrintingsFile(text: string): PrintingsFile {
@@ -77,13 +81,13 @@ export function parsePrintingsFile(text: string): PrintingsFile {
 export function loadPrintings(db: Db, file: PrintingsFile): number {
   const known = new Set((db.prepare('SELECT id FROM cards').all() as Array<{ id: string }>).map((r) => r.id));
   const insert = db.prepare('INSERT OR REPLACE INTO printings (id, card_id, set_code, collector, released, finishes, usd, usd_foil, usd_etched) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const insertSet = db.prepare('INSERT OR REPLACE INTO sets (code, name, released) VALUES (?, ?, ?)');
+  const insertSet = db.prepare('INSERT OR REPLACE INTO sets (code, name, released, kind) VALUES (?, ?, ?, ?)');
   let kept = 0;
   transaction(db, () => {
     // Build the indexes once at the end rather than keeping them up to date through 100,000 inserts: about a third faster, which
     // matters most on a phone.
     db.exec('DELETE FROM printings; DELETE FROM sets; DROP INDEX IF EXISTS printings_card; DROP INDEX IF EXISTS printings_set;');
-    for (const [code, name, released] of file.sets) insertSet.run(code, name, released);
+    for (const [code, name, released, kind] of file.sets) insertSet.run(code, name, released, kind || null);
     for (const [id, cardId, set, collector, finishes, usd, usdFoil, usdEtched, released] of file.rows) {
       if (!known.has(cardId)) continue;
       insert.run(id, cardId, set, collector, released || null, finishes, usd || null, usdFoil || null, usdEtched || null);

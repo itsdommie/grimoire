@@ -18,7 +18,7 @@ const cards = [
 const row = (id: string, card: string, set: string, collector: string, finishes: number, usd: number, released: string): PrintingsFile['rows'][number] => [id, card, set, collector, finishes, usd, usd * 2, 0, released];
 const FILE: PrintingsFile = {
   version: 'v1',
-  sets: [['lea', 'Limited Edition Alpha', '1993-08-05'], ['2xm', 'Double Masters', '2020-08-07'], ['c21', 'Commander 2021', '2021-04-23'], ['cmm', 'Commander Masters', '2023-08-04'], ['mt2', 'Empty Set', '2024-01-01']],
+  sets: [['lea', 'Limited Edition Alpha', '1993-08-05', 'core'], ['2xm', 'Double Masters', '2020-08-07', 'masters'], ['c21', 'Commander 2021', '2021-04-23', 'commander'], ['cmm', 'Commander Masters', '2023-08-04'], ['mt2', 'Empty Set', '2024-01-01', 'expansion']],
   rows: [
     row('sol-lea', SOL, 'lea', '269', 1, 900, '1993-08-05'),
     row('sol-c21', SOL, 'c21', '263', 1, 2, '2021-04-23'),
@@ -46,6 +46,11 @@ describe('the list of sets', () => {
     expect(sets.map((s) => s.code)).toEqual(['cmm', 'c21', '2xm', 'lea']); // mt2 has no printings, so it isn't listed
     expect(sets.find((s) => s.code === 'cmm')).toMatchObject({ name: 'Commander Masters', released: '2023-08-04', cards: 4, owned: 0, ownedHere: 0 }); // Sol Ring has three printings here but counts once
     expect(sets.find((s) => s.code === 'lea')?.cards).toBe(2);
+  });
+
+  it('carries each set\'s type, and none for a set whose file did not give one', () => {
+    const by = Object.fromEntries(listSets(db).map((s) => [s.code, s.kind]));
+    expect(by).toEqual({ cmm: null, c21: 'commander', '2xm': 'masters', lea: 'core' });
   });
 
   it('counts the cards you own in any printing, and those you have recorded as this set', () => {
@@ -142,5 +147,36 @@ describe('the routes', () => {
     expect((one.body as { cards: unknown[]; total: number }).cards).toHaveLength(1);
     expect((await r({ method: 'GET', path: '/api/sets/zzz' })).status).toBe(404);
     expect((await r({ method: 'GET', path: '/api/sets/cmm', query: { filter: 'bogus' } })).status).toBe(200); // an unknown filter just means all
+  });
+});
+
+import { setGroup, setIconUrl, SET_GROUPS } from '@grimoire/shared';
+import { collectPrintings, parsePrintingsFile } from './printings.js';
+describe('set types', () => {
+  it('group into the kinds a person browses by, with unknown types going with the rest', () => {
+    expect(setGroup('core')).toBe('main');
+    expect(setGroup('expansion')).toBe('main');
+    expect(setGroup('commander')).toBe('commander');
+    expect(setGroup('masters')).toBe('reprint');
+    expect(setGroup('promo')).toBe('other');
+    expect(setGroup('some_new_scryfall_type')).toBe('other');
+    expect(setGroup(null)).toBeNull();
+    expect(SET_GROUPS.map((g) => g.id)).toEqual(['main', 'commander', 'reprint', 'other']);
+  });
+
+  it('give each set an icon address in Scryfall\'s scheme', () => {
+    expect(setIconUrl('LEA')).toBe('https://svgs.scryfall.io/sets/lea.svg');
+  });
+
+  it('survive the printings file round trip, and an older file without them still loads', async () => {
+    const file = await collectPrintings((async function* () {
+      yield JSON.stringify({ id: 'a', oracle_id: SOL, set: 'tst', set_name: 'Test', set_type: 'core', collector_number: '1', released_at: '2020-01-01' });
+    })(), 'v');
+    const again = parsePrintingsFile(JSON.stringify(file));
+    loadPrintings(db, again);
+    expect(listSets(db).find((s) => s.code === 'tst')?.kind).toBe('core');
+    // a format-1 file: sets stop after the date
+    loadPrintings(db, parsePrintingsFile(JSON.stringify({ version: 'old', sets: [['tst', 'Test', '2020-01-01']], rows: again.rows })));
+    expect(listSets(db).find((s) => s.code === 'tst')?.kind).toBeNull();
   });
 });

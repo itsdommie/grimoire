@@ -51,14 +51,17 @@ let router: ReturnType<typeof createRouter> | null = null;
 async function loadBundledPrintings(db: Db, meta: (key: string) => string | null): Promise<void> {
   const res = await fetch(new URL('bundled.json', ctx.location.href));
   if (!res.ok) return;
-  const bundled = (await res.json()) as { printings?: string };
+  const bundled = (await res.json()) as { printings?: string; printingsFormat?: number };
   const have = meta('printings_version');
-  if (!bundled.printings || bundled.printings === 'none' || (have && have !== 'none' && have >= bundled.printings)) return;
+  // (A newer format of the same data counts too: it carries something the installed one lacks, like each set's type.)
+  const newerFormat = (bundled.printingsFormat ?? 1) > Number(meta('printings_format') ?? 1);
+  if (!bundled.printings || bundled.printings === 'none' || (!newerFormat && have && have !== 'none' && have >= bundled.printings)) return;
   post({ progress: 'Loading card printings… (once per update)' });
   const file = await fetch(new URL('card-printings.json', ctx.location.href));
   if (!file.ok) throw new Error(`couldn't load the card printings (HTTP ${file.status})`);
   loadPrintings(db, parsePrintingsFile(await file.text()));
   db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_version', ?)").run(bundled.printings);
+  db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_format', ?)").run(String(bundled.printingsFormat ?? 1));
 }
 
 /**

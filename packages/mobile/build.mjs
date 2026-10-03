@@ -43,15 +43,16 @@ const slim = new DatabaseSync(out);
 // Printings travel as a separate compact file (the same format the app downloads on the desktop), loaded by the app at startup when its copy is
 // missing or older than this one: that way an app update brings new printing data to an existing install, and there is one code path.
 const printingRows = slim.prepare("SELECT id, card_id, set_code, collector, finishes, COALESCE(usd, 0), COALESCE(usd_foil, 0), COALESCE(usd_etched, 0), COALESCE(released, '') FROM printings").all().map((r) => Object.values(r));
-const printingSets = slim.prepare('SELECT code, name, COALESCE(released, \'\') FROM sets').all().map((r) => Object.values(r));
+const printingSets = slim.prepare('SELECT code, name, COALESCE(released, \'\'), COALESCE(kind, \'\') FROM sets').all().map((r) => Object.values(r));
 const printingsVersion = slim.prepare("SELECT value FROM meta WHERE key = 'printings_version'").get()?.value ?? 'none';
+const printingsFormat = Number(slim.prepare("SELECT value FROM meta WHERE key = 'printings_format'").get()?.value ?? 1);
 slim.exec("DELETE FROM printings; DELETE FROM sets; DELETE FROM meta WHERE key LIKE 'printings%';");
 slim.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; DELETE FROM collection_prints; PRAGMA journal_mode = DELETE; VACUUM;");
 slim.close();
 
 // Plain JSON, not .gz: Android's asset packager strips a .gz extension, and the APK compresses the file anyway.
-writeFileSync(resolve(dist, 'card-printings.json'), JSON.stringify({ version: printingsVersion, sets: printingSets, rows: printingRows }));
-writeFileSync(resolve(dist, 'bundled.json'), JSON.stringify({ printings: printingsVersion, appVersion: JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')).version }));
+writeFileSync(resolve(dist, 'card-printings.json'), JSON.stringify({ version: printingsVersion, format: printingsFormat, sets: printingSets, rows: printingRows }));
+writeFileSync(resolve(dist, 'bundled.json'), JSON.stringify({ printings: printingsVersion, printingsFormat, appVersion: JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')).version }));
 
 const mb = (f) => `${(readFileSync(resolve(dist, f)).length / 1048576).toFixed(1)} MB`;
 console.log(`mobile/dist ready: grimoire.db ${mb('grimoire.db')}, card-printings.json ${mb('card-printings.json')} (${printingRows.length} printings), api.worker.js ${mb('api.worker.js')}, ${readdirSync(dist).length} entries`);
