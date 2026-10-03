@@ -196,6 +196,34 @@ export interface CardDetail {
   wanted: number;
 }
 
+// -------------------------------------------------------------- price watch
+
+export interface PriceMover {
+  card: Card;
+  /** Price at the start of the window (or the earliest we recorded), and now. USD, each card at its cheapest printing. */
+  then: number;
+  now: number;
+  change: number;
+  /** Percent change; null when it started at 0. */
+  pct: number | null;
+  owned: number;
+  wanted: number;
+  /** What the change means for you: the change times the copies you own (or still need, for a card you only want). */
+  effectUsd: number;
+}
+export interface PriceReport {
+  days: number;
+  /** The first day any price was recorded (null before the first snapshot): history can't go back further than this. */
+  since: string | null;
+  /** Cards being watched (in the collection, on the wishlist or in a deck) that have a price. */
+  tracked: number;
+  /** What the watched cards you own were worth at the start of the window and are now. */
+  valueNow: number;
+  valueThen: number;
+  up: PriceMover[];
+  down: PriceMover[];
+}
+
 // ---------------------------------------------------------------- banlists
 
 export interface BanlistFormat { id: string; label: string; banned: number; restricted: number }

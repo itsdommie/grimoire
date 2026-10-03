@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { WishlistReport } from '@grimoire/shared';
 import { api } from './api';
 import { usd } from './CollectionView';
+import { PriceWatch } from './PriceWatch';
 
 /** The cards you want. A wish is the copies you want in total, so it fills in as your collection grows. */
 export function WishlistView({ onOpenCard, version, onChanged }: { onOpenCard: (id: string) => void; version: number; onChanged: () => void }) {
@@ -32,6 +33,7 @@ export function WishlistView({ onOpenCard, version, onChanged }: { onOpenCard: (
         </div>
         {report.items.length > 0 && <div className="deckbar"><button className="danger" onClick={() => { if (window.confirm('Remove every card from your wishlist? Your collection and decks are not affected.')) void api.clearWishlist().then(() => { void load(); onChanged(); }).catch((e: Error) => setError(e.message)); }}>Clear</button></div>}
       </div>
+      {report.items.length > 0 && <PriceWatch scope="wishlist" version={version} onOpenCard={onOpenCard} />}
       {open.length > 0 && <ul className="list wishrows" aria-label="Cards to find">{open.map((i) => <WishRow key={i.card.id} item={i} onOpenCard={onOpenCard} onWant={want} />)}</ul>}
       {got.length > 0 && (
         <>

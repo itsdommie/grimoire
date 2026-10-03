@@ -1,4 +1,4 @@
-import type { BanlistFormat, BanlistReport, SetDetail, SetSummary, WishlistReport, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { PriceReport, BanlistFormat, BanlistReport, SetDetail, SetSummary, WishlistReport, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -74,6 +74,7 @@ export const api = {
   /** Which printing is this card, from the lines read off its bottom edge? */
   identifyPrinting: (cardId: string, lines: string[]) => request<PrintingIdentification>('POST', '/api/cards/identify', { cardId, lines }),
   /** Set how many of one printing and finish you own. `claim` uses up copies with no recorded printing before adding new ones. */
+  prices: (days: number, scope: 'all' | 'collection' | 'wishlist', signal?: AbortSignal) => request<PriceReport>('GET', `/api/prices?days=${days}&scope=${scope}`, undefined, signal),
   banlistFormats: () => request<{ formats: BanlistFormat[] }>('GET', '/api/formats'),
   banlist: (format: string, signal?: AbortSignal) => request<BanlistReport>('GET', `/api/formats/${encodeURIComponent(format)}/banlist`, undefined, signal),
   wishlist: (signal?: AbortSignal) => request<WishlistReport>('GET', '/api/wishlist', undefined, signal),

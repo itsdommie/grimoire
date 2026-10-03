@@ -4,6 +4,7 @@ import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import type { DataStatus } from '@grimoire/shared';
 import { dbPathFor, openDb, type Db } from './db.js';
+import { snapshotPrices } from './pricewatch.js';
 import { DataManager } from './data.js';
 import { loadJsonl, loadPrices, isRealPaperPrinting } from './ingest.js';
 import { searchCards } from './cards.js';
@@ -110,6 +111,22 @@ describe('DataManager prices', () => {
     dm.start({ prices: true }); await dm.idle();
     expect(dm.status().prices).toMatchObject({ enabled: true, updatedAt: 'local' });
     expect(row(db, 'Sol Ring').usd_min).toBe(0.9);
+  });
+
+  it('starts the price history afresh when cheapest prices are turned on or off, so re-pricing is not mistaken for a market move', async () => {
+    const { dm, db } = await setup();
+    dm.start(); await dm.idle();
+    const sol = (db.prepare("SELECT id FROM cards WHERE name = 'Sol Ring'").get() as { id: string }).id;
+    db.prepare('INSERT INTO collection (card_id, qty) VALUES (?, 1)').run(sol);
+    const history = () => (db.prepare('SELECT price FROM price_history WHERE card_id = ?').all(sol) as Array<{ price: number }>).map((r) => r.price);
+    snapshotPrices(db);
+    expect(history()).toEqual([1.5]);
+    dm.start({ prices: true }); await dm.idle();
+    expect(history()).toEqual([0.9]); // the old basis is gone; only the new one is recorded
+    dm.start({ force: true }); await dm.idle(); // an ordinary update keeps the history (and records only what changed)
+    expect(history()).toEqual([0.9]);
+    dm.start({ prices: false }); await dm.idle();
+    expect(history()).toEqual([1.5]);
   });
 
   it('stays on across card updates, and turning it off clears the prices', async () => {

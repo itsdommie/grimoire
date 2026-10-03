@@ -11,6 +11,7 @@ import { AdvisorView, type ChatItem } from './AdvisorView';
 import { SetsView } from './SetsView';
 import { WishlistView } from './WishlistView';
 import { RulesHome } from './RulesHome';
+import { PriceWatch } from './PriceWatch';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
@@ -243,6 +244,7 @@ export function App() {
             {view === 'cards' && collection && collection.total > 0 && onlyOwned && <SkipUsedToggle checked={skipUsed} onChange={setSkipUsed} />}
           </p>
           {view === 'collection' && <CollectionBar cheapest={!!ds.prices?.enabled && !!ds.prices.updatedAt} summary={collection} onImport={() => setImporting(true)} onClear={async () => { try { await api.clearCollection(); await collectionChanged(); } catch (e) { setError((e as Error).message); } }} />}
+          {view === 'collection' && <PriceWatch scope="collection" version={collectionVersion} onOpenCard={setDetailId} />}
           {view === 'collection' && <CommanderIdeas version={collectionVersion} skipUsed={skipUsed} onSkipUsed={setSkipUsed} onBuild={startDeck} />}
           {view === 'cards' && !query && (
             <p className="examples">Try: {(semantic.status?.state === 'ready' ? [...EXAMPLES, 'about:"punish opponents for drawing extra cards"'] : EXAMPLES).map((ex) => <button key={ex} onClick={() => setQuery(ex)}>{ex}</button>)}</p>

@@ -194,6 +194,15 @@ details, or press **Add these to my wishlist** on a deck's missing cards (it nev
 stay listed under **Got them** until you remove them. The wishlist is part of backups; a backup made before the wishlist existed still
 restores.
 
+## Price watch
+
+Scryfall only publishes today's prices, so Grimoire keeps its own record: it notes the price of every card you own, want or use in a
+deck whenever that price changes (when the app starts, when you open the panel, and after each card update). **Price watch**, at the top
+of the Collection and Wishlist tabs, then shows the risers and fallers over 7, 30 or 90 days, ranked by what the change means for you
+(the change times the copies you own, or still need), and what the cards you own are worth now compared with then. It starts empty
+and fills in as prices move, so give it a few days; it can't see back before you started using it. Turning cheapest-printing prices on or
+off starts the record afresh, because that re-prices every card. The record stays on your computer and isn't part of backups.
+
 ## Banlists
 
 In the **Rules** tab, switch from the Comprehensive Rules to **Banlists** and pick a format (Standard, Pioneer, Modern, Legacy, Vintage,

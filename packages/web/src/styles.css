@@ -420,3 +420,12 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .wishrows .rname { text-align: left; justify-self: start; }
 .wishrows.got { opacity: .65; }
 @media (max-width: 900px) { .wishrows .wishrow { grid-template-columns: 34px 1fr auto auto; } .wishrows .wishrow > .muted { display: none; } }
+
+.pricewatch { margin: 10px 0; padding: 8px 12px; background: var(--panel); border: 1px solid #2a2d3d; border-radius: 8px; }
+.pricewatch > summary { cursor: pointer; font-weight: 600; }
+.pricewatch .seg { margin: 8px 0; }
+.pricewatch h4 { margin: 12px 0 4px; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pricerows .pricerow { display: grid; grid-template-columns: 1fr auto auto 90px; gap: 4px 12px; align-items: center; }
+.pricerows .rname { text-align: left; justify-self: start; }
+.rise, .fall { font-weight: 600; white-space: nowrap; } /* no red/green: a rise is good news for a card you own and bad for one you want to buy, so the arrow and sign say it */
+@media (max-width: 900px) { .pricerows .pricerow { grid-template-columns: 1fr auto auto; } .pricerows .pricerow > .muted:last-child { display: none; } }

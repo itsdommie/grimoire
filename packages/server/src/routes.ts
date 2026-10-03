@@ -7,6 +7,7 @@ import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
 import { getSet, listSets, type SetFilter } from './sets.js';
+import { getPriceReport, snapshotPrices, type PriceScope } from './pricewatch.js';
 import { getBanlist, listBanlistFormats } from './banlists.js';
 import { clearWishlist, getWishlist, setWanted, wishMissing } from './wishlist.js';
 import { Advisor, AdvisorError, keyFromEnvironment, type AdvisorOptions } from './advisor.js';
@@ -86,6 +87,8 @@ function nameIndexFor(db: Db, cache: { key: string; index: NameIndex } | null): 
 
 export function createRouter({ db, data, semantic, advisor: advisorOptions }: RouterDeps): (req: ApiRequest) => Promise<ApiResponse> {
   const routes: Route[] = [];
+  // The app has just started (and any card update waiting for it has been applied): note the prices as they are now.
+  try { snapshotPrices(db); } catch { /* price history is a nicety: never stop the app starting */ }
   let names: { key: string; index: NameIndex } | null = null;
   const on = (method: string, pattern: string, handler: Handler) => routes.push({ method, segments: pattern.split('/').filter(Boolean), handler });
 
@@ -220,6 +223,12 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
   on('POST', '/api/semantic/enable', () => { semantic.start(); return reply(202, semantic.status()); });
   on('POST', '/api/semantic/cancel', () => { semantic.cancel(); return semantic.status(); });
   on('DELETE', '/api/semantic', () => { semantic.remove(); return reply(204); });
+
+  // ------------------------------------------------------------- price watch
+  on('GET', '/api/prices', ({ query }) => {
+    snapshotPrices(db);
+    return getPriceReport(db, { days: num(query.days), scope: query.scope === 'collection' || query.scope === 'wishlist' ? (query.scope as PriceScope) : 'all' });
+  });
 
   // --------------------------------------------------------------- banlists
   on('GET', '/api/formats', () => ({ formats: listBanlistFormats(db) }));

@@ -8,6 +8,7 @@ import { parseComprehensiveRules, type DataStatus } from '@grimoire/shared';
 import { loadRules, rulesStatus } from './rules.js';
 import { collectAliases, loadAliases, parseNamesFile, type NamesFile } from './names.js';
 import { collectPrintings, loadPrintings, parsePrintingsFile, type PrintingsFile } from './printings.js';
+import { snapshotPrices } from './pricewatch.js';
 
 // Scryfall asks for a descriptive User-Agent and an Accept header on every API request.
 const HEADERS = {
@@ -288,6 +289,8 @@ export class DataManager {
     this.error = undefined;
     this.warning = undefined;
     this.upToDate = undefined;
+    // Turning cheapest-printing prices on or off re-prices every card, which would show up as a market move: start the price history afresh.
+    if (opts.prices === true && !this.pricesEnabled()) this.db.exec('DELETE FROM price_history');
     if (opts.prices === true) this.db.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('prices_enabled', '1')").run();
     if (opts.prices === false) this.disablePrices();
     this.progress = { phase: 'checking', item: 'cards' };
@@ -361,6 +364,7 @@ export class DataManager {
         failures.push(`prices: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
+    if (imported) { try { snapshotPrices(this.db); } catch { /* history is a nicety */ } } // the new prices are now what the price watch compares against
     if (failures.length) this.warning = `Couldn't update ${failures.join('; ')}`;
     this.upToDate = !imported;
   }
@@ -421,6 +425,7 @@ export class DataManager {
   private disablePrices(): void {
     this.db.prepare("DELETE FROM meta WHERE key IN ('prices_enabled', 'prices_updated_at', 'prices_checked_at')").run();
     clearPrices(this.db);
+    this.db.exec('DELETE FROM price_history'); // (the prices every card is measured by have just changed)
     const bulkDir = resolve(this.dataDir, 'bulk');
     if (existsSync(bulkDir)) for (const f of readdirSync(bulkDir)) if (f.startsWith(`${FILE_PREFIX.default_cards}-`)) rmSync(resolve(bulkDir, f), { force: true });
   }
