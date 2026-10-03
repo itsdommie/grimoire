@@ -1,0 +1,37 @@
+name: Semantic index
+
+# Embeds every card with the language model and publishes the result as a release asset, so a new install can download ~12 MB
+# instead of computing it for several minutes. It lives on a PRERELEASE tagged "semantic-index": a normal release would become
+# "latest" and break the auto-updater and the download page, which both read the latest release.
+on:
+  schedule:
+    - cron: '17 4 * * 1' # Mondays
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-index:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Download card data, tags, rulings and rules
+        run: npm run ingest
+      - name: Download the model and embed every card
+        run: npx tsx src/cli.ts semantic --export "$RUNNER_TEMP/index"
+        working-directory: packages/server
+      - name: Publish to the semantic-index prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view semantic-index >/dev/null 2>&1 || gh release create semantic-index \
+            --prerelease --latest=false --title "Semantic index (rolling)" \
+            --notes "Pre-built card embeddings used by Grimoire's optional semantic search. Rebuilt weekly by the Semantic index workflow. Not an application release."
+          gh release upload semantic-index "$RUNNER_TEMP"/index/* --clobber

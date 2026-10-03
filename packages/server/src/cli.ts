@@ -7,7 +7,11 @@ if (command === 'semantic') {
   // Developer convenience: download the model and build the semantic index for the dev database.
   const { SemanticIndex } = await import('./semantic.js');
   const sdb = openDb(dbPathFor(DEFAULT_DATA_DIR));
-  const index = new SemanticIndex({ db: sdb, dataDir: DEFAULT_DATA_DIR });
+  // --export <dir>: after building, write the pre-built index (manifest + file) for publishing. Everything is embedded locally then.
+  const exportFlag = args.indexOf('--export');
+  const exportDir = exportFlag >= 0 ? args[exportFlag + 1] : undefined;
+  if (exportFlag >= 0 && !exportDir) { console.error('--export needs a folder'); process.exit(2); }
+  const index = new SemanticIndex({ db: sdb, dataDir: DEFAULT_DATA_DIR, ...(exportDir ? { prebuiltBase: null } : {}) });
   index.start();
   const t = setInterval(() => { const p = index.status().progress; if (p) process.stdout.write(`\r${p.phase} ${p.phase === 'downloading' ? `${((p.received ?? 0) / 1e6).toFixed(1)} MB` : `${p.done ?? 0}/${p.of ?? 0}`}   `); }, 1000);
   await index.idle();
@@ -16,10 +20,19 @@ if (command === 'semantic') {
   process.stdout.write('\n');
   if (st.state === 'error') { console.error(st.error); process.exit(1); }
   console.log(`Semantic index ${st.state}: ${st.indexed} of ${st.total} cards.`);
+  if (exportDir) {
+    if (st.state !== 'ready' || st.pending > 0) { console.error('The index is incomplete; not exporting.'); process.exit(1); }
+    const { mkdirSync, writeFileSync } = await import('node:fs');
+    const { manifest, data } = index.exportPrebuilt();
+    mkdirSync(exportDir, { recursive: true });
+    writeFileSync(`${exportDir}/${manifest.file}`, data);
+    writeFileSync(`${exportDir}/semantic-index.json`, JSON.stringify(manifest, null, 2));
+    console.log(`Exported ${manifest.count} cards (${(manifest.size / 1e6).toFixed(1)} MB) to ${exportDir}`);
+  }
   process.exit(0);
 }
 if (command !== 'ingest') {
-  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic');
+  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>]');
   process.exit(2);
 }
 
