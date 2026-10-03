@@ -356,3 +356,10 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .pinfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .pinfo .stepper { display: flex; align-items: center; gap: 6px; }
 .pfilter { width: 100%; margin: 6px 0; }
+
+/* ---- app update banner (Android) ---- */
+.appupdate { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; background: #2a2150; border-bottom: 1px solid #3b2f78; font-size: 14px; }
+.appupdate span { flex: 1 1 auto; }
+.appupdate .btn { padding: 6px 12px; color: #12131a; background: var(--accent); border-color: var(--accent); }
+.appupdate a:not(.btn) { color: var(--fg); }
+.appupdate button { padding: 2px 10px; font-size: 18px; line-height: 1; color: var(--fg); background: none; border: 0; cursor: pointer; }

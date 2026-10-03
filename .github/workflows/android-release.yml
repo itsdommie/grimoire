@@ -1,0 +1,94 @@
+name: Android release
+
+# Push a tag like android-v0.1.0 (it must match "version" in packages/mobile/package.json) to build, test, sign and publish the Android app.
+# The APK is signed with the release key held in GitHub secrets (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS,
+# ANDROID_KEY_PASSWORD). The same key must be used for every release: Android refuses to update an app signed with a different one.
+# The release is NOT marked "latest": the desktop auto-updater and the download page both read the latest release.
+on:
+  push:
+    tags: ['android-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Tag must match the app version
+        run: |
+          version=$(node -p "require('./packages/mobile/package.json').version")
+          if [ "android-v$version" != "$GITHUB_REF_NAME" ]; then echo "Tag $GITHUB_REF_NAME does not match version android-v$version"; exit 1; fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Card data for the on-device database
+        run: npm run ingest
+      - name: Card printings
+        run: npx tsx src/cli.ts printings --load
+        working-directory: packages/server
+      - name: Build the app content and test it in desktop and phone-sized browsers
+        run: npm run e2e:mobile
+        env:
+          CHROMIUM_PATH: /usr/bin/google-chrome
+      - name: Build the signed APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then echo "The signing key secrets are not set"; exit 1; fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.p12"
+          cd packages/mobile
+          npx cap sync android
+          cd android
+          ./gradlew assembleRelease --console=plain
+          rm -f "$RUNNER_TEMP/release.p12"
+      - name: Check the signature is the release key
+        run: |
+          apk=packages/mobile/android/app/build/outputs/apk/release/app-release.apk
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/certs.txt"
+          grep -q "^Verifies" "$RUNNER_TEMP/certs.txt"
+          signer=$(grep -i "Signer #1 certificate SHA-256 digest" "$RUNNER_TEMP/certs.txt" | sed 's/.*: //' | tr -d '[:space:]')
+          expected=$(tr -d '[:space:]' < packages/mobile/signing-sha256.txt)
+          if [ "$signer" != "$expected" ]; then echo "Signed with $signer, expected $expected"; exit 1; fi
+          # Android's own view of the package: the version it will install as.
+          aapt=$(ls "$ANDROID_HOME"/build-tools/*/aapt | sort -V | tail -n 1)
+          "$aapt" dump badging "$apk" | grep -E "^package:" | tee "$RUNNER_TEMP/badging.txt"
+          grep -q "versionName='$VERSION'" "$RUNNER_TEMP/badging.txt"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          name="Grimoire-$VERSION-android.apk"
+          cp packages/mobile/android/app/build/outputs/apk/release/app-release.apk "$name"
+          sha256sum "$name" > "$name.sha256"
+          fingerprint=$(cat packages/mobile/signing-sha256.txt)
+          cat > notes.md <<NOTES
+          Grimoire for Android $VERSION. A free, local-first Magic: The Gathering deck lab with a card scanner.
+
+          **Install:** download \`$name\` on your phone and open it. Android will ask you to allow installs from your browser or file manager the first time. Grimoire is not on an app store.
+
+          **Check it is genuine** (optional): the SHA-256 of the file is in \`$name.sha256\`, and every release is signed with the same certificate, whose SHA-256 fingerprint is
+
+          \`$fingerprint\`
+
+          **Updating:** Grimoire tells you when a newer version is out (a banner with a Download button), or follow this repository with [Obtainium](https://github.com/ImranR98/Obtainium). Your decks and collection are kept when you update. Card data updates itself separately, weekly.
+
+          Not affiliated with or endorsed by Wizards of the Coast. Card data and images from Scryfall.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" --latest=false --title "Grimoire for Android $VERSION" --notes-file notes.md "$name" "$name.sha256"

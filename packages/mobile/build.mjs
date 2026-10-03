@@ -46,7 +46,7 @@ slim.close();
 
 // Plain JSON, not .gz: Android's asset packager strips a .gz extension, and the APK compresses the file anyway.
 writeFileSync(resolve(dist, 'card-printings.json'), JSON.stringify({ version: printingsVersion, sets: printingSets, rows: printingRows }));
-writeFileSync(resolve(dist, 'bundled.json'), JSON.stringify({ printings: printingsVersion }));
+writeFileSync(resolve(dist, 'bundled.json'), JSON.stringify({ printings: printingsVersion, appVersion: JSON.parse(readFileSync(resolve(here, 'package.json'), 'utf8')).version }));
 
 const mb = (f) => `${(readFileSync(resolve(dist, f)).length / 1048576).toFixed(1)} MB`;
 console.log(`mobile/dist ready: grimoire.db ${mb('grimoire.db')}, card-printings.json ${mb('card-printings.json')} (${printingRows.length} printings), api.worker.js ${mb('api.worker.js')}, ${readdirSync(dist).length} entries`);

@@ -93,7 +93,15 @@ plays your deck alone thousands of times in a background worker and reports land
 trouble and when your commander can first be cast. Both tabs explain their assumptions in the app; in particular the
 colour-source numbers are a calibrated hypergeometric estimate, not Frank Karsten's published table.
 
-## Android (in development)
+## Android
+
+**Install.** Download `Grimoire-<version>-android.apk` from the release called "Grimoire for Android" (Android releases are tagged
+`android-v<version>`; they are never marked "latest", which the desktop updater reads) and open it on your phone. Android asks you to
+allow installs from your browser or file manager once, because the app isn't on a store. Every release is signed with the same key;
+its certificate SHA-256 is in `packages/mobile/signing-sha256.txt` and each release lists the file's checksum. The app shows a banner
+when a newer version is out (or follow the repository with [Obtainium](https://github.com/ImranR98/Obtainium)); your decks and
+collection are kept when you update. Releases are built and signed by `android-release.yml` when an `android-v<version>` tag is pushed
+(the version is `packages/mobile/package.json`).
 
 `packages/mobile` wraps the same web UI in an Android app (Capacitor). There is no server on the phone: the shared API routes
 (`packages/server/src/routes.ts`) run in a web worker over SQLite compiled to WASM, in the app's private storage, with the card
@@ -125,7 +133,7 @@ npm run e2e:mobile                    # the UI on the on-device database, in a d
 ANDROID_APP=io.github.itsdommie.grimoire npx playwright test -c playwright.mobile.config.ts --project=phone   # the same flow in the real WebView on an emulator or phone
 ```
 
-The debug APK is signed with Android's debug key, so it can be sideloaded to try. A proper release build needs its own signing key.
+The debug APK (`npm run apk`) is signed with Android's throwaway debug key, so it is only for trying things; it can't be updated by a release build (a different signature), so move to the release app by backing up (the Backup button), uninstalling and reinstalling. Release builds read their key from `ANDROID_KEYSTORE_PATH`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`; keep the key file and its password safe and never commit them: Android refuses to update an app that is signed with a different key.
 
 ## Collection
 

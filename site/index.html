@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Grimoire: a free, local-first Magic: The Gathering deck lab</title>
-  <meta name="description" content="Search every Magic card offline, build and analyse Commander decks, simulate your mana, track your collection and your games. Free, no account, for Windows and Linux.">
+  <meta name="description" content="Search every Magic card offline, build and analyse Commander decks, simulate your mana, track your collection and your games. Free, no account, for Windows, Linux and Android.">
   <link rel="icon" href="img/icon.png">
   <style>
     :root { color-scheme: light dark; --bg: #fbfaf7; --panel: #ffffff; --ink: #1b1a22; --muted: #5d5b6b; --line: #e3e0ea; --accent: #6d4fd6; --accent-ink: #fff; --code: #f1eefb; }
@@ -65,6 +65,7 @@
         <a class="btn" id="dl-windows" href="https://github.com/itsdommie/grimoire/releases/latest">Windows installer<small>.exe</small></a>
         <a class="btn" id="dl-appimage" href="https://github.com/itsdommie/grimoire/releases/latest">Linux AppImage<small>runs anywhere</small></a>
         <a class="btn" id="dl-deb" href="https://github.com/itsdommie/grimoire/releases/latest">Linux .deb<small>Debian / Ubuntu</small></a>
+        <a class="btn" id="dl-android" href="https://github.com/itsdommie/grimoire/releases" hidden>Android<small>APK</small></a>
       </div>
       <p class="note" id="version-note">All versions are on the <a href="https://github.com/itsdommie/grimoire/releases">releases page</a>. Free and open source (MIT).</p>
     </div>
@@ -79,6 +80,7 @@
         <div class="card"><h3>Goldfish simulator</h3><p>Plays your deck thousands of times to measure land drops, colour trouble, mulligans and when your commander comes down.</p></div>
         <div class="card"><h3>Collection tracker</h3><p>Import from ManaBox, Moxfield, Archidekt or Deckbox. See what each deck still needs and which commanders you can build.</p></div>
         <div class="card"><h3>Card details</h3><p>Rulings, legality in 8 formats, prices and community tags for any card, all offline after the first download.</p></div>
+        <div class="card"><h3>Card scanner (Android)</h3><p>Point your phone's camera at a card and it is added to your collection or deck, as the exact printing. The card is read on your phone.</p></div>
         <div class="card"><h3>Table tools</h3><p>A life and commander-damage tracker for 2 to 6 players, with counters, turn order, undo and dice.</p></div>
         <div class="card"><h3>Your data stays yours</h3><p>Decks and collection live in a folder on your computer. One click backs them up to a file.</p></div>
       </div>
@@ -114,6 +116,16 @@
         <summary>Linux (.deb)</summary>
         <ol><li>Download <strong>Grimoire-….deb</strong> and install it with your software centre, or <code>sudo apt install ./Grimoire-*.deb</code>. New versions are installed the same way.</li></ol>
       </details>
+      <details>
+        <summary>Android</summary>
+        <ol>
+          <li>On your phone, download <strong>Grimoire-….-android.apk</strong> from the Android button above (or the <a href="https://github.com/itsdommie/grimoire/releases">releases page</a>: look for the release called "Grimoire for Android") and open it.</li>
+          <li>Android asks you to allow installs from your browser or file manager, because Grimoire isn't on an app store. Allow it for this one install.</li>
+          <li>Open Grimoire. The card database is already inside the app, so it starts straight away. It keeps its card data up to date by itself, weekly, over Wi-Fi (on mobile data it only tells you an update is waiting).</li>
+          <li>Optional: every release is signed with the same certificate. Its SHA-256 fingerprint is <code>a79ce007a065e32b8fb6120e2362295a009174061b529069c1b598c9550dbbd1</code>, and each release lists the file's checksum.</li>
+        </ol>
+        <p class="note">The app tells you when a newer version is out (a banner with a Download button). Your decks and collection are kept when you update. You can also follow the project with <a href="https://github.com/ImranR98/Obtainium">Obtainium</a>.</p>
+      </details>
       <p class="note">Windows and the Linux AppImage update themselves: Grimoire checks for new versions, downloads them in the background and asks before installing. You can turn that off in the Help menu.</p>
     </section>
 
@@ -123,6 +135,7 @@
       <ul>
         <li><strong>Scryfall</strong>, to download card data (once, then when you ask or an update appears) and to show card images.</li>
         <li><strong>GitHub</strong>, to check for new versions of Grimoire (can be turned off).</li>
+        <li><strong>Camera (Android only)</strong>: the scanner uses it only while the scanner screen is open. Card names are read on your phone and nothing is uploaded.</li>
         <li><strong>Hugging Face</strong>, once, only if you turn on semantic search, to download a 34 MB language model. Your searches are processed on your computer.</li>
       </ul>
     </section>
@@ -154,6 +167,25 @@
         document.getElementById('version-note').innerHTML = 'Latest version <strong>' + rel.tag_name + '</strong>. All versions and checksums are on the <a href="' + rel.html_url.replace(/\/tag\/.*/, '') + '">releases page</a>. Free and open source (MIT).';
       })
       .catch(function () { /* keep the fallback links */ });
+
+    // The Android app has its own releases (tagged android-v…, never "latest"): show its button once there is one.
+    fetch('https://api.github.com/repos/itsdommie/grimoire/releases?per_page=30', { headers: { Accept: 'application/vnd.github+json' } })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (list) {
+        var rel = list.find(function (r) { return !r.draft && !r.prerelease && /^android-v/.test(r.tag_name) && (r.assets || []).some(function (a) { return /\.apk$/.test(a.name); }); });
+        if (!rel) return;
+        var apk = rel.assets.find(function (a) { return /\.apk$/.test(a.name); });
+        var button = document.getElementById('dl-android');
+        button.href = apk.browser_download_url;
+        button.querySelector('small').textContent = rel.tag_name.replace('android-v', 'v') + ' · ' + Math.round(apk.size / 1048576) + ' MB';
+        button.hidden = false;
+        if (/Android/i.test(navigator.userAgent || '')) { // on a phone, this is the one to offer first
+          var primary = document.getElementById('dl-primary');
+          primary.href = apk.browser_download_url; primary.firstChild.nodeValue = 'Download for Android'; primary.querySelector('small').textContent = button.querySelector('small').textContent;
+          button.hidden = true;
+        }
+      })
+      .catch(function () { /* no Android button */ });
   })();
 </script>
 </body>

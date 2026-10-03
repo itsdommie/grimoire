@@ -8,7 +8,13 @@ export interface OcrResult { width: number; height: number; lines: OcrLine[] }
 export interface TextRecognizer { recognize(imageBase64: string): Promise<OcrResult> }
 
 declare global {
-  interface Window { grimoireNative?: { textRecognition?: TextRecognizer } }
+  interface Window {
+    grimoireNative?: {
+      textRecognition?: TextRecognizer;
+      /** Looks for a newer version of the app itself (the Android app, which isn't on a store). Null when this is the newest. */
+      appUpdate?: { check(): Promise<{ version: string; url: string; page: string } | null> };
+    };
+  }
 }
 
 /** A Magic card is 63 x 88 mm. */

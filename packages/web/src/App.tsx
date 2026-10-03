@@ -10,6 +10,7 @@ import { PlayView } from './PlayView';
 import { RulesView } from './RulesView';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
+import { AppUpdateBanner } from './AppUpdate';
 
 const ORDERS = [
   ['name', 'Name'],
@@ -180,6 +181,7 @@ export function App() {
   return (
     <div className={`layout${view === 'play' || view === 'rules' ? ' noside' : ''}${pane === 'deck' ? ' show-deck' : ''}`}>
       <div className="browse">
+        {window.grimoireNative?.appUpdate && <AppUpdateBanner check={window.grimoireNative.appUpdate.check} />}
         <header>
           <h1>Grimoire</h1>
           <nav className="viewtabs" aria-label="Views">

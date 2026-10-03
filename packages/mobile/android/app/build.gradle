@@ -1,5 +1,10 @@
 apply plugin: 'com.android.application'
 
+// The app's version comes from packages/mobile/package.json, so there is one place to change it. The version code (which Android uses
+// to decide what is newer) is major * 10000 + minor * 100 + patch: 0.1.0 is 100, 1.2.3 is 10203.
+def appVersion = new groovy.json.JsonSlurper().parse(file('../../package.json')).version as String
+def (appMajor, appMinor, appPatch) = appVersion.tokenize('.').collect { it.toInteger() }
+
 android {
     namespace = "io.github.itsdommie.grimoire"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +12,8 @@ android {
         applicationId "io.github.itsdommie.grimoire"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appMajor * 10000 + appMinor * 100 + appPatch
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // Real phones are 64-bit ARM; x86_64 is for the emulator. Dropping 32-bit ARM and x86 saves ~17 MB of ML Kit libraries.
         ndk { abiFilters 'arm64-v8a', 'x86_64' }
@@ -18,8 +23,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Release builds are signed with a key kept outside the repository, given by these environment variables (the release workflow
+    // sets them from GitHub secrets). Without them the release APK comes out unsigned, which Android will not install.
+    signingConfigs {
+        release {
+            def keystore = System.getenv('ANDROID_KEYSTORE_PATH')
+            if (keystore) {
+                storeFile file(keystore)
+                storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv('ANDROID_KEYSTORE_PATH')) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

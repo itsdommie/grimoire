@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
 import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protocol.ts';
 import type { OcrResult, TextRecognizer } from '../../web/src/scanning.ts';
+import { checkForAppUpdate } from './appUpdate.ts';
 
 /**
  * Runs before the app. It starts the API worker and replaces `fetch` for `/api/...` URLs with a call into that worker, so the
@@ -108,4 +109,6 @@ window.fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Res
 const mlkit = registerPlugin<{ recognize(options: { image: string }): Promise<OcrResult> }>('TextRecognition');
 const textRecognition: TextRecognizer = { recognize: (image) => mlkit.recognize({ image }) };
 // Only inside the app (a plain browser has no plugin), and never over a recognizer something else already provided (tests do).
-if (Capacitor.isNativePlatform() && !window.grimoireNative) window.grimoireNative = { textRecognition };
+// The app's own update check reads the version this build was made with, from the bundled.json that build.mjs writes.
+const appUpdate = { check: async () => checkForAppUpdate(((await (await fetch(new URL('bundled.json', location.href))).json()) as { appVersion: string }).appVersion) };
+if (Capacitor.isNativePlatform() && !window.grimoireNative) window.grimoireNative = { textRecognition, appUpdate };
