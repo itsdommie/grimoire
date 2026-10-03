@@ -49,7 +49,7 @@ export interface Embedder {
 }
 
 interface OrtLike {
-  env: { wasm: { numThreads: number; wasmPaths?: string } };
+  env: { wasm: { numThreads: number; wasmPaths?: string | { mjs?: string; wasm?: string }; wasmBinary?: Uint8Array } };
   InferenceSession: { create(model: Uint8Array, opts: { executionProviders: string[] }): Promise<{ run(feeds: Record<string, unknown>): Promise<Record<string, { data: Float32Array; dims: number[] }>>; release?(): Promise<void> }> };
   Tensor: new (type: string, data: BigInt64Array, dims: number[]) => unknown;
 }
@@ -63,7 +63,12 @@ export class OrtEmbedder implements Embedder {
     const specifier = opts.ortDir ? pathToFileURL(join(opts.ortDir, 'ort.node.min.mjs')).href : 'onnxruntime-web';
     const ort = (await import(/* @vite-ignore */ specifier)) as unknown as OrtLike; // computed specifier: kept out of the bundle
     ort.env.wasm.numThreads = opts.threads ?? Math.max(1, Math.min(8, availableParallelism() - 1));
-    if (opts.ortDir) ort.env.wasm.wasmPaths = opts.ortDir.endsWith('/') || opts.ortDir.endsWith('\\') ? opts.ortDir : `${opts.ortDir}/`;
+    if (opts.ortDir) {
+      // The loader is import()ed, so it must be a real file:// URL: a Windows path (D:\...) is not a valid ESM specifier.
+      // The .wasm bytes are handed over directly so no second path has to be resolved.
+      ort.env.wasm.wasmPaths = { mjs: pathToFileURL(join(opts.ortDir, 'ort-wasm-simd-threaded.mjs')).href };
+      ort.env.wasm.wasmBinary = readFileSync(join(opts.ortDir, 'ort-wasm-simd-threaded.wasm'));
+    }
     const session = await ort.InferenceSession.create(readFileSync(join(opts.modelDir, 'model.onnx')), { executionProviders: ['wasm'] });
     const tokenizer = WordPieceTokenizer.fromTokenizerJson(readFileSync(join(opts.modelDir, 'tokenizer.json'), 'utf8'));
     return new OrtEmbedder(ort, session, tokenizer, spec);

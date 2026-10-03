@@ -94,6 +94,7 @@ test.describe.serial('desktop app', () => {
   });
 
   test('semantic search runs the real language model from the packaged app', async () => {
+    test.setTimeout(300_000); // includes downloading the 34 MB model on CI
     // Reuse a model already on this machine (a dev checkout) to avoid the 34 MB download; CI downloads it.
     const devModel = resolve('data/models/bge-small-en-v1.5');
     if (existsSync(join(devModel, 'model.onnx'))) {
@@ -104,7 +105,8 @@ test.describe.serial('desktop app', () => {
     const page = await app.firstWindow();
     const footer = page.locator('.datafooter', { hasText: 'Semantic search:' });
     await footer.getByRole('button', { name: 'Set up…' }).click();
-    await expect(footer).toContainText(/Ready · 3 cards indexed/, { timeout: 120_000 });
+    // Wait for success or a visible failure; on failure, report the footer's own message instead of timing out blindly.
+    await expect.poll(async () => { const t = await footer.innerText(); return /Ready · 3 cards indexed/.test(t) ? 'ready' : /Try again/.test(t) ? `failed: ${t}` : 'working'; }, { timeout: 240_000, intervals: [1000] }).toBe('ready');
 
     await page.getByPlaceholder(/Search/).fill('about:"tap for mana, a rock that adds two colorless"');
     await expect(page.locator('.status')).toContainText('best matches first');
