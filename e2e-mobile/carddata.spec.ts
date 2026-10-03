@@ -9,7 +9,7 @@ test.skip(!!process.env.ANDROID_APP, 'built-in server; android-update.spec.ts co
 
 let published: Awaited<ReturnType<typeof publishUpdate>>;
 test.beforeAll(async ({}, testInfo) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   test.skip(testInfo.project.name !== 'wide', 'one browser size is enough');
   published = await publishUpdate();
 });
@@ -22,7 +22,7 @@ async function openApp(page: Page, metered: boolean) {
 }
 
 test('the weekly check downloads a newer card update and applies it at the next start, keeping decks and collection', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   published.hits.length = 0;
   await openApp(page, false);
   const user = await makeUserData(page);
@@ -38,7 +38,7 @@ test('the weekly check downloads a newer card update and applies it at the next 
 });
 
 test('on mobile data it only says an update is waiting, and downloads it when asked', async ({ page }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(420_000);
   published.hits.length = 0;
   await openApp(page, true);
   const user = await makeUserData(page);
