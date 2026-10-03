@@ -19,13 +19,13 @@ describe('parseCsv', () => {
 describe('parseCollection', () => {
   it('ManaBox export', () => {
     const csv = 'Name,Set code,Set name,Collector number,Foil,Rarity,Quantity,ManaBox ID,Scryfall ID,Purchase price,Misprint,Altered,Condition,Language,Purchase price currency\n'
-      + 'Sol Ring,CMM,Commander Masters,400,normal,uncommon,2,123,abc,1.00,false,false,near_mint,en,USD\n'
+      + 'Sol Ring,CMM,Commander Masters,400,normal,uncommon,2,123,0a0a0a0a-1111-4222-8333-444455556666,1.00,false,false,near_mint,en,USD\n'
       + '"Fire // Ice",MH2,Modern Horizons 2,290,foil,rare,1,124,def,0,false,false,near_mint,en,USD';
     const r = parseCollection(csv);
     expect(r.format).toBe('manabox');
     expect(r.rows).toEqual([
-      { name: 'Sol Ring', qty: 2, set: 'cmm', collector: '400' },
-      { name: 'Fire // Ice', qty: 1, set: 'mh2', collector: '290' },
+      { name: 'Sol Ring', qty: 2, set: 'cmm', collector: '400', scryfallId: '0a0a0a0a-1111-4222-8333-444455556666' },
+      { name: 'Fire // Ice', qty: 1, set: 'mh2', collector: '290', finish: 'foil' }, // (its Scryfall ID is not an id, so it is ignored)
     ]);
   });
   it('Moxfield export', () => {

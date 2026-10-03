@@ -90,7 +90,7 @@ export function CollectionImportDialog({ onClose, onDone, onError }: { onClose: 
         <h2>Import collection</h2>
         {result ? (
           <>
-            <p className="finding ok"><span className="ficon" aria-hidden>✓</span><span>Imported {result.imported.toLocaleString()} cards ({result.unique.toLocaleString()} unique) from a {result.format === 'text' ? 'plain list' : `${result.format === 'csv' ? 'generic' : result.format} CSV`}.</span></p>
+            <p className="finding ok"><span className="ficon" aria-hidden>✓</span><span>Imported {result.imported.toLocaleString()} cards ({result.unique.toLocaleString()} unique) from a {result.format === 'text' ? 'plain list' : `${result.format === 'csv' ? 'generic' : result.format} CSV`}.{result.withPrinting ? ` ${result.withPrinting.toLocaleString()} ${result.withPrinting === 1 ? 'copy was' : 'copies were'} matched to a specific printing.` : ''}</span></p>
             {result.unresolved.length > 0 && (
               <div className="issues"><p className="warning">{result.unresolved.length} name(s) weren't recognised:</p><ul>{result.unresolved.slice(0, 50).map((u) => <li key={u}>{u}</li>)}</ul>{result.unresolved.length > 50 && <p className="muted small">…and {result.unresolved.length - 50} more.</p>}</div>
             )}

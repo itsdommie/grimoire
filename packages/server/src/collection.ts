@@ -2,6 +2,8 @@ import { compileQuery, copiesInDecksSql, isBasicLand, parseCollection, reservesC
 import { getCardsByIds, resolveCardName } from './cards.js';
 import { transaction, type Db } from './schema.js';
 import { getDeck, BadRequestError } from './decks.js';
+import { collectorDigits } from '@grimoire/shared';
+import { isFinish, maskToFinishes, type Finish } from './printings.js';
 
 export function collectionSummary(db: Db): CollectionSummary {
   const row = db.prepare(`SELECT count(*) AS unique_cards, COALESCE(sum(collection.qty), 0) AS total,
@@ -18,36 +20,119 @@ export function importCollection(db: Db, text: string, mode: 'merge' | 'replace'
   if (parsed.rows.length === 0) throw new BadRequestError('No cards found. Paste a CSV export or a list like "4 Sol Ring".');
 
   const totals = new Map<string, number>();
+  const assigned = new Map<string, { cardId: string; printingId: string; finish: Finish; qty: number }>(); // copies the file ties to a printing
   const unresolved = new Set<string>();
   const lookups = new Map<string, string | null>(); // exports repeat names (one row per printing), so resolve each name once
+  const printingLookups = new Map<string, { id: string; finishes: Finish[] } | null>();
   for (const row of parsed.rows) {
     const key = row.name.toLowerCase();
     let id = lookups.get(key);
     if (id === undefined) { id = resolveCardName(db, row.name)?.id ?? null; lookups.set(key, id); }
     if (!id) { unresolved.add(row.name); continue; }
     totals.set(id, (totals.get(id) ?? 0) + row.qty);
+    // A set code and collector number name the printing; the finish says foil or not. Without them the copies are just the card's.
+    if (row.scryfallId || (row.set && row.collector)) {
+      const pkey = `${id}|${row.scryfallId ?? ''}|${row.set ?? ''}|${row.collector ?? ''}`;
+      let p = printingLookups.get(pkey);
+      if (p === undefined) {
+        // The printing's own id is exact; the set and collector number are the next best thing.
+        p = (row.scryfallId ? findPrintingById(db, id, row.scryfallId) : null) ?? (row.set && row.collector ? findPrinting(db, id, row.set, row.collector) : null);
+        printingLookups.set(pkey, p);
+      }
+      if (p) {
+        const want: Finish = row.finish ?? 'nonfoil';
+        const finish = p.finishes.includes(want) ? want : p.finishes[0] ?? 'nonfoil';
+        const akey = `${p.id}|${finish}`;
+        const cur = assigned.get(akey);
+        assigned.set(akey, { cardId: id, printingId: p.id, finish, qty: (cur?.qty ?? 0) + row.qty });
+      }
+    }
   }
   if (totals.size === 0) throw new BadRequestError(`None of the ${parsed.rows.length} rows matched a card. Is this a collection export?`);
 
   let imported = 0;
+  let withPrinting = 0;
   transaction(db, () => {
-    if (mode === 'replace') db.exec('DELETE FROM collection');
+    if (mode === 'replace') db.exec('DELETE FROM collection; DELETE FROM collection_prints;');
     const upsert = db.prepare(`INSERT INTO collection (card_id, qty) VALUES (?, ?)
       ON CONFLICT (card_id) DO UPDATE SET qty = MIN(?, collection.qty + excluded.qty), updated_at = datetime('now')`);
     for (const [id, qty] of totals) { upsert.run(id, Math.min(qty, MAX_QTY), MAX_QTY); imported += qty; }
+    const addPrint = db.prepare(`INSERT INTO collection_prints (card_id, printing_id, finish, qty) VALUES (?, ?, ?, ?)
+      ON CONFLICT (printing_id, finish) DO UPDATE SET qty = MIN(?, collection_prints.qty + excluded.qty), updated_at = datetime('now')`);
+    for (const a of assigned.values()) { addPrint.run(a.cardId, a.printingId, a.finish, Math.min(a.qty, MAX_QTY), MAX_QTY); withPrinting += a.qty; }
   });
-  return { format: parsed.format, imported, unique: totals.size, unresolved: [...unresolved], skipped: parsed.skipped, summary: collectionSummary(db) };
+  return { format: parsed.format, imported, unique: totals.size, unresolved: [...unresolved], skipped: parsed.skipped, withPrinting, summary: collectionSummary(db) };
 }
 
 export function setOwned(db: Db, cardId: string, qty: number): void {
   if (!Number.isInteger(qty) || qty < 0 || qty > MAX_QTY) throw new BadRequestError(`qty must be a whole number from 0 to ${MAX_QTY}`);
   if (getCardsByIds(db, [cardId]).size === 0) throw new BadRequestError('Unknown card');
-  if (qty === 0) db.prepare('DELETE FROM collection WHERE card_id = ?').run(cardId);
-  else db.prepare(`INSERT INTO collection (card_id, qty) VALUES (?, ?) ON CONFLICT (card_id) DO UPDATE SET qty = excluded.qty, updated_at = datetime('now')`).run(cardId, qty);
+  transaction(db, () => {
+    if (qty === 0) db.prepare('DELETE FROM collection WHERE card_id = ?').run(cardId);
+    else db.prepare(`INSERT INTO collection (card_id, qty) VALUES (?, ?) ON CONFLICT (card_id) DO UPDATE SET qty = excluded.qty, updated_at = datetime('now')`).run(cardId, qty);
+    trimPrints(db, cardId, qty);
+  });
+}
+
+/** After the card's total went down: copies with a known printing can't outnumber the total, so the oldest records give way first. */
+function trimPrints(db: Db, cardId: string, total: number): void {
+  let excess = (db.prepare('SELECT COALESCE(SUM(qty), 0) AS n FROM collection_prints WHERE card_id = ?').get(cardId) as { n: number }).n - total;
+  if (excess <= 0) return;
+  const rows = db.prepare('SELECT printing_id, finish, qty FROM collection_prints WHERE card_id = ? ORDER BY updated_at ASC, printing_id, finish').all(cardId) as Array<{ printing_id: string; finish: Finish; qty: number }>;
+  for (const r of rows) {
+    if (excess <= 0) break;
+    const take = Math.min(r.qty, excess);
+    excess -= take;
+    if (take === r.qty) db.prepare('DELETE FROM collection_prints WHERE printing_id = ? AND finish = ?').run(r.printing_id, r.finish);
+    else db.prepare('UPDATE collection_prints SET qty = qty - ? WHERE printing_id = ? AND finish = ?').run(take, r.printing_id, r.finish);
+  }
+}
+
+/** A printing by its Scryfall id, if it is a printing of this card. */
+export function findPrintingById(db: Db, cardId: string, printingId: string): { id: string; finishes: Finish[] } | null {
+  const r = db.prepare('SELECT id, finishes FROM printings WHERE id = ? AND card_id = ?').get(printingId, cardId) as { id: string; finishes: number } | undefined;
+  return r ? { id: r.id, finishes: maskToFinishes(r.finishes) } : null;
+}
+
+/** The printing of a card in a set with a collector number (digits compared, so "0021" finds "21"), if there is exactly one. */
+export function findPrinting(db: Db, cardId: string, set: string, collector: string): { id: string; finishes: Finish[] } | null {
+  const rows = db.prepare('SELECT id, collector, finishes FROM printings WHERE card_id = ? AND set_code = ?').all(cardId, set.toLowerCase()) as Array<{ id: string; collector: string; finishes: number }>;
+  const exact = rows.filter((r) => r.collector.toLowerCase() === collector.toLowerCase());
+  const digits = collectorDigits(collector);
+  const sameDigits = rows.filter((r) => digits !== '' && collectorDigits(r.collector) === digits);
+  // "0400" is "400" rather than "400★" or "400a": the plain number wins when it is the only one.
+  const plain = sameDigits.filter((r) => /^\d+$/.test(r.collector));
+  const pick = exact.length === 1 ? exact : plain.length === 1 ? plain : sameDigits;
+  return pick.length === 1 ? { id: pick[0]!.id, finishes: maskToFinishes(pick[0]!.finishes) } : null;
+}
+
+/**
+ * Say how many copies you own of one printing in one finish. By default the card's total moves by the same amount, so setting a
+ * printing to 3 when you owned 1 makes the card's total 2 higher (the scanner: you picked up another card). With `claim`, copies
+ * of the card that had no printing recorded are used up first, so the total only grows once every copy has one (the card
+ * detail: "one of the copies I already have is this printing").
+ */
+export function setOwnedPrinting(db: Db, printingId: string, finish: Finish, qty: number, opts: { claim?: boolean } = {}): void {
+  if (!Number.isInteger(qty) || qty < 0 || qty > MAX_QTY) throw new BadRequestError(`qty must be a whole number from 0 to ${MAX_QTY}`);
+  if (!isFinish(finish)) throw new BadRequestError('finish must be nonfoil, foil or etched');
+  const p = db.prepare('SELECT card_id, finishes FROM printings WHERE id = ?').get(printingId) as { card_id: string; finishes: number } | undefined;
+  if (!p) throw new BadRequestError('Unknown printing');
+  if (qty > 0 && !maskToFinishes(p.finishes).includes(finish)) throw new BadRequestError(`That printing doesn't come in ${finish}`);
+  transaction(db, () => {
+    const old = (db.prepare('SELECT qty FROM collection_prints WHERE printing_id = ? AND finish = ?').get(printingId, finish) as { qty: number } | undefined)?.qty ?? 0;
+    const total = (db.prepare('SELECT qty FROM collection WHERE card_id = ?').get(p.card_id) as { qty: number } | undefined)?.qty ?? 0;
+    const assigned = (db.prepare('SELECT COALESCE(SUM(qty), 0) AS n FROM collection_prints WHERE card_id = ?').get(p.card_id) as { n: number }).n;
+    const next = Math.min(MAX_QTY, Math.max(0, opts.claim ? Math.max(total, assigned - old + qty) : total + qty - old));
+    if (qty === 0) db.prepare('DELETE FROM collection_prints WHERE printing_id = ? AND finish = ?').run(printingId, finish);
+    else db.prepare(`INSERT INTO collection_prints (card_id, printing_id, finish, qty) VALUES (?, ?, ?, ?)
+      ON CONFLICT (printing_id, finish) DO UPDATE SET qty = excluded.qty, updated_at = datetime('now')`).run(p.card_id, printingId, finish, qty);
+    if (next === 0) db.prepare('DELETE FROM collection WHERE card_id = ?').run(p.card_id);
+    else db.prepare(`INSERT INTO collection (card_id, qty) VALUES (?, ?) ON CONFLICT (card_id) DO UPDATE SET qty = excluded.qty, updated_at = datetime('now')`).run(p.card_id, next);
+  });
 }
 
 export function clearCollection(db: Db): void {
-  db.exec('DELETE FROM collection');
+  db.exec('DELETE FROM collection; DELETE FROM collection_prints;');
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;

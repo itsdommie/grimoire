@@ -35,7 +35,7 @@ const full = new DatabaseSync(srcDb, { readOnly: true });
 full.exec(`VACUUM INTO '${out.replace(/'/g, "''")}'`);
 full.close();
 const slim = new DatabaseSync(out);
-slim.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; PRAGMA journal_mode = DELETE; VACUUM;");
+slim.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; DELETE FROM deck_cards; DELETE FROM decks; DELETE FROM collection; DELETE FROM collection_prints; PRAGMA journal_mode = DELETE; VACUUM;");
 slim.close();
 
 const mb = (f) => `${(readFileSync(resolve(dist, f)).length / 1048576).toFixed(1)} MB`;

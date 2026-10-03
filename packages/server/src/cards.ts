@@ -1,7 +1,8 @@
 import type { Db } from './schema.js';
 import { NOT_SET_UP } from './messages.js';
+import { printingImageUrl } from './printings.js';
 import { keywordInfo } from './rules.js';
-import { compileQuery, copiesInDecksSql, SearchError, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
+import { compileQuery, copiesInDecksSql, SearchError, type Finish, semanticPhrases, termsOf, type Card, type CardDetail, type SearchResponse, type TagInfo } from '@grimoire/shared';
 
 export type Order = 'name' | 'cmc' | 'edhrec' | 'usd';
 
@@ -13,7 +14,9 @@ const ORDER_SQL: Record<Order, string> = {
 };
 
 /** Every card query selects the owned count and how many copies sit in decks, so any Card handed out knows what is spare. */
-export const CARD_SELECT = `SELECT cards.*, COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) AS owned, ${copiesInDecksSql('cards.id', [])} AS in_decks FROM cards`;
+export const CARD_SELECT = `SELECT cards.*, COALESCE((SELECT qty FROM collection WHERE collection.card_id = cards.id), 0) AS owned, ${copiesInDecksSql('cards.id', [])} AS in_decks,
+  (SELECT cp.printing_id || '|' || COALESCE(p.set_code, '') || '|' || COALESCE(p.collector, '') || '|' || cp.finish FROM collection_prints cp LEFT JOIN printings p ON p.id = cp.printing_id
+     WHERE cp.card_id = cards.id ORDER BY cp.updated_at DESC, cp.printing_id LIMIT 1) AS own_print FROM cards`;
 
 export interface Row {
   id: string; name: string; mana_cost: string; cmc: number; type_line: string; oracle_text: string;
@@ -21,7 +24,7 @@ export interface Row {
   power: string | null; toughness: string | null; loyalty: string | null;
   rarity: string; set_code: string; layout: string; edhrec_rank: number | null; usd: number | null;
   usd_min: number | null; usd_min_set: string | null;
-  image_url: string | null; image_url_back: string | null; scryfall_uri: string; owned: number; in_decks: number;
+  image_url: string | null; image_url_back: string | null; scryfall_uri: string; owned: number; in_decks: number; own_print?: string | null;
 }
 
 export function rowToCard(db: Db, r: Row): Card {
@@ -29,13 +32,18 @@ export function rowToCard(db: Db, r: Row): Card {
   for (const l of db.prepare('SELECT format, status FROM legality WHERE card_id = ?').all(r.id) as Array<{ format: string; status: string }>) {
     legalities[l.format] = l.status;
   }
+  // The art of the printing you own (when you have said which), not whichever printing Scryfall happens to feature.
+  const [printId, printSet, printCollector, printFinish] = (r.own_print ?? '').split('|');
+  const ownedPrinting = printId ? { id: printId, set: printSet ?? '', collector: printCollector ?? '', finish: printFinish as Finish } : undefined;
   return {
     id: r.id, name: r.name, manaCost: r.mana_cost, cmc: r.cmc, typeLine: r.type_line, oracleText: r.oracle_text,
     colors: r.colors, colorIdentity: r.color_identity, producedMana: r.produced_mana,
     keywords: r.keywords ? r.keywords.split(' ') : [],
     power: r.power, toughness: r.toughness, loyalty: r.loyalty, rarity: r.rarity, setCode: r.set_code,
-    layout: r.layout, edhrecRank: r.edhrec_rank, usd: r.usd, usdMin: r.usd_min, usdMinSet: r.usd_min_set, imageUrl: r.image_url, imageUrlBack: r.image_url_back, scryfallUri: r.scryfall_uri,
-    legalities, owned: r.owned, inDecks: r.in_decks,
+    layout: r.layout, edhrecRank: r.edhrec_rank, usd: r.usd, usdMin: r.usd_min, usdMinSet: r.usd_min_set,
+    imageUrl: ownedPrinting ? printingImageUrl(ownedPrinting.id) : r.image_url,
+    imageUrlBack: ownedPrinting && r.image_url_back ? printingImageUrl(ownedPrinting.id, 'back') : r.image_url_back, scryfallUri: r.scryfall_uri,
+    legalities, owned: r.owned, inDecks: r.in_decks, ...(ownedPrinting ? { ownedPrinting } : {}),
   };
 }
 

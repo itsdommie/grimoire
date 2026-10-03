@@ -110,6 +110,33 @@ CREATE VIRTUAL TABLE IF NOT EXISTS glossary_fts USING fts5(term, definition, tok
 
 -- Other names a card goes by (Universes Beyond printings, e.g. "Avengers Monitoring Station" is Herald's Horn), so imports and searches find it.
 CREATE TABLE IF NOT EXISTS card_aliases (alias TEXT PRIMARY KEY COLLATE NOCASE, card_id TEXT NOT NULL) WITHOUT ROWID;
+-- Every paper printing of every card (Scryfall's Default Cards, trimmed), so a scanned or imported card can be a specific printing.
+-- Replaced wholesale by each printings update; the user's own records of printings live in collection_prints and never depend on it.
+CREATE TABLE IF NOT EXISTS sets (code TEXT PRIMARY KEY, name TEXT NOT NULL, released TEXT) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS printings (
+  id          TEXT PRIMARY KEY,                  -- Scryfall's id for this printing
+  card_id     TEXT NOT NULL,                     -- oracle id
+  set_code    TEXT NOT NULL,
+  collector   TEXT NOT NULL,                     -- "21", "21★", "21a"
+  released    TEXT,
+  finishes    INTEGER NOT NULL DEFAULT 1,        -- bits: 1 nonfoil, 2 foil, 4 etched
+  usd         REAL, usd_foil REAL, usd_etched REAL
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS printings_card ON printings(card_id);
+CREATE INDEX IF NOT EXISTS printings_set ON printings(set_code, collector);
+
+-- Which printing (and finish) each owned copy is, when known. A breakdown of the collection table, which stays the total per card:
+-- the copies here are always part of that total, and the rest are copies whose printing nobody has said.
+CREATE TABLE IF NOT EXISTS collection_prints (
+  card_id     TEXT NOT NULL,
+  printing_id TEXT NOT NULL,
+  finish      TEXT NOT NULL CHECK (finish IN ('nonfoil','foil','etched')),
+  qty         INTEGER NOT NULL CHECK (qty > 0),
+  updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (printing_id, finish)
+) WITHOUT ROWID;
+CREATE INDEX IF NOT EXISTS collection_prints_card ON collection_prints(card_id);
+
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
@@ -117,7 +144,7 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
  * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
  * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 function hasColumn(db: Db, table: string, column: string): boolean {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Board, Card, CardDetail } from '@grimoire/shared';
 import { api } from './api';
 import { usd } from './CollectionView';
+import { PrintingsSection } from './Printings';
 
 const FORMATS: Array<[string, string]> = [['commander', 'Commander'], ['brawl', 'Brawl'], ['standard', 'Standard'], ['pioneer', 'Pioneer'], ['modern', 'Modern'], ['legacy', 'Legacy'], ['vintage', 'Vintage'], ['pauper', 'Pauper']];
 const STATUS_LABEL: Record<string, string> = { legal: 'Legal', banned: 'Banned', restricted: 'Restricted' };
@@ -14,13 +15,15 @@ interface Props {
   onClose: () => void;
   onAddToDeck: (card: Card, board: Board) => void;
   onOwn: (card: Card, qty: number) => void;
+  /** Printings were recorded: here is the card as it is now (its count and the art of the printing you own). */
+  onCardChanged: (card: Card) => void;
   onSearchTag: (slug: string) => void;
   /** Open a rule in the Rules view (from a keyword's explanation). */
   onOpenRule: (id: string) => void;
 }
 
 /** Everything about one card, offline: image (with a flip for double-faced cards), text, legality, price, rulings and function tags. */
-export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClose, onAddToDeck, onOwn, onSearchTag, onOpenRule }: Props) {
+export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClose, onAddToDeck, onOwn, onCardChanged, onSearchTag, onOpenRule }: Props) {
   const [detail, setDetail] = useState<CardDetail | null>(null);
   const [failed, setFailed] = useState(false);
   const [back, setBack] = useState(false);
@@ -83,6 +86,12 @@ export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClos
                 {canAddToDeck && (commanderFormat ? <button onClick={() => onAddToDeck(card, 'commander')}>★ Commander</button> : <button onClick={() => onAddToDeck(card, 'sideboard')}>+ Sideboard</button>)}
                 <a className="btn" href={card.scryfallUri} target="_blank" rel="noreferrer">View on Scryfall</a>
               </div>
+
+              <PrintingsSection
+                cardId={card.id}
+                owned={card.owned ?? 0}
+                onChanged={() => { void api.cardDetail(card.id).then((d) => { setDetail(d); onCardChanged(d.card); }); }}
+              />
 
               {detail.tags.length > 0 && (
                 <section aria-label="Function tags">

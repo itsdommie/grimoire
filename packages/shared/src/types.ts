@@ -29,6 +29,42 @@ export interface Card {
   owned?: number;
   /** How many copies sit in decks (all of them; a Commander sideboard doesn't count). `owned - inDecks` is what's spare. */
   inDecks?: number;
+  /** The printing of this card you most recently added to your collection, when you have said which it is. Its art replaces the default. */
+  ownedPrinting?: OwnedPrinting;
+}
+
+export type Finish = 'nonfoil' | 'foil' | 'etched';
+
+export interface OwnedPrinting {
+  id: string;
+  set: string;
+  collector: string;
+  finish: Finish;
+}
+
+/** One printing of a card: a specific set and collector number, with how many of it you own. */
+export interface PrintingInfo {
+  id: string;
+  cardId: string;
+  set: string;
+  setName: string;
+  collector: string;
+  released: string | null;
+  finishes: Finish[];
+  usd: number | null;
+  usdFoil: number | null;
+  usdEtched: number | null;
+  imageUrl: string;
+  imageUrlBack: string | null;
+  owned: Record<Finish, number>;
+}
+
+/** What the scanner made of the bottom of a card: the printing if it is certain, else the printings it could be. */
+export interface PrintingIdentification {
+  printing: PrintingInfo | null;
+  candidates: PrintingInfo[];
+  /** What narrowed it down: both set code and number, just one of them, the copyright year, or nothing. */
+  basis: 'set-and-number' | 'set' | 'number' | 'year' | 'none';
 }
 
 /** A card a line of scanned text might be naming. */
@@ -76,7 +112,7 @@ export interface DataStatus {
   cardCount: number;
   /** Scryfall's `updated_at` for the bulk file currently loaded. */
   bulkUpdatedAt: string | null;
-  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices' | 'rules' | 'names'; received?: number; total?: number; cards?: number };
+  progress?: { phase: 'checking' | 'downloading' | 'importing'; item?: 'cards' | 'rulings' | 'tags' | 'prices' | 'rules' | 'names' | 'printings'; received?: number; total?: number; cards?: number };
   error?: string;
   /** Cheapest-printing prices (an optional 79 MB download). */
   prices?: { enabled: boolean; updatedAt: string | null };
@@ -107,6 +143,8 @@ export interface CollectionImportResult {
   /** Names that didn't match any card. */
   unresolved: string[];
   skipped: string[];
+  /** Copies that were matched to a specific printing (the file named a set and collector number). */
+  withPrinting?: number;
   summary: CollectionSummary;
 }
 
@@ -161,7 +199,8 @@ export interface UserDataBackup {
   version: 1;
   exportedAt: string;
   decks: Array<{ name: string; format: string; cards: Array<{ id: string; name: string; board: 'commander' | 'main' | 'sideboard'; qty: number }> }>;
-  collection: Array<{ id: string; name: string; qty: number }>;
+  /** `prints`: which printings (and finishes) some of the copies are. Optional, so backups made before printings existed still restore. */
+  collection: Array<{ id: string; name: string; qty: number; prints?: Array<{ id: string; set: string; collector: string; finish: Finish; qty: number }> }>;
 }
 
 export interface RestoreResult {

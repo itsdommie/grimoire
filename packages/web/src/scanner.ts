@@ -38,6 +38,17 @@ export function titleLines(result: OcrResult, band = 0.2): string[] {
     .map((l) => l.text);
 }
 
+/**
+ * The lines from the bottom of a card-sized image, where the set code, collector number and copyright year are printed. They say which
+ * printing it is, so they are sent along once the name is known.
+ */
+export function bottomLines(result: OcrResult, from = 0.86): string[] {
+  return result.lines
+    .filter((l) => l.top + l.height / 2 > result.height * from && l.text.trim().length >= 2)
+    .sort((a, b) => a.top - b.top || a.left - b.left)
+    .map((l) => l.text);
+}
+
 /** The match to act on, if there is a convincing one. */
 export function pickCandidate(candidates: readonly CardMatchCandidate[], minScore = 0.85): CardMatchCandidate | null {
   const top = candidates[0];

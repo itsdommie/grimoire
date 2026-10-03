@@ -46,8 +46,33 @@ if (command === 'names') {
   console.log(`${file.names.length} alternate names (Scryfall ${file.version})${exportDir ? ` written to ${exportDir}` : ''}${args.includes('--bundle') ? ', bundled snapshot updated' : ''}.`);
   process.exit(0);
 }
+if (command === 'printings') {
+  // Build the per-printing list from Scryfall's Default Cards. --export <dir> writes the files CI publishes (a gzipped file and a
+  // small manifest); --load puts it straight into the dev database.
+  const exportFlag = args.indexOf('--export');
+  const exportDir = exportFlag >= 0 ? args[exportFlag + 1] : undefined;
+  if (exportFlag >= 0 && !exportDir) { console.error('--export needs a folder'); process.exit(2); }
+  const pdb = openDb(dbPathFor(DEFAULT_DATA_DIR));
+  const file = await new DataManager({ dataDir: DEFAULT_DATA_DIR, db: pdb }).buildPrintings();
+  console.log(`${file.rows.length} printings in ${file.sets.length} sets (Scryfall ${file.version}).`);
+  if (exportDir) {
+    const { mkdirSync, writeFileSync } = await import('node:fs');
+    const { gzipSync } = await import('node:zlib');
+    mkdirSync(exportDir, { recursive: true });
+    const gz = gzipSync(JSON.stringify(file));
+    writeFileSync(`${exportDir}/card-printings.json.gz`, gz);
+    writeFileSync(`${exportDir}/card-printings.json`, JSON.stringify({ version: file.version, file: 'card-printings.json.gz', count: file.rows.length, size: gz.length }));
+    console.log(`Written to ${exportDir} (${(gz.length / 1e6).toFixed(1)} MB).`);
+  }
+  if (args.includes('--load')) {
+    const { loadPrintings } = await import('./printings.js');
+    console.log(`Loaded ${loadPrintings(pdb, file)} printings of the cards in the dev database.`);
+    pdb.prepare("INSERT OR REPLACE INTO meta (key, value) VALUES ('printings_version', ?)").run(file.version);
+  }
+  process.exit(0);
+}
 if (command !== 'ingest') {
-  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>] | cli names [--export <dir>] [--bundle]');
+  console.error('Usage: cli ingest [--force] [--prices] [--file <cards.jsonl[.gz]>] | cli semantic [--export <dir>] | cli names [--export <dir>] [--bundle] | cli printings [--export <dir>] [--load]');
   process.exit(2);
 }
 

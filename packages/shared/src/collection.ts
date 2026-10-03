@@ -31,6 +31,10 @@ export interface CollectionRow {
   qty: number;
   set?: string;
   collector?: string;
+  /** foil or etched, when the export says so (otherwise a normal copy). */
+  finish?: 'foil' | 'etched';
+  /** The printing's own Scryfall id, when the export has one (ManaBox does): the most exact way to name a printing. */
+  scryfallId?: string;
 }
 
 export type CollectionFormat = 'manabox' | 'moxfield' | 'archidekt' | 'deckbox' | 'csv' | 'text';
@@ -46,6 +50,11 @@ const NAME_HEADERS = ['name', 'card name', 'card', 'cardname'];
 const QTY_HEADERS = ['quantity', 'count', 'qty', 'amount', 'reg qty', 'total qty'];
 const SET_HEADERS = ['set code', 'set', 'edition code', 'edition', 'set name'];
 const COLLECTOR_HEADERS = ['collector number', 'collector #', 'card number', 'number'];
+const FINISH_HEADERS = ['foil', 'finish'];
+const SCRYFALL_ID_HEADERS = ['scryfall id', 'scryfall_id'];
+
+/** ManaBox says normal/foil/etched, Moxfield and Deckbox leave normal blank, Archidekt says Normal/Foil/Etched. */
+const finishOf = (v: string | undefined): 'foil' | 'etched' | undefined => { const t = (v ?? '').trim().toLowerCase(); return t === 'etched' ? 'etched' : t === 'foil' ? 'foil' : undefined; };
 
 const norm = (s: string) => s.trim().toLowerCase();
 const findCol = (header: string[], names: string[]) => { for (const n of names) { const i = header.indexOf(n); if (i >= 0) return i; } return -1; };
@@ -78,6 +87,8 @@ export function parseCollection(text: string): ParsedCollection {
   const qtyCol = findCol(header, QTY_HEADERS);
   const setCol = findCol(header, SET_HEADERS);
   const colCol = findCol(header, COLLECTOR_HEADERS);
+  const finishCol = findCol(header, FINISH_HEADERS);
+  const idCol = findCol(header, SCRYFALL_ID_HEADERS);
   const rows: CollectionRow[] = [];
   const skipped: string[] = [];
   for (const r of table.slice(1)) {
@@ -86,7 +97,7 @@ export function parseCollection(text: string): ParsedCollection {
     const rawQty = qtyCol >= 0 ? (r[qtyCol] ?? '').trim() : '1';
     const qty = rawQty === '' ? 1 : Number(rawQty);
     if (!Number.isInteger(qty) || qty < 1) { skipped.push(`${name} (quantity "${rawQty}")`); continue; }
-    rows.push({ name, qty, ...(setCol >= 0 && r[setCol] ? { set: r[setCol]!.trim().toLowerCase() } : {}), ...(colCol >= 0 && r[colCol] ? { collector: r[colCol]!.trim() } : {}) });
+    rows.push({ name, qty, ...(setCol >= 0 && r[setCol] ? { set: r[setCol]!.trim().toLowerCase() } : {}), ...(colCol >= 0 && r[colCol] ? { collector: r[colCol]!.trim() } : {}), ...(finishCol >= 0 && finishOf(r[finishCol]) ? { finish: finishOf(r[finishCol])! } : {}), ...(idCol >= 0 && /^[0-9a-z][0-9a-z-]{3,}$/i.test((r[idCol] ?? '').trim()) ? { scryfallId: r[idCol]!.trim().toLowerCase() } : {}) });
   }
   return { format: detectFormat(header), rows, skipped };
 }

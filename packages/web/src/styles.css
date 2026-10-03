@@ -335,3 +335,24 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .scanname small { color: var(--muted); }
 .scanlist .stepper button { min-width: 36px; padding: 6px 0; }
 @media (max-width: 900px) { .scanbtn { order: 2; } }
+.scanfoil { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.scanfoil input { width: auto; flex: none; min-height: 0; }
+.scanpick { position: absolute; inset: auto 0 0 0; z-index: 3; max-height: 70%; display: flex; flex-direction: column; gap: 8px; padding: 14px; background: var(--panel); border-top: 2px solid var(--accent); border-radius: 14px 14px 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, .5); }
+.scanpick h2 { margin: 0; font-size: 17px; }
+.scanpick p { margin: 0; }
+.scanpick ul { flex: 1; min-height: 0; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
+.scanpick li button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px; margin: 2px 0; text-align: left; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 8px; cursor: pointer; font: inherit; }
+.scanpick li button:hover, .scanpick li button:focus-visible { border-color: var(--accent); }
+.scanpick img { width: 44px; border-radius: 3px; flex: none; }
+.scanpick span { display: flex; flex-direction: column; min-width: 0; }
+.scanpick small { color: var(--muted); }
+.scanpick > button { padding: 12px; font: inherit; font-weight: 600; color: var(--fg); background: var(--bg); border: 1px solid #333650; border-radius: 8px; cursor: pointer; }
+
+/* ---- printings ---- */
+.tile .printline { display: block; font-size: 11px; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.printings { list-style: none; margin: 8px 0; padding: 0; }
+.printings li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #2a2d3d; }
+.printings img { width: 54px; align-self: flex-start; border-radius: 3px; flex: none; }
+.pinfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pinfo .stepper { display: flex; align-items: center; gap: 6px; }
+.pfilter { width: 100%; margin: 6px 0; }

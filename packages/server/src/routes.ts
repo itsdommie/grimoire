@@ -1,10 +1,11 @@
-import { NameIndex, SearchError, formatDeckList, semanticPhrases, type Board, type DataStatus, type ExportStyle, type FormatId, type SemanticStatus } from '@grimoire/shared';
+import { NameIndex, SearchError, formatDeckList, readPrintingHints, semanticPhrases, type Board, type DataStatus, type ExportStyle, type Finish, type FormatId, type SemanticStatus } from '@grimoire/shared';
 import type { Db } from './schema.js';
 import { NOT_SET_UP } from './messages.js';
 import { getCardByName, getCardDetail, getCardsByIds, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
 import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
-import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned } from './collection.js';
+import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
+import { identifyPrinting, listPrintings } from './printings.js';
 import { BadRequestError, NotFoundError, createDeck, deleteDeck, getDeck, importDeck, listDecks, setCardQty, updateDeck } from './decks.js';
 
 /**
@@ -142,6 +143,18 @@ export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiReque
     const cards = getCardsByIds(db, top.map((t) => t.id));
     return { candidates: top.flatMap((t) => { const card = cards.get(t.id); return card ? [{ card, score: Math.round(t.score * 1000) / 1000, line: t.line }] : []; }) };
   });
+  /** Every printing of a card, newest first, with how many of each you own. */
+  on('GET', '/api/cards/:id/printings', ({ params }) => ({ printings: listPrintings(db, params.id!) }));
+  /**
+   * Which printing is this card? The scanner sends the lines it read from the bottom of the card; the answer is the printing when the
+   * set code and number settle it, otherwise the printings it could be, so the person can choose.
+   */
+  on('POST', '/api/cards/identify', ({ body }) => {
+    const cardId = typeof body?.cardId === 'string' ? body.cardId : '';
+    if (!cardId) throw new BadRequestError('cardId is required');
+    const lines = Array.isArray(body?.lines) ? (body.lines as unknown[]).filter((l): l is string => typeof l === 'string').slice(0, 40) : [];
+    return identifyPrinting(db, cardId, readPrintingHints(lines));
+  });
   on('GET', '/api/cards/:id/detail', ({ params }) => getCardDetail(db, params.id!) ?? reply(404, { error: 'Card not found' }));
   on('GET', '/api/cards/by-name/:name', ({ params }) => getCardByName(db, params.name!) ?? reply(404, { error: 'Card not found' }));
 
@@ -177,6 +190,12 @@ export function createRouter({ db, data, semantic }: RouterDeps): (req: ApiReque
   on('PUT', '/api/collection/cards', ({ body }) => {
     const { cardId, qty } = (body ?? {}) as { cardId: string; qty: number };
     setOwned(db, cardId, qty);
+    return collectionSummary(db);
+  });
+  /** Set how many copies you own of one printing in one finish (the card's total moves with it). */
+  on('PUT', '/api/collection/printings', ({ body }) => {
+    const { printingId, finish, qty, claim } = (body ?? {}) as { printingId: string; finish: Finish; qty: number; claim?: boolean };
+    setOwnedPrinting(db, printingId, finish, qty, { claim: claim === true });
     return collectionSummary(db);
   });
   on('DELETE', '/api/collection', () => { clearCollection(db); return reply(204); });

@@ -26,6 +26,9 @@ jobs:
       - run: npm run typecheck
       - name: Card data for the on-device database
         run: npm run ingest
+      - name: Card printings (the on-device database includes them, and the tests scan real printings)
+        run: npx tsx src/cli.ts printings --load
+        working-directory: packages/server
       - name: Build the app content and test it in desktop and phone-sized browsers
         run: npm run e2e:mobile
         env:

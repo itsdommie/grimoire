@@ -49,10 +49,13 @@ test('scans real cards through ML Kit into the collection', async ({ page }) => 
 
   await show('Sol Ring');
   await expect(list.getByRole('group', { name: 'Copies of Sol Ring scanned' })).toContainText('1', { timeout: 60_000 });
+  // Real OCR of the bottom of the card ("U 0021 / FRC • EN") names the exact printing, not just the card.
+  await expect(list.locator('li', { hasText: 'Sol Ring' })).toContainText('#21', { timeout: 30_000 });
   await show(null);
   await page.waitForTimeout(1500);
   await show('Lightning Bolt');
   await expect(list.getByRole('group', { name: 'Copies of Lightning Bolt scanned' })).toContainText('1', { timeout: 60_000 });
+  await expect(list.locator('li', { hasText: 'Lightning Bolt' })).toContainText('#806', { timeout: 30_000 }); // the Marvel printing, not Alpha or the featured one
   // Still in front of the camera: not added twice.
   await page.waitForTimeout(3000);
   await expect(list.getByRole('group', { name: 'Copies of Lightning Bolt scanned' })).toContainText('1');
@@ -61,6 +64,6 @@ test('scans real cards through ML Kit into the collection', async ({ page }) => 
   await scanner.getByRole('button', { name: /^Done \(2\)/ }).click();
   await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Collection' }).click();
   await expect(page.locator('.collbar')).toContainText('2 cards · 2 unique');
-  await expect(page.locator('.tile', { hasText: 'Sol Ring' })).toBeVisible();
-  await expect(page.locator('.tile', { hasText: 'Lightning Bolt' })).toBeVisible();
+  await expect(page.locator('.tile', { hasText: 'Sol Ring' }).locator('.printline')).toHaveText('FRC #21');
+  await expect(page.locator('.tile', { hasText: 'Lightning Bolt' }).locator('.printline')).toHaveText('MSC #806');
 });

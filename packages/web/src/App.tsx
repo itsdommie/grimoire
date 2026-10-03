@@ -32,13 +32,15 @@ function useSearch(query: string, order: string, version: string | null, scope: 
     }, 150);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query, order, version, scope, deck]);
+  /** A card changed in the detail dialog (its count, the printing you own): swap it into the visible results. */
+  const patchCard = (card: Card) => setState((s) => (s.data ? { ...s, data: { ...s.data, cards: s.data.cards.map((c) => (c.id === card.id ? card : c)) } } : s));
   /** Reflect a collection edit in the visible results without refetching (cards owned 0 leave the collection view). */
   const patchOwned = (id: string, qty: number) => setState((s) => {
     if (!s.data) return s;
     const cards = s.data.cards.flatMap((c) => (c.id !== id ? [c] : scope === 'collection' && qty === 0 ? [] : [{ ...c, owned: qty }]));
     return { ...s, data: { ...s.data, cards, total: s.data.total - (s.data.cards.length - cards.length) } };
   });
-  return { ...state, patchOwned };
+  return { ...state, patchOwned, patchCard };
 }
 
 const LETTERS: Array<[number, string]> = [[1, 'w'], [2, 'u'], [4, 'b'], [8, 'r'], [16, 'g']];
@@ -65,6 +67,7 @@ function CardTile({ card, inDeck, canAdd, commanderFormat, stepper, onAdd, onOwn
         </span>
       </div>
       <span className="name">{card.name}</span>
+      {card.ownedPrinting && <span className="printline" title="The printing you own">{card.ownedPrinting.set.toUpperCase()} #{card.ownedPrinting.collector}{card.ownedPrinting.finish === 'nonfoil' ? '' : ` · ${card.ownedPrinting.finish}`}</span>}
       {stepper && (
         <span className="stepper" role="group" aria-label={`Copies of ${card.name} owned`}>
           <button onClick={() => onOwn(card, owned - 1)} aria-label={`Own one fewer ${card.name}`}>−</button>
@@ -131,7 +134,7 @@ export function App() {
   const searchQuery = view === 'cards'
     ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', current && !rules.commander && onlyLegal ? `f:${rules.legality}` : '', onlyOwned ? (skipUsed ? 'spare>0' : 'owned>0') : ''].filter(Boolean).join(' ')
     : query;
-  const { data, loading, patchOwned } = useSearch(searchQuery, order, dataStatus.status?.bulkUpdatedAt ?? null, view === 'collection' ? 'collection' : 'all', view === 'cards' && onlyOwned && skipUsed ? current?.deck.id : undefined);
+  const { data, loading, patchOwned, patchCard } = useSearch(searchQuery, order, dataStatus.status?.bulkUpdatedAt ?? null, view === 'collection' ? 'collection' : 'all', view === 'cards' && onlyOwned && skipUsed ? current?.deck.id : undefined);
   const inDeck = useMemo(() => new Map((current?.entries ?? []).map((e) => [e.card.id, e.qty])), [current]);
 
   const refreshCollection = useCallback(async () => { try { setCollection(await api.collectionSummary()); } catch { /* shown elsewhere */ } }, []);
@@ -263,6 +266,7 @@ export function App() {
           onClose={() => setDetailId(null)}
           onAddToDeck={(card, board) => void add(card, board)}
           onOwn={(card, qty) => void own(card, qty)}
+          onCardChanged={(card) => { patchCard(card); void collectionChanged(); }}
           onSearchTag={(slug) => { setDetailId(null); setView('cards'); setQuery(`otag:${slug}`); }}
           onOpenRule={(id) => { setDetailId(null); setRuleToOpen(id); setView('rules'); }}
         />

@@ -72,3 +72,11 @@ describe('ScanTracker', () => {
     expect(t.push('sol')).toBe('sol');
   });
 });
+
+describe('bottomLines', () => {
+  it('keeps the lines from the bottom edge, top to bottom, where the printing is printed', async () => {
+    const { bottomLines } = await import('./scanner');
+    const ocr: OcrResult = { width: 400, height: 560, lines: [line('Sol Ring', 30), line('Flavour text', 300), line('150/281 C', 500, 14), line('SNC • EN > ARTIST', 520, 14), line('x', 530, 14), line('TM & 2022 Wizards of the Coast', 540, 12)] };
+    expect(bottomLines(ocr)).toEqual(['150/281 C', 'SNC • EN > ARTIST', 'TM & 2022 Wizards of the Coast']);
+  });
+});

@@ -5,7 +5,9 @@ import { expect, test } from './fixtures';
 // puts in window.__ocr. (The real recognizer is covered by android.spec.ts on an emulator.)
 test.skip(!!process.env.ANDROID_APP, 'uses a stub recognizer; android.spec.ts covers the real one');
 
-const title = (text: string) => [{ text, left: 30, top: 28, width: 260, height: 34 }];
+const line = (text: string, top: number) => ({ text, left: 20, top, width: 220, height: 14 });
+/** What the recognizer reads off a card: its title near the top, and lines from the bottom edge (set code, number, copyright). */
+const card = (title: string, ...bottom: string[]) => [{ text: title, left: 30, top: 28, width: 260, height: 34 }, ...bottom.map((t, i) => line(t, 505 + i * 16))];
 const setOcr = (page: Page, lines: unknown[] | null) => page.evaluate((l) => { (window as unknown as { __ocr: unknown }).__ocr = l; }, lines);
 
 test.beforeEach(async ({ page }) => {
@@ -17,50 +19,104 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('scans cards into the collection: confirmed over two frames, once per card until it is taken away, and can be taken back', async ({ page }) => {
+const open = async (page: Page) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Scan cards with the camera' }).click();
   const scanner = page.getByRole('dialog', { name: 'Scan cards' });
   await expect(scanner.getByText('Fit the card inside the outline')).toBeVisible({ timeout: 30_000 });
+  return { scanner, list: scanner.getByRole('list', { name: 'Scanned this session' }) };
+};
+
+test('scans cards into the collection as the printing the card says, once per card until it is taken away, and can be taken back', async ({ page }) => {
+  const { scanner, list } = await open(page);
   await expect(scanner.getByText('Nothing scanned yet.')).toBeVisible();
 
-  await setOcr(page, title('Sol Rlng'));  // a slightly misread title still finds the card
+  // A slightly misread title still finds the card; the set code and collector number at the bottom say which printing.
+  await setOcr(page, card('Sol Rlng', '263/387 U', 'C21 • EN > SOME ARTIST', 'TM & © 2021 Wizards of the Coast'));
   await expect(scanner.getByRole('status').filter({ hasText: '✓ Sol Ring' })).toBeVisible({ timeout: 15_000 });
-  const list = scanner.getByRole('list', { name: 'Scanned this session' });
-  await expect(list.locator('li')).toHaveCount(1);
+  await expect(list.locator('li', { hasText: 'Sol Ring' })).toContainText('Commander 2021 · #263');
   await expect(list.getByRole('group', { name: 'Copies of Sol Ring scanned' })).toContainText('1');
 
   // The same card staying in view is not added again.
   await page.waitForTimeout(1500);
   await expect(list.getByRole('group', { name: 'Copies of Sol Ring scanned' })).toContainText('1');
 
-  // Taken away, then shown again: a second copy.
+  // Taken away, then shown again: a second copy of the same printing.
   await setOcr(page, []);
   await page.waitForTimeout(800);
-  await setOcr(page, title('Sol Ring'));
+  await setOcr(page, card('Sol Ring', '263/387 U', 'C21 • EN > SOME ARTIST'));
   await expect(list.getByRole('group', { name: 'Copies of Sol Ring scanned' })).toContainText('2', { timeout: 15_000 });
 
-  // Rules text that happens to be a card name is not in the title band, so it is ignored; a different card is found next.
-  await setOcr(page, [{ text: 'Command Tower', left: 30, top: 400, width: 260, height: 30 }]);
+  // Rules text that happens to be a card name is not in the title band, so it is ignored.
+  await setOcr(page, [{ text: 'Command Tower', left: 30, top: 300, width: 260, height: 30 }]);
   await page.waitForTimeout(1500);
   await expect(list.locator('li')).toHaveCount(1);
-  await setOcr(page, title('Command Tower'));
-  await expect(list.locator('li')).toHaveCount(2, { timeout: 15_000 });
+
+  // Foil: the Foil switch records the next card as foil, if that printing comes in foil.
+  await scanner.getByLabel('Foil').check();
+  await setOcr(page, card('Command Tower', '420/524 U', 'CMM • EN > SOME ARTIST'));
+  await expect(list.locator('li', { hasText: 'Command Tower' })).toContainText('Commander Masters · #420 · foil', { timeout: 15_000 });
 
   // Manual correction: take one back.
   await list.getByRole('button', { name: 'Take back one Sol Ring' }).click();
   await expect(list.getByRole('group', { name: 'Copies of Sol Ring scanned' })).toContainText('1');
   await setOcr(page, []);
 
-  // Done: the collection really has them.
+  // Done: the collection really has them, as those printings.
   await scanner.getByRole('button', { name: /^Done \(2\)/ }).click();
   await expect(scanner).toHaveCount(0);
-  const summary = await (await page.request.get('/api/collection/summary')).json().catch(() => null);
-  void summary; // (the on-device API is not reachable over HTTP; check through the UI instead)
   await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Collection' }).click();
   await expect(page.locator('.collbar')).toContainText('2 cards · 2 unique');
-  await expect(page.locator('.tile', { hasText: 'Sol Ring' }).locator('.stepper')).toContainText('1');
-  await expect(page.locator('.tile', { hasText: 'Command Tower' }).locator('.stepper')).toContainText('1');
+  await expect(page.locator('.tile', { hasText: 'Sol Ring' })).toContainText('C21 #263');
+  await expect(page.locator('.tile', { hasText: 'Command Tower' })).toContainText('CMM #420 · foil');
+  await expect(page.locator('.tile', { hasText: 'Sol Ring' }).locator('img')).toHaveAttribute('src', /cards\.scryfall\.io\/normal\/front\/.*\.jpg/);
+});
+
+test('an old card gives only a copyright year: that narrows it, and it asks when it still cannot tell', async ({ page }) => {
+  const { scanner, list } = await open(page);
+
+  // 1996: Dirtwater Wraith was printed once that year (Mirage), so no question.
+  await setOcr(page, card('Dirtwater Wraith', 'Illus. Steve Luke', '© 1996 Wizards of the Coast, Inc. All rights reserved.'));
+  await expect(list.locator('li', { hasText: 'Dirtwater Wraith' })).toContainText('Mirage · #117', { timeout: 15_000 });
+  await setOcr(page, []);
+  await page.waitForTimeout(800);
+
+  // 1995: Murk Dwellers has three printings that year, so it asks, but only about those three.
+  await setOcr(page, card('Murk Dwellers', '© 1995 Wizards of the Coast, Inc.'));
+  const narrowed = page.getByRole('dialog', { name: 'Which printing of Murk Dwellers?' });
+  await expect(narrowed).toBeVisible({ timeout: 15_000 });
+  await expect(narrowed).toContainText('narrowed it down');
+  await expect(narrowed.locator('li')).toHaveCount(3);
+  await narrowed.getByRole('button', { name: /Renaissance, number 62/ }).click();
+  await expect(list.locator('li', { hasText: 'Murk Dwellers' })).toContainText('Renaissance · #62');
+  await setOcr(page, []);
+  await page.waitForTimeout(800);
+
+  // No year and no set code: it asks, and the person picks.
+  await setOcr(page, card('Lightning Bolt'));
+  const picker = page.getByRole('dialog', { name: 'Which printing of Lightning Bolt?' });
+  await expect(picker).toBeVisible({ timeout: 15_000 });
+  await picker.getByLabel('Filter printings').fill('alpha');
+  await picker.getByRole('button', { name: /Limited Edition Alpha, number 161/ }).click();
+  await expect(picker).toHaveCount(0);
+  await expect(list.locator('li', { hasText: 'Lightning Bolt' })).toContainText('Limited Edition Alpha · #161');
+  await setOcr(page, []);
+  await page.waitForTimeout(800);
+
+  // "Not sure" adds the card without a printing.
+  await setOcr(page, card('Arcane Signet'));
+  const second = page.getByRole('dialog', { name: 'Which printing of Arcane Signet?' });
+  await expect(second).toBeVisible({ timeout: 15_000 });
+  await second.getByRole('button', { name: /Not sure/ }).click();
+  await expect(list.locator('li', { hasText: 'Arcane Signet' })).toContainText('printing not recorded');
+  await setOcr(page, []);
+
+  await scanner.getByRole('button', { name: /^Done \(4\)/ }).click();
+  await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Collection' }).click();
+  await expect(page.locator('.collbar')).toContainText('4 cards · 4 unique');
+  await expect(page.locator('.tile', { hasText: 'Lightning Bolt' })).toContainText('LEA #161');
+  await expect(page.locator('.tile', { hasText: 'Dirtwater Wraith' })).toContainText('MIR #117');
+  await expect(page.locator('.tile', { hasText: 'Arcane Signet' }).locator('.printline')).toHaveCount(0);
 });
 
 test('scans cards into the open deck, and says so when the camera is unavailable', async ({ page }) => {
@@ -78,7 +134,7 @@ test('scans cards into the open deck, and says so when the camera is unavailable
   const scanner = page.getByRole('dialog', { name: 'Scan cards' });
   await scanner.getByRole('button', { name: 'Deck', exact: true }).click();
   await expect(scanner.getByRole('status').filter({ hasText: 'adding to “Scanned deck”' })).toBeVisible({ timeout: 30_000 });
-  await setOcr(page, title('Arcane Signet'));
+  await setOcr(page, card('Arcane Signet'));
   // (the empty list is itself an <li>, so look for the card, not a count)
   await expect(scanner.getByRole('list', { name: 'Scanned this session' }).locator('li', { hasText: 'Arcane Signet' })).toBeVisible({ timeout: 15_000 });
   await setOcr(page, []);

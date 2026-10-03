@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { createGunzip } from 'node:zlib';
+import { createGunzip, gunzipSync } from 'node:zlib';
 import { createInterface } from 'node:readline';
 import { resolve } from 'node:path';
 import { openDb, dbPathFor, type NodeDb } from './db.js';
@@ -7,6 +7,7 @@ import { clearPrices, loadJsonl, loadPrices, loadRulings, loadTags } from './ing
 import { parseComprehensiveRules, type DataStatus } from '@grimoire/shared';
 import { loadRules, rulesStatus } from './rules.js';
 import { collectAliases, loadAliases, parseNamesFile, type NamesFile } from './names.js';
+import { collectPrintings, loadPrintings, parsePrintingsFile, type PrintingsFile } from './printings.js';
 
 // Scryfall asks for a descriptive User-Agent and an Accept header on every API request.
 const HEADERS = {
@@ -36,6 +37,11 @@ const PRICE_REFRESH_DAYS = 7;
 /** Weekly CI publishes the alternate card names here (a rolling prerelease, so it never becomes the app's "latest" release). */
 export const NAMES_URL = 'https://github.com/itsdommie/grimoire/releases/download/card-names/card-names.json';
 const NAMES_REFRESH_DAYS = 7;
+/** Weekly CI publishes every paper printing here as a manifest plus a gzipped file (a prerelease, so it is never the app's "latest"). */
+export const PRINTINGS_BASE = 'https://github.com/itsdommie/grimoire/releases/download/card-printings';
+export const PRINTINGS_MANIFEST = 'card-printings.json';
+export interface PrintingsManifest { version: string; file: string; count: number; size: number }
+const PRINTINGS_REFRESH_DAYS = 7;
 
 export interface DataManagerOptions {
   /** Where the database and downloaded bulk files live. */
@@ -54,6 +60,8 @@ export interface DataManagerOptions {
   localRules?: string;
   /** Alternate card names from a local card-names.json (GRIMOIRE_NAMES_FILE). */
   localNames?: string;
+  /** Printings from a local card-printings.json[.gz] (GRIMOIRE_PRINTINGS_FILE). */
+  localPrintings?: string;
 }
 
 export interface UpdateOptions {
@@ -77,6 +85,7 @@ export class DataManager {
   private readonly localPrices: string | undefined;
   private readonly localRules: string | undefined;
   private readonly localNames: string | undefined;
+  private readonly localPrintings: string | undefined;
   private warning: string | undefined;
   private running: Promise<void> | null = null;
   private progress: DataStatus['progress'];
@@ -93,6 +102,7 @@ export class DataManager {
     this.localPrices = opts.localPrices;
     this.localRules = opts.localRules;
     this.localNames = opts.localNames;
+    this.localPrintings = opts.localPrintings;
   }
 
   private meta(key: string): string | null {
@@ -149,6 +159,58 @@ export class DataManager {
       writer.close();
     }
     return true;
+  }
+
+  /**
+   * Every paper printing, so a card can be a specific printing (the scanner, imports with set codes). Downloaded only when the
+   * published version changes; nothing published yet is not an error, but is remembered so it isn't asked for again at once.
+   */
+  private async updatePrintings(opts: UpdateOptions, local: boolean): Promise<boolean> {
+    if (local && !this.localPrintings) return false;
+    if (!this.localPrintings && !opts.force && this.checkedRecently('printings_checked_at', PRINTINGS_REFRESH_DAYS)) return false;
+    if (!this.localPrintings) this.setMeta('printings_checked_at', new Date().toISOString()); // even a failed attempt waits a week
+
+    let file: PrintingsFile;
+    if (this.localPrintings) {
+      const raw = readFileSync(this.localPrintings);
+      file = parsePrintingsFile((this.localPrintings.endsWith('.gz') ? gunzipSync(raw) : raw).toString('utf8'));
+    } else {
+      this.progress = { phase: 'checking', item: 'printings' };
+      const res = await this.fetchImpl(`${PRINTINGS_BASE}/${PRINTINGS_MANIFEST}`, { headers: HEADERS });
+      if (res.status === 404) { this.setMeta('printings_checked_at', new Date().toISOString()); this.setMeta('printings_version', 'none'); return false; }
+      if (!res.ok) throw new Error(`couldn't check (HTTP ${res.status})`);
+      const manifest = (await res.json()) as PrintingsManifest;
+      if (!opts.force && this.meta('printings_version') === manifest.version) { this.setMeta('printings_checked_at', new Date().toISOString()); return false; }
+      this.progress = { phase: 'downloading', item: 'printings' };
+      const body = await this.fetchImpl(`${PRINTINGS_BASE}/${manifest.file}`, { headers: HEADERS });
+      if (!body.ok) throw new Error(`download failed (HTTP ${body.status})`);
+      file = parsePrintingsFile(gunzipSync(Buffer.from(await body.arrayBuffer())).toString('utf8'));
+    }
+    this.progress = { phase: 'importing', item: 'printings' };
+    const writer = openDb(dbPathFor(this.dataDir));
+    try {
+      loadPrintings(writer, file);
+      const put = writer.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+      put.run('printings_version', file.version);
+      put.run('printings_checked_at', new Date().toISOString());
+    } finally {
+      writer.close();
+    }
+    return true;
+  }
+
+  /** Build the printings file from Scryfall's per-printing file (CI publishes it; `cli printings --load` loads it into the dev database). */
+  async buildPrintings(): Promise<PrintingsFile> {
+    mkdirSync(this.dataDir, { recursive: true });
+    const entry = (await this.fetchManifest()).default_cards;
+    if (!entry?.updated_at) throw new Error('Scryfall has no Default Cards file right now');
+    const file = await this.ensureFile('default_cards', entry, 'prices');
+    return collectPrintings(this.lines(file), entry.updated_at.slice(0, 10));
+  }
+
+  private checkedRecently(key: string, days: number): boolean {
+    const at = Date.parse(this.meta(key) ?? '');
+    return Number.isFinite(at) && Date.now() - at < days * 864e5;
   }
 
   private setMeta(key: string, value: string): void {
@@ -213,6 +275,8 @@ export class DataManager {
     if (wants(this.localRulings) && !this.meta(META_KEY.rulings)) return true;
     if (wants(this.localTags) && !this.meta(META_KEY.oracle_tags)) return true;
     if (wants(this.localRules) && !this.meta('rules_url')) return true;
+    // Printings are an extra that may not be published yet or reachable: only ask again once the last attempt is a week old.
+    if (wants(this.localPrintings) && !this.meta('printings_version') && !this.checkedRecently('printings_checked_at', PRINTINGS_REFRESH_DAYS)) return true;
     return false;
   }
 
@@ -281,6 +345,12 @@ export class DataManager {
     } catch (err) {
       // Not a warning for the user: the names shipped with the app still work, this only misses the newest sets.
       console.warn(`Couldn't refresh the alternate card names: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    try {
+      if (await this.updatePrintings(opts, local)) imported = true;
+    } catch (err) {
+      // Not a warning for the user: the cards work without printings, and the next update tries again.
+      console.warn(`Couldn't refresh the card printings: ${err instanceof Error ? err.message : String(err)}`);
     }
     if (this.pricesEnabled()) {
       try {

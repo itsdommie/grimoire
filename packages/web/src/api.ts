@@ -1,4 +1,4 @@
-import type { AddToCollectionResult, CardMatchCandidate, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -62,6 +62,12 @@ export const api = {
   cardDetail: (id: string) => request<CardDetail>('GET', `/api/cards/${encodeURIComponent(id)}/detail`),
   /** Which cards do these lines of text name? (The scanner sends the title it read off a card.) */
   matchCards: (lines: string[]) => request<{ candidates: CardMatchCandidate[] }>('POST', '/api/cards/match', { lines }),
+  /** Every printing of a card, newest first, with how many of each you own. */
+  printings: (cardId: string) => request<{ printings: PrintingInfo[] }>('GET', `/api/cards/${encodeURIComponent(cardId)}/printings`),
+  /** Which printing is this card, from the lines read off its bottom edge? */
+  identifyPrinting: (cardId: string, lines: string[]) => request<PrintingIdentification>('POST', '/api/cards/identify', { cardId, lines }),
+  /** Set how many of one printing and finish you own. `claim` uses up copies with no recorded printing before adding new ones. */
+  setPrinting: (printingId: string, finish: Finish, qty: number, claim = false) => request<CollectionSummary>('PUT', '/api/collection/printings', { printingId, finish, qty, claim }),
   collectionSummary: () => request<CollectionSummary>('GET', '/api/collection/summary'),
   importCollection: (text: string, mode: 'merge' | 'replace') => request<CollectionImportResult>('POST', '/api/collection/import', { text, mode }),
   setOwned: (cardId: string, qty: number) => request<CollectionSummary>('PUT', '/api/collection/cards', { cardId, qty }),

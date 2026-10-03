@@ -102,9 +102,12 @@ phone the card browser and the deck are separate panes behind a bar at the botto
 
 **Card scanner.** The **Scan** button opens the camera with a card-shaped outline. Hold a card in the outline and its name is read
 on the phone (Google ML Kit, offline) and matched against the card database; once the same card is seen in two frames, one copy is
-added to your collection or to the open deck, with a buzz and a green tick. Take the card away and show the next. Each scanned card
-has − and + to correct a mistake, and **Done** keeps everything. It reads only the title bar, so rules text that happens to be a
-card's name can't be picked up, and Universes Beyond names work too. It matches cards, not printings or foils.
+added to your collection or to the open deck, with a buzz and a green tick. It also reads the set code and collector number from
+the bottom of the card, so the collection records the **exact printing** (and the Foil switch records foil copies). Older cards print
+only a copyright year, or nothing: the scanner narrows by year and, if it still can't tell, shows the printings it could be for you to
+pick (or add the card without one). Take the card away and show the next. Each scanned card has − and + to correct a mistake, and
+**Done** keeps everything. It reads only the title bar and the bottom edge, so rules text that happens to be a card's name can't be
+picked up, and Universes Beyond names work too.
 
 Building needs JDK 21 and the Android SDK (platform 36, build-tools 36). Then:
 
@@ -123,6 +126,12 @@ The **Collection** view tracks the cards you own: import a CSV from ManaBox, Mox
 adjust counts with the +/- buttons or by hovering cards in **Cards**. `owned>=1` works in search, decks show how much of them
 you own and what the rest would cost, and "What can I build?" ranks the commanders you own by how many of your cards fit them.
 Prices are Scryfall's for its featured printing of each card, so they're a rough guide rather than the cheapest copy.
+
+**Printings.** The collection counts copies of a card, and can also record which printing (and finish) each copy is. The card detail
+lists every printing with a + / − for each finish; "+" says "one of the copies I already have is this one", so a collection imported
+without printings can be filled in by hand. A ManaBox, Moxfield, Archidekt or Deckbox file that names the set, collector number and
+foil (ManaBox's Scryfall ID is the most exact) is matched to printings on import, and the card then shows the art of the printing you
+own. Decks stay card-level. Printing data (about 4 MB) is downloaded with the card data.
 
 **Building a new deck without breaking up the others.** A collection export usually leaves out the cards sitting in built decks, so
 a deck has an **Add to collection** button (and an import option) that adds its cards to your owned counts as a separate step. Then
