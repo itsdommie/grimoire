@@ -63,7 +63,9 @@ jobs:
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
           "$apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/certs.txt"
           grep -q "^Verifies" "$RUNNER_TEMP/certs.txt"
-          signer=$(grep -i "Signer #1 certificate SHA-256 digest" "$RUNNER_TEMP/certs.txt" | sed 's/.*: //' | tr -d '[:space:]')
+          # (apksigner words this line differently across versions: "Signer #1 certificate SHA-256 digest" or "V2 Signer: certificate SHA-256 digest")
+          signer=$(grep -iE "certificate SHA-256 digest" "$RUNNER_TEMP/certs.txt" | head -n 1 | sed 's/.*: //' | tr -d '[:space:]')
+          if [ -z "$signer" ]; then echo "Could not read the signing certificate from apksigner's output"; exit 1; fi
           expected=$(tr -d '[:space:]' < packages/mobile/signing-sha256.txt)
           if [ "$signer" != "$expected" ]; then echo "Signed with $signer, expected $expected"; exit 1; fi
           # Android's own view of the package: the version it will install as.
