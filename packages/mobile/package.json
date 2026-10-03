@@ -1,0 +1,16 @@
+{
+  "name": "@grimoire/mobile",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "serve": "node serve.mjs"
+  },
+  "dependencies": {
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

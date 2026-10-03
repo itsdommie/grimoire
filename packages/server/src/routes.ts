@@ -1,5 +1,5 @@
 import { SearchError, formatDeckList, semanticPhrases, type Board, type DataStatus, type ExportStyle, type FormatId, type SemanticStatus } from '@grimoire/shared';
-import type { Db } from './db.js';
+import type { Db } from './schema.js';
 import { NOT_SET_UP } from './messages.js';
 import { getCardByName, getCardDetail, searchCards, type Order } from './cards.js';
 import { exportUserData, restoreUserData } from './backup.js';
