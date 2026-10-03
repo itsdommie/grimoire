@@ -7,6 +7,7 @@ import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
 import { getSet, listSets, type SetFilter } from './sets.js';
+import { suggestForDeck } from './suggestions.js';
 import { getPriceReport, snapshotPrices, type PriceScope } from './pricewatch.js';
 import { getBanlist, listBanlistFormats } from './banlists.js';
 import { clearWishlist, getWishlist, setWanted, wishMissing } from './wishlist.js';
@@ -242,6 +243,7 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
     return getWishlist(db);
   });
   on('DELETE', '/api/wishlist', () => { clearWishlist(db); return reply(204); });
+  on('GET', '/api/decks/:id/suggestions', ({ params, query }) => suggestForDeck(db, deckId(params.id), { spare: query.spare === '1' }));
   on('POST', '/api/decks/:id/wishlist-missing', ({ params, body }) => wishMissing(db, deckId(params.id), { excludeOtherDecks: body?.spare === true }));
 
   // ------------------------------------------------------------------ sets

@@ -196,6 +196,27 @@ export interface CardDetail {
   wanted: number;
 }
 
+// ------------------------------------------------------------- deck suggestions
+
+export interface RoleSuggestions {
+  role: string;
+  label: string;
+  /** Copies of this role already in the deck, and the advice for it (Commander only), as the analysis reports them. */
+  inDeck: number;
+  target?: { min: number; max: number };
+  status?: 'short' | 'ok' | 'high';
+  /** How many owned cards could fill this role (the list below is the best few). */
+  total: number;
+  cards: Card[];
+}
+export interface DeckSuggestions {
+  /** The deck has nothing to take its colours from yet (no commander, or no spells). */
+  needsMore: boolean;
+  /** Owned cards that are legal, in the deck's colours and not already in it. */
+  pool: number;
+  roles: RoleSuggestions[];
+}
+
 // -------------------------------------------------------------- price watch
 
 export interface PriceMover {

@@ -429,3 +429,9 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .pricerows .rname { text-align: left; justify-self: start; }
 .rise, .fall { font-weight: 600; white-space: nowrap; } /* no red/green: a rise is good news for a card you own and bad for one you want to buy, so the arrow and sign say it */
 @media (max-width: 900px) { .pricerows .pricerow { grid-template-columns: 1fr auto auto; } .pricerows .pricerow > .muted:last-child { display: none; } }
+
+.suggestions { margin-top: 18px; }
+.suggestions details { margin: 6px 0; }
+.suggestions summary { display: flex; gap: 10px; align-items: baseline; cursor: pointer; flex-wrap: wrap; }
+.suggestions summary .rlabel { font-weight: 600; }
+.suggestions .row .rname { flex: 1; text-align: left; }

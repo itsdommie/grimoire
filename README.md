@@ -214,6 +214,12 @@ It reads the legality Scryfall gives each card, so it is as current as your card
 Paste a plain, Moxfield or Archidekt text list via **Import**; **Copy list** / **Download** export a re-importable list.
 Validation covers size, singleton, colour identity, Commander legality and commander/partner eligibility.
 
+**Ideas from your collection** (the deck's **Analysis** tab, once you own some cards) fills the gaps: cards you already own that are
+legal in the deck's format, inside its colours (the commander's identity in Commander and Brawl; the colours already in the deck
+otherwise) and not already in it, grouped by what they do (ramp, card advantage, removal and so on), with the roles the deck is short
+on first and the most popular cards at the top. **+ Deck** adds one. Tick **Skip copies already in my decks** and it only offers copies no
+other deck is using. Roles are guessed from card text, so treat them as a starting point. Lands are left out.
+
 Cards printed under another name import and search under either one: "Avengers Monitoring Station" is Herald's Horn, so a list or
 collection export that uses the Universes Beyond name still finds the card (Arena's "A-" rebalanced names work too). The names ship
 with the app and are refreshed weekly, so new sets are picked up.

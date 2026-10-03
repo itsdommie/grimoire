@@ -1,4 +1,4 @@
-import type { PriceReport, BanlistFormat, BanlistReport, SetDetail, SetSummary, WishlistReport, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
+import type { DeckSuggestions, PriceReport, BanlistFormat, BanlistReport, SetDetail, SetSummary, WishlistReport, AdvisorMessage, AdvisorReply, AdvisorStatus, AddToCollectionResult, CardMatchCandidate, Finish, PrintingIdentification, PrintingInfo, Board, CardDetail, FormatId, RuleDetail, RulesSearchResult, RulesStatus, RulesToc, SemanticStatus, CollectionImportResult, RestoreResult, CollectionSummary, CommanderIdea, DataStatus, DeckDetail, DeckSummary, ExportStyle, ImportResult, MissingReport, SearchResponse } from '@grimoire/shared';
 
 /** The desktop app injects a per-launch token into index.html; the dev server leaves the placeholder, meaning "no token". */
 function readToken(): string | null {
@@ -88,6 +88,7 @@ export const api = {
   setOwned: (cardId: string, qty: number) => request<CollectionSummary>('PUT', '/api/collection/cards', { cardId, qty }),
   clearCollection: () => request<void>('DELETE', '/api/collection'),
   commanderIdeas: (spare = false) => request<CommanderIdea[]>('GET', `/api/collection/commanders${spare ? '?spare=1' : ''}`),
+  deckSuggestions: (id: number, spare = false) => request<DeckSuggestions>('GET', `/api/decks/${id}/suggestions${spare ? '?spare=1' : ''}`),
   deckMissing: (id: number, spare = false) => request<MissingReport>('GET', `/api/decks/${id}/missing${spare ? '?spare=1' : ''}`),
   addDeckToCollection: (id: number) => request<AddToCollectionResult>('POST', `/api/decks/${id}/add-to-collection`),
   listDecks: () => request<DeckSummary[]>('GET', '/api/decks'),

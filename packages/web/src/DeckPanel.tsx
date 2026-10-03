@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useEffect } from 'react';
-import type { Board, Card, CollectionSummary, DeckDetail, DeckEntry, DeckSummary, MissingReport } from '@grimoire/shared';
+import type { Board, Card, CollectionSummary, DeckDetail, DeckEntry, DeckSuggestions, DeckSummary, MissingReport } from '@grimoire/shared';
 import { FORMATS, FORMAT_IDS, isBasicLand, reservesCopies, type FormatId } from '@grimoire/shared';
 import { api } from './api';
 import { AnalysisView } from './AnalysisView';
@@ -164,6 +164,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
           </div>
 
           {tab === 'analysis' && <AnalysisView entries={current.entries} format={deck.format} />}
+          {tab === 'analysis' && haveCollection && <SuggestionsPanel deckId={deck.id} entries={current.entries} commander={rules.commander} version={collectionVersion} skipUsed={skipUsed} onSkipUsed={onSkipUsed} onAdd={(card) => void run(() => api.setCard(deck.id, card.id, 'main', 1))} onOpenCard={onOpenCard} />}
           {/* Kept mounted (just hidden) so results survive tab switches and can be flagged stale when the deck changes. */}
           <div hidden={tab !== 'simulate'}><SimulateView key={deck.id} entries={current.entries} format={deck.format} /></div>
 
@@ -299,6 +300,47 @@ function NameDialog({ title, initial, confirmLabel, withFormat, onSubmit, onCanc
         </div>
       </form>
     </div>
+  );
+}
+
+/** Cards you already own that would suit the deck, grouped by what they do, with the roles the deck is short on first. */
+function SuggestionsPanel({ deckId, entries, commander, version, skipUsed, onSkipUsed, onAdd, onOpenCard }: { deckId: number; entries: DeckEntry[]; commander: boolean; version: number; skipUsed: boolean; onSkipUsed: (v: boolean) => void; onAdd: (card: Card) => void; onOpenCard: (id: string) => void }) {
+  const [ideas, setIdeas] = useState<DeckSuggestions | null>(null);
+  const key = entries.map((e) => `${e.card.id}:${e.board}`).join('|'); // adding a card changes what is left to suggest
+  useEffect(() => {
+    let stop = false;
+    api.deckSuggestions(deckId, skipUsed).then((r) => { if (!stop) setIdeas(r); }).catch(() => { if (!stop) setIdeas(null); });
+    return () => { stop = true; };
+  }, [deckId, key, version, skipUsed]);
+  if (!ideas) return null;
+  return (
+    <section className="suggestions" aria-label="Ideas from your collection">
+      <h3>Ideas from your collection</h3>
+      <p className="muted small">Cards you own that are legal in this format, inside the deck's colours and not already in it, grouped by what they do. Roles are guessed from card text.</p>
+      <p className="small"><SkipUsedToggle checked={skipUsed} onChange={onSkipUsed} /></p>
+      {ideas.needsMore && <p className="muted">{commander ? 'Choose a commander first: its colours decide which cards fit.' : 'Add a few spells first: the deck\'s colours decide which cards fit.'}</p>}
+      {!ideas.needsMore && ideas.roles.length === 0 && <p className="muted">Nothing in your collection fills a role this deck wants{skipUsed ? ' that is not already in another deck' : ''}.</p>}
+      {ideas.roles.map((r) => (
+        <details key={r.role} open={r.status === 'short'}>
+          <summary>
+            <span className="rlabel">{r.label}</span>
+            <span className="muted small">{r.inDeck} in the deck{r.target ? `, aim ${r.target.min}-${r.target.max}` : ''}</span>
+            {r.status === 'short' && <span className="badge-status short"><span aria-hidden>▲</span> Low</span>}
+            <span className="muted small">{r.total} you could add</span>
+          </summary>
+          <ul className="list">
+            {r.cards.map((c) => (
+              <li key={c.id} className="row">
+                <button className="linklike rname" onClick={() => onOpenCard(c.id)}>{c.name}</button>
+                <span className="muted small">{c.manaCost}</span>
+                <button onClick={() => onAdd(c)} aria-label={`Add ${c.name} to the deck`}>+ Deck</button>
+              </li>
+            ))}
+          </ul>
+          {r.total > r.cards.length && <p className="muted small">…and {r.total - r.cards.length} more in your collection.</p>}
+        </details>
+      ))}
+    </section>
   );
 }
 
