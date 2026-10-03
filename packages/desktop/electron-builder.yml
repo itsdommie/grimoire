@@ -22,12 +22,8 @@ extraResources:
     to: LICENSE.grimoire.txt
   - from: build/THIRD_PARTY_NOTICES.txt
     to: THIRD_PARTY_NOTICES.txt
-  - from: ../../node_modules/onnxruntime-web/dist
+  - from: build/ort
     to: ort
-    filter:
-      - ort.node.min.mjs
-      - ort-wasm-simd-threaded.mjs
-      - ort-wasm-simd-threaded.wasm
 asar: true
 compression: normal
 

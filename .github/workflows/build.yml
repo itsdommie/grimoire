@@ -33,16 +33,26 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false' # no code signing yet
       # Smoke-test the packaged app (first run, search, decks, persistence).
-      - name: Smoke test (Linux)
+      # Test the real artifacts, not the unpacked folders: the Linux AppImage itself, and the Windows installer run for real.
+      - name: Smoke test the AppImage (Linux)
         if: runner.os == 'Linux'
-        run: xvfb-run -a npx playwright test -c playwright.desktop.config.ts
+        run: |
+          export GRIMOIRE_EXE="$(ls "$GITHUB_WORKSPACE"/release/*.AppImage | head -n 1)"
+          chmod +x "$GRIMOIRE_EXE"
+          xvfb-run -a npx playwright test -c playwright.desktop.config.ts
         env:
-          GRIMOIRE_EXE: ${{ github.workspace }}/release/linux-unpacked/grimoire
-      - name: Smoke test (Windows)
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+      - name: Install and smoke test (Windows)
         if: runner.os == 'Windows'
-        run: npx playwright test -c playwright.desktop.config.ts
-        env:
-          GRIMOIRE_EXE: ${{ github.workspace }}\release\win-unpacked\Grimoire.exe
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem release\Grimoire-Setup-*.exe | Select-Object -First 1).FullName
+          Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+          $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Grimoire.exe | Select-Object -First 1).FullName
+          if (-not $exe) { throw 'Grimoire.exe was not installed' }
+          Write-Host "Installed at $exe"
+          $env:GRIMOIRE_EXE = $exe
+          npx playwright test -c playwright.desktop.config.ts
       - uses: actions/upload-artifact@v4
         with:
           name: grimoire-${{ runner.os }}

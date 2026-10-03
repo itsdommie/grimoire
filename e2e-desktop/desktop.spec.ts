@@ -1,13 +1,26 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import { _electron as electron, expect, test, type ElectronApplication } from '@playwright/test';
 
 // Launches the real desktop app. By default the dev build (`electron packages/desktop`); set GRIMOIRE_EXE to
 // test a packaged binary (e.g. release/linux-unpacked/grimoire) instead.
 const require = createRequire(import.meta.url);
-const exe = process.env.GRIMOIRE_EXE;
+/**
+ * A packaged app must work with no repository around it. A build sitting inside this checkout can quietly resolve packages from
+ * the repo's node_modules (that hid a missing-dependency bug in a released version), so copy it somewhere neutral first.
+ */
+function isolated(path: string | undefined): string | undefined {
+  if (!path) return path;
+  const inRepo = !relative(process.cwd(), path).startsWith('..');
+  if (!inRepo) return path;
+  const dest = mkdtempSync(join(tmpdir(), 'grimoire-app-'));
+  if (statSync(path).isFile() && /\.AppImage$/i.test(path)) { cpSync(path, join(dest, basename(path))); return join(dest, basename(path)); }
+  cpSync(dirname(path), dest, { recursive: true });
+  return join(dest, basename(path));
+}
+const exe = isolated(process.env.GRIMOIRE_EXE);
 const fixture = resolve('e2e/fixtures/cards.jsonl');
 
 const launch = (userData: string): Promise<ElectronApplication> =>
