@@ -40,7 +40,7 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
 // First launch copies the card database into the phone's storage, which takes a few seconds: say so instead of showing nothing.
 const splash = document.createElement('div');
 splash.setAttribute('role', 'status');
-splash.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:#12131a;color:#e6e6ef;font:16px system-ui,sans-serif;z-index:99999';
+splash.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:#0e0c1c;color:#ede8f8;font:16px system-ui,sans-serif;z-index:99999';
 splash.textContent = 'Setting up your card database… (first launch only)';
 document.addEventListener('DOMContentLoaded', () => { if (!settled) document.body.appendChild(splash); });
 let settled = false;
@@ -53,6 +53,29 @@ void ready.then(() => { settled = true; splash.remove(); });
  */
 const secrets = registerPlugin<{ get(o: { name: string }): Promise<{ value: string | null }>; set(o: { name: string; value: string }): Promise<void>; clear(o: { name: string }): Promise<void> }>('SecretStore');
 
+const externalLink = registerPlugin<{ open(o: { url: string }): Promise<void> }>('ExternalLink');
+/** The address Google's answer comes back to (see AndroidManifest.xml): the app's own scheme. */
+const APP_LINK = 'io.github.itsdommie.grimoire://oauth';
+
+/** Open the browser at `url` and wait for the link back into the app that carries `state` (links with another state are ignored). */
+async function browserAuth(url: string, state: string): Promise<string> {
+  let linked!: (link: string) => void;
+  const back = new Promise<string>((resolve) => { linked = resolve; });
+  // Listen first: the link can only come after the browser opens, but nothing may be missed.
+  const listener = await App.addListener('appUrlOpen', (e) => {
+    try { if (e.url.startsWith(APP_LINK) && new URL(e.url).searchParams.get('state') === state) linked(e.url); } catch { /* not a link we asked for */ }
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const tooLong = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('Signing in took too long, so it was cancelled. Try again.')), 5 * 60_000); });
+    await externalLink.open({ url });
+    return await Promise.race([back, tooLong]);
+  } finally {
+    clearTimeout(timer);
+    await listener.remove();
+  }
+}
+
 async function doNative(id: number, request: NativeRequest): Promise<void> {
   const reply = (result: NativeResult) => send({ nativeResult: { id, result } });
   try {
@@ -61,6 +84,7 @@ async function doNative(id: number, request: NativeRequest): Promise<void> {
       reply({ ok: true, ...(value ? { text: value } : {}) });
       return;
     }
+    if (request.op === 'browser-auth') { reply({ ok: true, text: await browserAuth(request.url, request.state) }); return; }
     if (request.op === 'secret-set') { await secrets.set({ name: request.name, value: request.value }); reply({ ok: true }); return; }
     if (request.op === 'secret-clear') { await secrets.clear({ name: request.name }); reply({ ok: true }); return; }
     if (request.op === 'delete') {

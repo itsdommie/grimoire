@@ -20,6 +20,7 @@
     --glow-a: rgba(110, 90, 220, .14); --glow-b: rgba(201, 154, 48, .1); --shadow: 0 30px 60px -28px rgba(50, 40, 100, .45), 0 6px 14px rgba(50, 40, 100, .12); --header: rgba(241, 237, 228, .87); }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* (a styled button would otherwise ignore the attribute) */
 html { scroll-behavior: smooth; }
 body { margin: 0; color: var(--ink); font: 17px/1.6 var(--body); -webkit-font-smoothing: antialiased; background: radial-gradient(1100px 600px at 12% -10%, var(--glow-a), transparent 62%), radial-gradient(800px 480px at 100% 0, var(--glow-b), transparent 58%), var(--bg); background-attachment: fixed; }
 ::selection { background: var(--accent-line); }

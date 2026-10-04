@@ -50,17 +50,28 @@ To try it on your own machine without a release build, start the app with the tw
 GRIMOIRE_GOOGLE_CLIENT_ID=... GRIMOIRE_GOOGLE_CLIENT_SECRET=... npm run desktop
 ```
 
-## 5. Android (later, once the desktop works)
+## 5. The Android client
 
-The Android app needs its own client of type **Android**, with:
+The phone app signs in through the phone's own browser (so it works on phones without Google Play services, and needs no signing-key
+fingerprint). It needs a second client, of type **Web application**, in the same project:
 
-- package name `io.github.itsdommie.grimoire`
-- the **SHA-1** fingerprint of the release signing key (`keytool -list -v -keystore ~/.grimoire-signing/grimoire-release.p12`, which
-  asks for the key password; the SHA-256 recorded in `packages/mobile/signing-sha256.txt` is not what Google asks for here).
-  Also add the SHA-1 of the debug key if you want to test debug builds.
+1. **Clients → Create client → Application type: Web application**, name it **Grimoire Android**.
+2. Under **Authorized redirect URIs** add exactly `https://itsdommie.github.io/grimoire/oauth-callback.html`. Leave "Authorized
+   JavaScript origins" empty.
+3. Copy the **Client ID** and **Client secret** into two more repository secrets:
 
-Signing in on Android uses the system's own Google account chooser rather than the browser, so it needs a small native part that
-can only be tested on a phone or emulator that has Google Play services and a Google account.
+   ```
+   gh secret set GOOGLE_ANDROID_CLIENT_ID
+   gh secret set GOOGLE_ANDROID_CLIENT_SECRET
+   ```
+
+   The Android release workflow builds them into the app. Until they are set, the phone app offers no sync.
+
+How it works: the app opens Google's sign-in in the browser; when you agree, Google sends the browser to the page above (part of this
+website, `site/oauth-callback.html`), which does nothing but hand the answer to the app through the link
+`io.github.itsdommie.grimoire://oauth` and then remove it from the address bar. The app checks the answer belongs to its own sign-in
+(a random `state`), and exchanges the one-time code for a lasting sign-in kept in the phone's Keystore. If Android closes the app while
+you are in the browser, just tap **Sign in with Google** again.
 
 ## What to check once it is live
 

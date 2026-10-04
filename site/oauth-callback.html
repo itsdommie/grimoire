@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Signing in · Grimoire</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#0e0c1c">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="grimoire.css">
+  <style>
+    .cb { max-width: 30em; margin: 16vh auto; padding: 0 24px; text-align: center; }
+    .cb img { width: 72px; height: 72px; filter: drop-shadow(0 4px 16px rgba(154, 134, 255, .45)); }
+    .cb h1 { font-size: 30px; margin: 16px 0 8px; }
+    .cb p { color: var(--ink2); }
+    .cb .btn { margin-top: 12px; align-items: center; }
+  </style>
+</head>
+<body>
+<!--
+  Where Google sends you after you sign in from the Grimoire phone app. This page does one thing: it passes Google's answer (in the address
+  of this page) straight to the app through its own link, then removes it from the address bar. It keeps nothing, sends nothing anywhere
+  and loads nothing from anywhere else. The one-time code in the answer is useless without the secret only the app holds.
+-->
+<main class="cb">
+  <img src="img/mark.svg" alt="">
+  <h1 id="title">Back to Grimoire…</h1>
+  <p id="note">If Grimoire doesn't open by itself, tap the button.</p>
+  <a class="btn primary" id="open" href="io.github.itsdommie.grimoire://oauth">Open Grimoire</a>
+</main>
+<script>
+  (function () {
+    var query = location.search;
+    var answered = /[?&](code|error)=/.test(query);
+    var link = 'io.github.itsdommie.grimoire://oauth' + query;
+    var button = document.getElementById('open');
+    if (!answered) {
+      // Someone came here without signing in: say what this page is for.
+      document.getElementById('title').textContent = 'Nothing to do here';
+      document.getElementById('note').textContent = 'This page is only used while signing in to Google from the Grimoire app on your phone.';
+      button.hidden = true;
+      return;
+    }
+    button.href = link;
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* the address stays as it is */ }
+    location.replace(link);
+  })();
+</script>
+</body>
+</html>

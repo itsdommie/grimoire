@@ -42,6 +42,9 @@ jobs:
         run: npm run e2e:mobile
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
+          # The Google client for sync sign-in, built into the app's content (and so into the APK). Absent until the secrets are added: the app then offers no sync.
+          GOOGLE_ANDROID_CLIENT_ID: ${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          GOOGLE_ANDROID_CLIENT_SECRET: ${{ secrets.GOOGLE_ANDROID_CLIENT_SECRET }}
       - name: Build the signed APK
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

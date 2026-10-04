@@ -127,6 +127,10 @@ devices at once while offline. Devices sync a few minutes after a change, every 
 immediately. Decks are matched by an id of their own, so renaming a deck on one device renames it on the others instead of making a copy.
 Setting it up on a second device that already has decks keeps both sets (it never replaces one with the other).
 
+On **Android**, Google sync works through the phone's own browser: you sign in there and it hands you back to the app through a small page on
+this project's website (`oauth-callback.html`, which keeps nothing and loads nothing from anywhere else). It needs no Google Play services.
+Folder sync is desktop only.
+
 For Google sync to be available in a build, the app needs its Google client id: see [docs/google-sync-setup.md](docs/google-sync-setup.md).
 
 ## Advisor (optional)

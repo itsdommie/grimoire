@@ -21,7 +21,11 @@ mkdirSync(dist, { recursive: true });
 cpSync(resolve(root, 'packages/web/dist'), dist, { recursive: true });
 
 const common = { bundle: true, target: 'es2022', logLevel: 'warning', sourcemap: true };
-await build({ ...common, entryPoints: [resolve(here, 'src/api.worker.ts')], outfile: resolve(dist, 'api.worker.js'), format: 'esm' });
+// The Google client for sync sign-in on the phone (a "Web application" client in the Google Cloud project: the sign-in comes back through
+// the website's redirect page). Put in by the release build from its secrets; empty in a local build, where the app then offers no sync.
+// (Google treats an app's client secret as not confidential: it cannot be kept secret in a program people install.)
+const google = { __GOOGLE_CLIENT_ID__: JSON.stringify(process.env.GOOGLE_ANDROID_CLIENT_ID ?? ''), __GOOGLE_CLIENT_SECRET__: JSON.stringify(process.env.GOOGLE_ANDROID_CLIENT_SECRET ?? '') };
+await build({ ...common, define: google, entryPoints: [resolve(here, 'src/api.worker.ts')], outfile: resolve(dist, 'api.worker.js'), format: 'esm' });
 await build({ ...common, entryPoints: [resolve(here, 'src/bridge.ts')], outfile: resolve(dist, 'bridge.js'), format: 'iife' });
 copyFileSync(resolve(root, 'node_modules/@sqlite.org/sqlite-wasm/dist/sqlite3.wasm'), resolve(dist, 'sqlite3.wasm'));
 

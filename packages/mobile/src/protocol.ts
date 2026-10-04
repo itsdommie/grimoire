@@ -11,7 +11,9 @@ export type NativeRequest =
   /** A small secret in the Android Keystore (the advisor's API key). */
   | { op: 'secret-get'; name: string }
   | { op: 'secret-set'; name: string; value: string }
-  | { op: 'secret-clear'; name: string };
+  | { op: 'secret-clear'; name: string }
+  /** Open this address in the person's browser (Google's sign-in) and wait for the link back into the app that carries this `state`. Resolves with that link. */
+  | { op: 'browser-auth'; url: string; state: string };
 
 export type NativeResult = { ok: true; url?: string; text?: string } | { ok: false; error: string; status?: number };
 

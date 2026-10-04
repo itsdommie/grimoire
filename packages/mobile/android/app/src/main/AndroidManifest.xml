@@ -23,6 +23,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- The link that brings the person back from Google's sign-in (see site/oauth-callback.html): io.github.itsdommie.grimoire://oauth -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" android:host="oauth" />
+            </intent-filter>
+
         </activity>
 
         <provider

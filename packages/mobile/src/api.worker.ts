@@ -6,6 +6,9 @@ import { loadPrintings, parsePrintingsFile } from '../../server/src/printings.ts
 import { wrapDb, type Oo1Db } from './wasmDb.ts';
 import { createPhoneSemantic } from './semantic.ts';
 import { phoneKeyStore } from './keyStore.ts';
+import { GoogleOAuth } from '../../server/src/googleOAuth.ts';
+import { SyncController } from '../../server/src/syncController.ts';
+import { appLinkFlow } from './googleFlow.ts';
 import { keyFromEnvironment } from '../../server/src/advisor.ts';
 import { cacheStore } from './modelStore.ts';
 import { streamIntoPool } from './poolStream.ts';
@@ -16,6 +19,8 @@ import type { FromWorker, NativeRequest, NativeResult, ToWorker } from './protoc
  * The app's whole API, running inside the phone: the same router the desktop server uses, over SQLite compiled to WASM and kept
  * in the browser's private file system (OPFS). The page talks to it through bridge.ts.
  */
+declare const __GOOGLE_CLIENT_ID__: string;
+declare const __GOOGLE_CLIENT_SECRET__: string;
 const DB_FILE = '/grimoire.db';
 // Typed loosely on purpose: the DOM and WebWorker type libraries can't both be loaded in one project.
 const ctx = self as unknown as { postMessage(m: FromWorker): void; onmessage: ((e: MessageEvent<ToWorker>) => void) | null; location: Location };
@@ -111,7 +116,13 @@ async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; 
   applyPendingCardData({ db, pool: files, meta, setMeta, log }, (message) => post({ progress: message }));
   await loadBundledPrintings(db, meta);
   const updater = new CardUpdater({ db, pool: files, meta, setMeta, native: opts.native ? askNative : null, base: opts.dataBase ?? DEFAULT_DATA_BASE, metered: !!opts.metered, reload: () => post({ reload: true }), log });
-  router = createRouter({ db, data: dataService(meta, updater), semantic: createPhoneSemantic({
+  // Keeping decks, collection and wishlist in step with other devices through the person's own Google Drive. It needs the app's Google client
+  // (built in by the release build) and the native side (to open the browser), so a plain browser, and a local build, simply don't offer it.
+  const googleClient = __GOOGLE_CLIENT_ID__ ? { clientId: __GOOGLE_CLIENT_ID__, clientSecret: __GOOGLE_CLIENT_SECRET__ || undefined } : null;
+  const sync = opts.native && googleClient
+    ? new SyncController({ db, auth: new GoogleOAuth({ client: googleClient, store: await phoneKeyStore(askNative, 'google-sync'), flow: appLinkFlow(askNative) }) })
+    : undefined;
+  router = createRouter({ db, sync, data: dataService(meta, updater), semantic: createPhoneSemantic({
       db, store: cacheStore, native: opts.native ? askNative : null, ortBase: new URL('ort/', ctx.location.href).href,
       prebuiltBase: opts.semanticBase, modelBase: opts.modelBase,
     }),
@@ -119,6 +130,7 @@ async function start(opts: { dbUrl: string; native: boolean; dataBase?: string; 
     advisor: { keys: keyFromEnvironment(await phoneKeyStore(opts.native ? askNative : null), {}), directBrowserAccess: true, baseUrl: opts.advisorBase },
   });
   post({ ready: true, cards: Number(meta('card_count') ?? 0) });
+  sync?.start(); // a no-op unless the person has set sync up on this phone
   // Once a week the app looks for a newer card database by itself (a few seconds after start, so it never slows the first screen).
   if (updater.dueForAutoCheck()) setTimeout(() => updater.start({ auto: true }), 10_000);
 }
