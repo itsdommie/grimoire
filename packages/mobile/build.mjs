@@ -48,7 +48,7 @@ const printingsVersion = slim.prepare("SELECT value FROM meta WHERE key = 'print
 const printingsFormat = Number(slim.prepare("SELECT value FROM meta WHERE key = 'printings_format'").get()?.value ?? 1);
 slim.exec("DELETE FROM printings; DELETE FROM sets; DELETE FROM meta WHERE key LIKE 'printings%';");
 // Everything the user made. (Only the tables that exist: a developer database from before a table was added does not have it yet, and the app creates it.)
-const userTables = ['deck_cards', 'decks', 'collection', 'collection_prints', 'wishlist', 'price_history'];
+const userTables = ['deck_cards', 'decks', 'collection', 'collection_prints', 'wishlist', 'price_history', 'sync_tombstones'];
 for (const t of userTables) if (slim.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(t)) slim.exec(`DELETE FROM ${t};`);
 slim.exec("DELETE FROM embeddings; DELETE FROM meta WHERE key LIKE 'semantic%'; PRAGMA journal_mode = DELETE; VACUUM;");
 slim.close();

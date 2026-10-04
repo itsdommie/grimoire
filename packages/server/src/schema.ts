@@ -156,11 +156,70 @@ CREATE INDEX IF NOT EXISTS collection_prints_card ON collection_prints(card_id);
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 `;
 
+// ---- sync: timestamps and tombstones, kept by triggers so that every way of changing user data (the UI, imports, restores, future code)
+// is covered. A change stamps its row with the time in ISO form; a deletion leaves a row in sync_tombstones; inserting again clears it.
+// While a sync is applying someone else's changes it sets meta.sync_applying and the triggers stand down, so those changes keep the
+// timestamps they arrived with.
+const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
+const QUIET = "(SELECT 1 FROM meta WHERE key = 'sync_applying') IS NULL";
+const stamped = (table: string, valueColumn: string, kind: string, keyOf: (row: string) => string, where: (row: string) => string) => `
+CREATE TRIGGER IF NOT EXISTS sync_${table}_ai AFTER INSERT ON ${table} WHEN ${QUIET} BEGIN
+  UPDATE ${table} SET updated_at = ${NOW} WHERE ${where('NEW')};
+  DELETE FROM sync_tombstones WHERE kind = '${kind}' AND key = ${keyOf('NEW')};
+END;
+CREATE TRIGGER IF NOT EXISTS sync_${table}_au AFTER UPDATE OF ${valueColumn} ON ${table} WHEN ${QUIET} BEGIN
+  UPDATE ${table} SET updated_at = ${NOW} WHERE ${where('NEW')};
+END;
+CREATE TRIGGER IF NOT EXISTS sync_${table}_ad AFTER DELETE ON ${table} WHEN ${QUIET} BEGIN
+  INSERT OR REPLACE INTO sync_tombstones (kind, key, deleted_at) VALUES ('${kind}', ${keyOf('OLD')}, ${NOW});
+END;`;
+
+const SYNC_SCHEMA = `
+CREATE TABLE IF NOT EXISTS sync_tombstones (
+  kind       TEXT NOT NULL,   -- collection | print | wish | deck | deckcard
+  key        TEXT NOT NULL,
+  deleted_at TEXT NOT NULL,
+  PRIMARY KEY (kind, key)
+) WITHOUT ROWID;
+${stamped('collection', 'qty', 'collection', (r) => `${r}.card_id`, (r) => `card_id = ${r}.card_id`)}
+${stamped('collection_prints', 'qty', 'print', (r) => `${r}.printing_id || '|' || ${r}.finish`, (r) => `printing_id = ${r}.printing_id AND finish = ${r}.finish`)}
+${stamped('wishlist', 'want', 'wish', (r) => `${r}.card_id`, (r) => `card_id = ${r}.card_id`)}
+
+CREATE TRIGGER IF NOT EXISTS sync_decks_ai AFTER INSERT ON decks WHEN ${QUIET} BEGIN
+  UPDATE decks SET sync_id = COALESCE(sync_id, lower(hex(randomblob(16)))), updated_at = ${NOW} WHERE id = NEW.id;
+  DELETE FROM sync_tombstones WHERE kind = 'deck' AND key = (SELECT sync_id FROM decks WHERE id = NEW.id);
+END;
+CREATE TRIGGER IF NOT EXISTS sync_decks_id AFTER INSERT ON decks WHEN NEW.sync_id IS NULL BEGIN
+  UPDATE decks SET sync_id = lower(hex(randomblob(16))) WHERE id = NEW.id AND sync_id IS NULL;
+END;
+CREATE TRIGGER IF NOT EXISTS sync_decks_au AFTER UPDATE OF name, format ON decks WHEN ${QUIET} BEGIN
+  UPDATE decks SET updated_at = ${NOW} WHERE id = NEW.id;
+END;
+CREATE TRIGGER IF NOT EXISTS sync_decks_ad AFTER DELETE ON decks WHEN ${QUIET} BEGIN
+  INSERT OR REPLACE INTO sync_tombstones (kind, key, deleted_at) VALUES ('deck', OLD.sync_id, ${NOW});
+END;
+
+CREATE TRIGGER IF NOT EXISTS sync_deck_cards_ai AFTER INSERT ON deck_cards WHEN ${QUIET} BEGIN
+  UPDATE deck_cards SET updated_at = ${NOW} WHERE deck_id = NEW.deck_id AND card_id = NEW.card_id AND board = NEW.board;
+  UPDATE decks SET updated_at = ${NOW} WHERE id = NEW.deck_id;
+  DELETE FROM sync_tombstones WHERE kind = 'deckcard' AND key = (SELECT sync_id FROM decks WHERE id = NEW.deck_id) || '|' || NEW.card_id || '|' || NEW.board;
+END;
+CREATE TRIGGER IF NOT EXISTS sync_deck_cards_au AFTER UPDATE OF qty ON deck_cards WHEN ${QUIET} BEGIN
+  UPDATE deck_cards SET updated_at = ${NOW} WHERE deck_id = NEW.deck_id AND card_id = NEW.card_id AND board = NEW.board;
+  UPDATE decks SET updated_at = ${NOW} WHERE id = NEW.deck_id;
+END;
+-- (When a whole deck is deleted its cards go with it, after the deck row: the deck's own tombstone covers them, so none are written then.)
+CREATE TRIGGER IF NOT EXISTS sync_deck_cards_ad AFTER DELETE ON deck_cards WHEN ${QUIET} BEGIN
+  INSERT OR REPLACE INTO sync_tombstones (kind, key, deleted_at) SELECT 'deckcard', d.sync_id || '|' || OLD.card_id || '|' || OLD.board, ${NOW} FROM decks d WHERE d.id = OLD.deck_id;
+  UPDATE decks SET updated_at = ${NOW} WHERE id = OLD.deck_id;
+END;
+`;
+
 /**
  * Bump when the schema or the shape of imported data changes. User data (decks, collection) lives in the same file and must
  * survive upgrades, so structural changes go through `migrate` as additive steps rather than dropping tables.
  */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 function hasColumn(db: Db, table: string, column: string): boolean {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as Array<{ name: string }>).some((c) => c.name === column);
@@ -174,6 +233,18 @@ export function migrate(db: Db): void {
   // v4: cheapest-printing prices.
   if (!hasColumn(db, 'cards', 'usd_min')) db.exec('ALTER TABLE cards ADD COLUMN usd_min REAL');
   if (!hasColumn(db, 'cards', 'usd_min_set')) db.exec('ALTER TABLE cards ADD COLUMN usd_min_set TEXT');
+  // v11: sync. Decks get an id that means the same thing on every device, deck cards get a timestamp, every user-data change is stamped
+  // in ISO form and every deletion is remembered (see SYNC_SCHEMA).
+  if (!hasColumn(db, 'decks', 'sync_id')) db.exec('ALTER TABLE decks ADD COLUMN sync_id TEXT');
+  db.exec("UPDATE decks SET sync_id = lower(hex(randomblob(16))) WHERE sync_id IS NULL");
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS decks_sync_id ON decks(sync_id)');
+  // Older rows were stamped with datetime('now') ("2026-10-03 22:00:00"): put them in the same ISO form as new ones so they compare correctly.
+  for (const t of ['decks', 'collection', 'collection_prints', 'wishlist']) db.exec(`UPDATE ${t} SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', updated_at) WHERE updated_at NOT LIKE '%T%'`);
+  if (!hasColumn(db, 'deck_cards', 'updated_at')) {
+    db.exec("ALTER TABLE deck_cards ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''");
+    db.exec('UPDATE deck_cards SET updated_at = (SELECT d.updated_at FROM decks d WHERE d.id = deck_cards.deck_id)');
+  }
+  db.exec(SYNC_SCHEMA);
   // v10: the price_history table (created by the schema above).
   // v9: the wishlist table (created by the schema above).
   // v8: each set's type (core, commander, promo, ...), from the printings data.

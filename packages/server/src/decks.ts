@@ -36,7 +36,7 @@ function getSummary(db: Db, id: number): DeckSummary {
   return toSummary(row);
 }
 
-const touch = (db: Db, id: number) => db.prepare("UPDATE decks SET updated_at = datetime('now') WHERE id = ?").run(id);
+const touch = (db: Db, id: number) => db.prepare("UPDATE decks SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(id);
 
 export function renameDeck(db: Db, id: number, name: string): DeckSummary {
   return updateDeck(db, id, { name });

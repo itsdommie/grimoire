@@ -29,7 +29,7 @@ function backupBeforeMigrating(db: DatabaseSync, path: string): void {
   // Only the user's own tables: card data is re-downloadable and would make every copy ~100 MB.
   db.exec(`ATTACH DATABASE '${file}' AS bak`);
   try {
-    for (const t of ['decks', 'deck_cards', 'collection']) {
+    for (const t of ['decks', 'deck_cards', 'collection', 'collection_prints', 'wishlist']) {
       try { db.exec(`CREATE TABLE bak.${t} AS SELECT * FROM main.${t}`); } catch { /* table didn't exist in this old version */ }
     }
   } finally {
