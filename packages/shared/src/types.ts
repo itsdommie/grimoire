@@ -196,6 +196,31 @@ export interface CardDetail {
   wanted: number;
 }
 
+// ---------------------------------------------------------------------- sync
+
+export interface SyncStatus {
+  /** Whether this app can keep decks, collection and wishlist in step with other devices at all (a build without sync, or the web dev server). */
+  available: boolean;
+  /** Syncing through a folder that something else (Dropbox, Syncthing...) keeps in step: desktop only. */
+  folderSupported: boolean;
+  /** Whether Google sign-in is set up in this build. */
+  googleSupported: boolean;
+  provider: 'google' | 'folder' | null;
+  folderPath: string | null;
+  /** The signed-in Google account, when there is one. */
+  account: string | null;
+  /** Google has signed this device out (or never finished signing in): the person has to sign in again. */
+  needsSignIn: boolean;
+  running: boolean;
+  /** The last successful sync. */
+  lastAt: string | null;
+  /** What it changed on this device, and whether it updated the shared copy. */
+  lastPulled: number;
+  lastPushed: boolean;
+  /** Why the last attempt failed, in words a person can act on. */
+  error: string | null;
+}
+
 // ------------------------------------------------------------- deck suggestions
 
 export interface RoleSuggestions {

@@ -7,6 +7,7 @@ import { getRuleDetail, rulesStatus, rulesToc, searchRules } from './rules.js';
 import { addDeckToCollection, clearCollection, collectionSummary, commanderIdeas, deckMissing, importCollection, setOwned, setOwnedPrinting } from './collection.js';
 import { identifyPrinting, listPrintings } from './printings.js';
 import { getSet, listSets, type SetFilter } from './sets.js';
+import type { SyncController } from './syncController.js';
 import { suggestForDeck } from './suggestions.js';
 import { getPriceReport, snapshotPrices, type PriceScope } from './pricewatch.js';
 import { getBanlist, listBanlistFormats } from './banlists.js';
@@ -54,6 +55,8 @@ export interface RouterDeps {
   db: Db; data: DataService; semantic: SemanticService;
   /** The optional Claude advisor. Without it the advisor routes say it isn't configured. */
   advisor?: Omit<AdvisorOptions, 'db' | 'rankerFor'>;
+  /** Keeping decks, collection and wishlist in step with other devices. Without it the sync routes say sync is not available here. */
+  sync?: SyncController;
 }
 
 const ORDERS = new Set<Order>(['name', 'cmc', 'edhrec', 'usd']);
@@ -86,7 +89,7 @@ function nameIndexFor(db: Db, cache: { key: string; index: NameIndex } | null): 
   return { key, index: new NameIndex(names) };
 }
 
-export function createRouter({ db, data, semantic, advisor: advisorOptions }: RouterDeps): (req: ApiRequest) => Promise<ApiResponse> {
+export function createRouter({ db, data, semantic, advisor: advisorOptions, sync }: RouterDeps): (req: ApiRequest) => Promise<ApiResponse> {
   const routes: Route[] = [];
   // The app has just started (and any card update waiting for it has been applied): note the prices as they are now.
   try { snapshotPrices(db); } catch { /* price history is a nicety: never stop the app starting */ }
@@ -225,6 +228,14 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
   on('POST', '/api/semantic/cancel', () => { semantic.cancel(); return semantic.status(); });
   on('DELETE', '/api/semantic', () => { semantic.remove(); return reply(204); });
 
+  // ------------------------------------------------------------------ sync
+  const noSync = { available: false, folderSupported: false, googleSupported: false, provider: null, folderPath: null, account: null, needsSignIn: false, running: false, lastAt: null, lastPulled: 0, lastPushed: false, error: null };
+  on('GET', '/api/sync', () => (sync ? sync.status() : noSync));
+  on('POST', '/api/sync/folder', ({ body }) => { if (!sync) throw new BadRequestError('Sync is not available here.'); return sync.connectFolder(typeof body?.path === 'string' ? body.path : ''); });
+  on('POST', '/api/sync/google', () => { if (!sync) throw new BadRequestError('Sync is not available here.'); return sync.connectGoogle(); });
+  on('POST', '/api/sync/run', () => (sync ? sync.syncNow() : noSync));
+  on('DELETE', '/api/sync', () => (sync ? sync.disconnect() : noSync));
+
   // ------------------------------------------------------------- price watch
   on('GET', '/api/prices', ({ query }) => {
     snapshotPrices(db);
@@ -286,6 +297,8 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions }: Ro
     if (!hit) return { status: 404, body: { error: 'Not found' } };
     try {
       const out = await hit.route.handler({ params: hit.params, query: req.query ?? {}, body: req.body });
+      // Anything that changes decks, the collection or the wishlist is worth syncing soon (a no-op unless sync is on).
+      if (sync && req.method.toUpperCase() !== 'GET' && /^\/api\/(decks|collection|wishlist)\b/.test(req.path)) sync.noteChange();
       return out instanceof Reply ? out.res : { status: 200, body: out };
     } catch (err) {
       if (err instanceof NotFoundError) return { status: 404, body: { error: err.message } };

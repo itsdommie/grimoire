@@ -9,6 +9,8 @@ import { DataManager } from './data.js';
 import { SemanticIndex } from './semantic.js';
 import { keyFromEnvironment, type KeyStore } from './advisor.js';
 import { createRouter } from './routes.js';
+import { SyncController, type SyncAuth } from './syncController.js';
+import { FolderStore } from './syncFolder.js';
 
 export const TOKEN_HEADER = 'x-grimoire-token';
 const TOKEN_PLACEHOLDER = '__GRIMOIRE_TOKEN__';
@@ -48,6 +50,10 @@ export interface ServerOptions {
   rulesFile?: string;
   /** Semantic search index (defaults to one backed by the real model). Tests and the e2e server inject a fake embedder. */
   semantic?: SemanticIndex;
+  /** Signing in to Google for sync (the desktop app supplies one once the app has a Google client id; without it only folder sync is offered). */
+  syncAuth?: SyncAuth;
+  /** Replace the sync controller (tests). */
+  sync?: SyncController;
   /** Folder with ort.node.min.mjs and the .wasm files (shipped with the desktop app). */
   ortDir?: string;
   /** Where the advisor's API key is kept between runs (the desktop app: the OS keychain). Without one, only ANTHROPIC_API_KEY works. */
@@ -76,7 +82,10 @@ export function buildServer(opts: ServerOptions) {
   });
 
   // Every /api route lives in routes.ts so the Android app can share it; Fastify only adds HTTP around it.
-  const router = createRouter({ db, data, semantic, advisor: { keys: keyFromEnvironment(opts.keyStore ?? null, process.env), ...opts.advisor } });
+  const sync = opts.sync ?? new SyncController({ db, auth: opts.syncAuth, folder: (path) => new FolderStore(path) });
+  app.addHook('onReady', async () => { sync.start(); }); // a no-op unless the person has connected sync
+  app.addHook('onClose', async () => { sync.stop(); });
+  const router = createRouter({ db, data, semantic, sync, advisor: { keys: keyFromEnvironment(opts.keyStore ?? null, process.env), ...opts.advisor } });
   app.route({
     method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     url: '/api/*',
@@ -95,5 +104,5 @@ export function buildServer(opts: ServerOptions) {
     app.register(fastifyStatic, { root: webRoot, index: false, wildcard: true });
   }
 
-  return Object.assign(app, { data, semantic });
+  return Object.assign(app, { data, semantic, sync });
 }
