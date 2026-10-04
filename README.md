@@ -23,7 +23,9 @@ the app's user-data folder (Help → Open data folder).
 No account, no analytics, no tracking. Grimoire contacts only: Scryfall (card data and images), GitHub (update checks, which can be
 turned off, and the ready-made semantic index and card data updates), and, only if you enable semantic search, Hugging Face (a 34 MB
 model, once). If you also set up the optional **Advisor** with your own API key, your questions and the cards and deck it looks up
-to answer them go to Anthropic, and only then. What you create stays on your computer.
+to answer them go to Anthropic, and only then. If you turn on the optional **Sync** (below), your decks, collection and wishlist are
+copied to your own Google Drive (a hidden folder only Grimoire can open) or to a folder you choose, and only then. Otherwise what you
+create stays on your computer.
 
 ## Code signing
 
@@ -87,9 +89,33 @@ against a pinned checksum) and indexes your cards on this computer in a few minu
 on concrete rules-text descriptions. Uses [BGE-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) (MIT) via
 [onnxruntime-web](https://github.com/microsoft/onnxruntime) (MIT). Developers: `npm run semantic` builds the index for the dev database.
 
+## Sync between devices (optional)
+
+Keep your **decks, collection and wishlist** the same on every device (say the desktop app and the Android app), from **Sync between
+devices** in the footer. Nothing else is shared: not your Anthropic key, the card data or your settings. It is off until you set it
+up, and **Turn off** stops it again (your data stays where it is).
+
+- **Google.** Sign in with Google (in your own browser) and Grimoire keeps one small file in its own hidden storage in your Google
+  Drive (`drive.appdata`). Only Grimoire can open that storage: the permission it asks for gives no access to your other Drive files, and
+  the file doesn't count against what you see in Drive. You can delete it from Google Drive's settings (Manage apps) or revoke Grimoire
+  under your Google Account's security settings at any time. Your sign-in is kept in the operating system's keychain, like the
+  Advisor's key; where there is none, Grimoire refuses to keep it. Grimoire has no server and sees none of this.
+- **A shared folder** (desktop). Already use Dropbox, Syncthing, Nextcloud or similar? Choose a folder it keeps in step between your
+  computers and Grimoire keeps its file there. No account needed.
+
+How changes combine: each deck, card count and wishlist entry remembers when it last changed, and deletions are remembered for 90
+days, so a card removed on one device is removed on the others. Two devices are merged by keeping the **newest change to each
+item**: a card added to a deck on your phone and another removed on your PC both survive. If you change the *same* item on two
+devices before they sync (say the count of one card, or one deck's name) the later change wins, so don't edit the same thing on two
+devices at once while offline. Devices sync a few minutes after a change, every ten minutes, and at start-up; **Sync now** does it
+immediately. Decks are matched by an id of their own, so renaming a deck on one device renames it on the others instead of making a copy.
+Setting it up on a second device that already has decks keeps both sets (it never replaces one with the other).
+
+For Google sync to be available in a build, the app needs its Google client id: see [docs/google-sync-setup.md](docs/google-sync-setup.md).
+
 ## Advisor (optional)
 
-The **Advisor** tab is a chat with Claude about your decks. It is the one feature that sends anything off your computer, so it is off
+The **Advisor** tab is a chat with Claude about your decks. It sends your questions off your computer (Sync is the only other feature that sends anything), so it is off
 until you paste your own [Anthropic API key](https://console.anthropic.com/settings/keys) (Anthropic bills your account; Grimoire
 adds no charge and has no server). The key is encrypted with the operating system's keychain (Windows, or GNOME/KDE on Linux; on
 Android the Keystore) and is never shown again. Where there is no keychain, Grimoire refuses to store it and the

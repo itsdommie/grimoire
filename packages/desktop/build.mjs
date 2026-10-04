@@ -16,6 +16,8 @@ await build({
   target: 'node24',
   format: 'cjs',
   external: ['electron'],
+  // Google OAuth client for sync sign-in: put in by the release build from its secrets; empty in a local build (the app then says it is not set up).
+  define: { __GOOGLE_CLIENT_ID__: JSON.stringify(process.env.GOOGLE_CLIENT_ID ?? ''), __GOOGLE_CLIENT_SECRET__: JSON.stringify(process.env.GOOGLE_CLIENT_SECRET ?? '') },
   sourcemap: true,
   minify: false,
   logLevel: 'info',

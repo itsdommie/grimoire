@@ -12,6 +12,7 @@ import { SetsView } from './SetsView';
 import { WishlistView } from './WishlistView';
 import { RulesHome } from './RulesHome';
 import { PriceWatch } from './PriceWatch';
+import { SyncFooter } from './SyncFooter';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
@@ -257,6 +258,7 @@ export function App() {
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
           <p><PricesFooter status={ds} onEnable={() => void dataStatus.setPrices(true)} onDisable={() => void dataStatus.setPrices(false)} onRefresh={() => void dataStatus.setPrices(true, true)} /></p>
           <p><SemanticFooter status={semantic.status} onEnable={semantic.enable} onCancel={semantic.cancel} onRemove={semantic.remove} /></p>
+          <p><SyncFooter onError={setError} onChanged={async () => { const list = await api.listDecks(); setDecks(list); const keep = current && list.some((d) => d.id === current.deck.id) ? current.deck.id : list[0]?.id; if (keep !== undefined) await open(keep); else setCurrent(null); await collectionChanged(); }} /></p>
           <p><BackupControls onError={setError} onRestored={async () => { const list = await api.listDecks(); setDecks(list); if (list[0]) await open(list[0].id); else setCurrent(null); await collectionChanged(); }} /></p>
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>. Magic: The Gathering is © Wizards of the Coast.
           Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.

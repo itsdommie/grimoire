@@ -20,6 +20,7 @@
     "./server": "./src/server.ts",
     "./db": "./src/db.ts",
     "./data": "./src/data.ts",
-    "./advisor": "./src/advisor.ts"
+    "./advisor": "./src/advisor.ts",
+    "./googleAuth": "./src/googleAuth.ts"
   }
 }

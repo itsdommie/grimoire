@@ -4,6 +4,7 @@ import { createWriteStream, mkdirSync, statSync, truncateSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { buildServer } from '@grimoire/server/server';
+import { GoogleAuth } from '@grimoire/server/googleAuth';
 import { dbPathFor, openDb } from '@grimoire/server/db';
 import { startUpdater, updateMenuItems } from './updater';
 import { fileKeyStore, linuxPasswordStore } from './keyStore';
@@ -28,6 +29,21 @@ function openLogStream() {
   return createWriteStream(file, { flags: 'a' });
 }
 
+declare const __GOOGLE_CLIENT_ID__: string;
+declare const __GOOGLE_CLIENT_SECRET__: string;
+/** The app's Google OAuth client (public by design for installed apps), from the environment in a dev run or built in by the release build. */
+function googleClient() {
+  const clientId = process.env.GRIMOIRE_GOOGLE_CLIENT_ID || __GOOGLE_CLIENT_ID__;
+  return clientId ? { clientId, clientSecret: process.env.GRIMOIRE_GOOGLE_CLIENT_SECRET || __GOOGLE_CLIENT_SECRET__ || undefined } : null;
+}
+
+/** What Electron's safeStorage offers, as the key stores need it. */
+const cipher = {
+  available: () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'),
+  encrypt: (plain: string) => safeStorage.encryptString(plain),
+  decrypt: (data: Buffer) => safeStorage.decryptString(data),
+};
+
 async function startServer(): Promise<string> {
   const dataDir = join(app.getPath('userData'), 'data');
   const db = openDb(dbPathFor(dataDir));
@@ -40,10 +56,13 @@ async function startServer(): Promise<string> {
     db, dataDir, webRoot, token, ortDir,
     // The advisor's API key, encrypted with the OS keychain. (On Linux without a keyring Electron falls back to a fixed password, which
     // protects nothing, so then the app refuses to keep a key and the ANTHROPIC_API_KEY variable is the way.)
-    keyStore: fileKeyStore(join(app.getPath('userData'), 'advisor-key.bin'), {
-      available: () => safeStorage.isEncryptionAvailable() && !(process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text'),
-      encrypt: (plain) => safeStorage.encryptString(plain),
-      decrypt: (data) => safeStorage.decryptString(data),
+    keyStore: fileKeyStore(join(app.getPath('userData'), 'advisor-key.bin'), cipher),
+    // Signing in to Google for sync: the sign-in is kept the same way (in the keychain), and without the app's Google client id (it is put
+    // into official builds when they are made) the app says Google sign-in is not set up rather than offering something that cannot work.
+    syncAuth: new GoogleAuth({
+      client: googleClient(),
+      store: fileKeyStore(join(app.getPath('userData'), 'google-sync.bin'), cipher),
+      openUrl: (url) => { if (!url.startsWith('https://accounts.google.com/')) throw new Error('Refusing to open an unexpected address.'); return shell.openExternal(url); },
     }),
     logger: { level: 'info', stream: openLogStream() },
     bulkFile: process.env.GRIMOIRE_BULK_FILE,

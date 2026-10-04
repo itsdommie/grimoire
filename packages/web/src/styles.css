@@ -435,3 +435,4 @@ button.primary:disabled { opacity: .5; cursor: default; }
 .suggestions summary { display: flex; gap: 10px; align-items: baseline; cursor: pointer; flex-wrap: wrap; }
 .suggestions summary .rlabel { font-weight: 600; }
 .suggestions .row .rname { flex: 1; text-align: left; }
+.syncfooter .error { margin-left: 4px; }

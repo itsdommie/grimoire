@@ -32,6 +32,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: Build app bundle
+        # The app's Google OAuth client for sync sign-in (public by design for installed apps). Absent until the secrets are added: the app
+        # then says Google sign-in is not set up.
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: npm run build -w @grimoire/desktop
       - name: Build installers and upload them to the draft release
         run: npx electron-builder --publish always

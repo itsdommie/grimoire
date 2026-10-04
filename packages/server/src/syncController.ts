@@ -63,7 +63,8 @@ export class SyncController {
     const provider = this.provider();
     const account = provider === 'google' && this.o.auth ? await this.o.auth.account().catch(() => null) : null;
     return {
-      available: true,
+      // Offered only where something can actually be done: a folder (desktop) or Google sign-in, or a connection that already exists.
+      available: !!this.o.folder || !!this.o.auth?.available() || provider !== null,
       folderSupported: !!this.o.folder,
       googleSupported: !!this.o.auth?.available(),
       provider,

@@ -60,6 +60,13 @@ describe('what sync offers', () => {
     expect(await make(db, { folder: undefined, auth: fakeAuth().auth }).status()).toMatchObject({ folderSupported: false, googleSupported: true });
     expect(await make(db, { auth: fakeAuth({ available: false }).auth }).status()).toMatchObject({ googleSupported: false });
   });
+
+  it('is not offered at all where there is nothing it could do (no folder, no Google sign-in)', async () => {
+    const db = openDb(':memory:');
+    expect((await make(db, { folder: undefined }).status()).available).toBe(false);
+    expect((await make(db, { folder: undefined, auth: fakeAuth({ available: false }).auth }).status()).available).toBe(false);
+    expect((await make(db, { folder: undefined, auth: fakeAuth().auth }).status()).available).toBe(true);
+  });
 });
 
 describe('connecting a folder', () => {
