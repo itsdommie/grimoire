@@ -81,6 +81,7 @@ test.describe.serial('collection', () => {
 
     // Owning it clears the report.
     await page.getByPlaceholder(/Search/).fill('!"rhystic study"');
+    await expect(page.locator('.tile')).toHaveCount(1); // wait for this search's results to replace the last ones before pointing at a card
     const rs = page.locator('.tile', { hasText: 'Rhystic Study' });
     await rs.hover();
     await rs.getByRole('button', { name: 'Add Rhystic Study to collection' }).click();

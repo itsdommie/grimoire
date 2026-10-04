@@ -13,6 +13,9 @@ import { WishlistView } from './WishlistView';
 import { RulesHome } from './RulesHome';
 import { PriceWatch } from './PriceWatch';
 import { SyncFooter } from './SyncFooter';
+import { Logo } from './Logo';
+import { Icon, type IconName } from './icons';
+import { ThemeToggle } from './ThemeToggle';
 import { SemanticFooter, useSemanticStatus } from './Semantic';
 import { Scanner } from './Scanner';
 import { AppUpdateBanner } from './AppUpdate';
@@ -52,6 +55,9 @@ function useSearch(query: string, order: string, version: string | null, scope: 
 
 const LETTERS: Array<[number, string]> = [[1, 'w'], [2, 'u'], [4, 'b'], [8, 'r'], [16, 'g']];
 const maskToLetters = (mask: number) => LETTERS.filter(([bit]) => mask & bit).map(([, l]) => l).join('') || 'c';
+
+type ViewId = 'cards' | 'collection' | 'sets' | 'wishlist' | 'rules' | 'advisor' | 'play';
+const VIEWS: Array<[ViewId, string, IconName]> = [['cards', 'Cards', 'cards'], ['collection', 'Collection', 'collection'], ['sets', 'Sets', 'sets'], ['wishlist', 'Wishlist', 'wishlist'], ['rules', 'Rules', 'rules'], ['advisor', 'Advisor', 'advisor'], ['play', 'Play', 'play']];
 
 function CardTile({ card, inDeck, canAdd, commanderFormat, stepper, onAdd, onOwn, onOpen }: {
   card: Card; inDeck: number; canAdd: boolean; commanderFormat: boolean; stepper: boolean; onAdd: (card: Card, board: Board) => void; onOwn: (card: Card, qty: number) => void; onOpen: (id: string) => void;
@@ -149,20 +155,24 @@ export function App() {
   }, [current, onlyIdentity, rules.commander]);
 
   const dataStatus = useDataStatus();
+  const [searchVersion, setSearchVersion] = useState(0); // bumped when the collection changes wholesale, so the results are fetched again
   const semantic = useSemanticStatus();
   const searchQuery = view === 'cards'
     ? [query, commanderIdentity ? `f:commander id<=${commanderIdentity}` : '', current && !rules.commander && onlyLegal ? `f:${rules.legality}` : '', onlyOwned ? (skipUsed ? 'spare>0' : 'owned>0') : ''].filter(Boolean).join(' ')
     : query;
-  const { data, loading, patchOwned, patchCard } = useSearch(searchQuery, order, dataStatus.status?.bulkUpdatedAt ?? null, view === 'collection' ? 'collection' : 'all', view === 'cards' && onlyOwned && skipUsed ? current?.deck.id : undefined);
+  const { data, loading, patchOwned, patchCard } = useSearch(searchQuery, order, `${dataStatus.status?.bulkUpdatedAt ?? ''}|${searchVersion}`, view === 'collection' ? 'collection' : 'all', view === 'cards' && onlyOwned && skipUsed ? current?.deck.id : undefined);
   const inDeck = useMemo(() => new Map((current?.entries ?? []).map((e) => [e.card.id, e.qty])), [current]);
 
   const refreshCollection = useCallback(async () => { try { setCollection(await api.collectionSummary()); } catch { /* shown elsewhere */ } }, []);
   useEffect(() => { void refreshCollection(); }, [refreshCollection]);
 
   /** After any collection change: refresh the summary and the open deck (its owned counts), and tell dependent panels. */
+  // Something changed the collection wholesale (an import, a restore, a clear, a sync): refresh the results too. (A single +/- edit patches the
+  // visible card in place instead, so the grid doesn't jump.)
   const collectionChanged = useCallback(async () => {
     await refreshCollection();
     setCollectionVersion((v) => v + 1);
+    setSearchVersion((v) => v + 1);
     if (current) await open(current.deck.id);
   }, [refreshCollection, current, open]);
 
@@ -203,29 +213,34 @@ export function App() {
     <div className={`layout${view === 'play' || view === 'rules' ? ' noside' : ''}${pane === 'deck' ? ' show-deck' : ''}`}>
       <div className="browse">
         {window.grimoireNative?.appUpdate && <AppUpdateBanner check={window.grimoireNative.appUpdate.check} />}
-        <header>
-          <h1>Brewhall</h1>
-          <nav className="viewtabs" aria-label="Views">
-            <button className={view === 'cards' ? 'active' : ''} aria-current={view === 'cards' ? 'page' : undefined} onClick={() => setView('cards')}>Cards</button>
-            <button className={view === 'collection' ? 'active' : ''} aria-current={view === 'collection' ? 'page' : undefined} onClick={() => setView('collection')}>Collection</button>
-            <button className={view === 'sets' ? 'active' : ''} aria-current={view === 'sets' ? 'page' : undefined} onClick={() => setView('sets')}>Sets</button>
-            <button className={view === 'wishlist' ? 'active' : ''} aria-current={view === 'wishlist' ? 'page' : undefined} onClick={() => setView('wishlist')}>Wishlist</button>
-            <button className={view === 'rules' ? 'active' : ''} aria-current={view === 'rules' ? 'page' : undefined} onClick={() => setView('rules')}>Rules</button>
-            <button className={view === 'advisor' ? 'active' : ''} aria-current={view === 'advisor' ? 'page' : undefined} onClick={() => setView('advisor')}>Advisor</button>
-            <button className={view === 'play' ? 'active' : ''} aria-current={view === 'play' ? 'page' : undefined} onClick={() => setView('play')}>Play</button>
-          </nav>
-          {(view === 'cards' || view === 'collection') && <input
-            autoFocus={!touchScreen}
-            onFocus={(e) => { if (touchScreen && !touched.current) e.currentTarget.blur(); }}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}
-            spellCheck={false}
-          />}
-          {(view === 'cards' || view === 'collection') && recognizer && <button className="scanbtn" onClick={() => setScanning(true)} aria-label="Scan cards with the camera">Scan</button>}
-          {(view === 'cards' || view === 'collection') && <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
-            {ORDERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
-          </select>}
+        <header className="topbar">
+          <div className="brandrow">
+            <h1><Logo /></h1>
+            <nav className="viewtabs" aria-label="Views">
+              {VIEWS.map(([id, label, icon]) => (
+                <button key={id} className={view === id ? 'active' : ''} aria-current={view === id ? 'page' : undefined} onClick={() => setView(id)}><Icon name={icon} size={17} />{label}</button>
+              ))}
+            </nav>
+          </div>
+          {(view === 'cards' || view === 'collection') && (
+            <div className="toolbar">
+              <label className="searchfield">
+                <Icon name="search" size={18} />
+                <input
+                  autoFocus={!touchScreen}
+                  onFocus={(e) => { if (touchScreen && !touched.current) e.currentTarget.blur(); }}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={view === 'collection' ? 'Filter your collection: t:creature c:g' : 'Search: t:creature c:rg cmc<=3 o:"draw a card"'}
+                  spellCheck={false}
+                />
+              </label>
+              {recognizer && <button className="scanbtn" onClick={() => setScanning(true)} aria-label="Scan cards with the camera"><Icon name="scan" size={17} />Scan</button>}
+              <select value={order} onChange={(e) => setOrder(e.target.value)} aria-label="Sort order">
+                {ORDERS.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+              </select>
+            </div>
+          )}
         </header>
         <main>
           {view === 'play' ? <PlayView /> : view === 'wishlist' ? <WishlistView onOpenCard={setDetailId} version={collectionVersion} onChanged={() => void collectionChanged()} /> : view === 'sets' ? <SetsView onOpenCard={setDetailId} onSearchSet={(code) => { setQuery(`set:${code}`); setView('cards'); }} onCollectionChanged={() => void collectionChanged()} collectionVersion={collectionVersion} /> : view === 'advisor' ? <AdvisorView deck={current ? { id: current.deck.id, name: current.deck.name, format: rules.name } : null} chat={advice} setChat={setAdvice} onOpenCard={setDetailId} /> : view === 'rules' ? <RulesHome openRule={ruleToOpen} onRuleOpened={() => setRuleToOpen(null)} onOpenCard={setDetailId} /> : (<>
@@ -255,6 +270,7 @@ export function App() {
           </>)}
         </main>
         <footer>
+          <p><ThemeToggle /></p>
           <p><DataFooter status={ds} onUpdate={() => dataStatus.start()} /></p>
           <p><PricesFooter status={ds} onEnable={() => void dataStatus.setPrices(true)} onDisable={() => void dataStatus.setPrices(false)} onRefresh={() => void dataStatus.setPrices(true, true)} /></p>
           <p><SemanticFooter status={semantic.status} onEnable={semantic.enable} onCancel={semantic.cancel} onRemove={semantic.remove} /></p>
@@ -283,8 +299,8 @@ export function App() {
       />}
       {view !== 'play' && view !== 'rules' && (
         <nav className="mobilebar" aria-label="Browse cards or open the deck">
-          <button className={pane === 'browse' ? 'active' : ''} aria-pressed={pane === 'browse'} onClick={() => setPane('browse')}>Browse</button>
-          <button className={pane === 'deck' ? 'active' : ''} aria-pressed={pane === 'deck'} onClick={() => setPane('deck')}>{current ? `Deck (${current.deck.cardCount})` : 'Deck'}</button>
+          <button className={pane === 'browse' ? 'active' : ''} aria-pressed={pane === 'browse'} onClick={() => setPane('browse')}><Icon name="search" size={18} />Browse</button>
+          <button className={pane === 'deck' ? 'active' : ''} aria-pressed={pane === 'deck'} onClick={() => setPane('deck')}><Icon name="deck" size={18} />{current ? `Deck (${current.deck.cardCount})` : 'Deck'}</button>
         </nav>
       )}
       {detailId && (

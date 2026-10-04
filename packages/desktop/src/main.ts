@@ -82,7 +82,7 @@ async function startServer(): Promise<string> {
 function createWindow(origin: string) {
   const win = new BrowserWindow({
     width: 1400, height: 900, minWidth: 900, minHeight: 600,
-    title: 'Brewhall', backgroundColor: '#12131a', show: false, autoHideMenuBar: true,
+    title: 'Brewhall', backgroundColor: '#15100c', show: false, autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true },
   });
   win.once('ready-to-show', () => win.show());

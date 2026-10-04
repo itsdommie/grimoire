@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { ASSUMPTIONS, FORMATS, analyzeDeck, assumptionsFor, castProbability, type ColorAnalysis, type DeckEntry, type Finding, type FormatId, type ManaColor, type Status } from '@grimoire/shared';
 import { BarList, ColumnChart } from './charts';
+import { Icon } from './icons';
 
 const COLOR_NAME: Record<ManaColor, string> = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
 
@@ -13,10 +14,9 @@ function StatusBadge({ status, labels }: { status: Status | null; labels?: Parti
 }
 
 function FindingRow({ f }: { f: Finding }) {
-  const icon = f.severity === 'warn' ? '▲' : f.severity === 'ok' ? '✓' : '\u2139\uFE0E'; // text-style info glyph, not the colour emoji
   return (
     <li className={`finding ${f.severity}`}>
-      <span className="ficon" aria-hidden>{icon}</span>
+      <span className="ficon" aria-hidden><Icon name={f.severity === 'warn' ? 'alert' : f.severity === 'ok' ? 'check' : 'info'} size={16} /></span>
       <span><strong>{f.title}</strong><br /><span className="muted">{f.detail}</span></span>
     </li>
   );

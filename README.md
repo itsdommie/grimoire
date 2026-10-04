@@ -1,6 +1,10 @@
 # Brewhall
 
-A local-first Magic: The Gathering deck lab, packaged as a desktop app for **Windows and Linux**. See [PLAN.md](PLAN.md).
+A local-first Magic: The Gathering deck lab, packaged as a desktop app for **Windows and Linux** (and an Android app). See [PLAN.md](PLAN.md).
+
+![Brewhall: card search beside an open Commander deck](site/img/hero-dark.webp)
+
+*Brewhall was called Grimoire until October 2026. Your decks, collection and settings carried over: the desktop app adopts the old data folder under the new name, and backups made under the old name still restore.*
 
 ## Install
 
@@ -37,6 +41,19 @@ The Windows installer is being set up for free code signing through the SignPath
 Bump `version` in `packages/desktop/package.json`, commit, then `git tag vX.Y.Z && git push --tags`. The *Release* workflow builds
 Windows and Linux installers, smoke-tests them, and publishes the release (including the files the auto-updater reads) only if
 both succeed. The website in `site/` is deployed to GitHub Pages by the *Website* workflow.
+
+## Look and feel
+
+Brewhall is a candle-lit brewing hall: warm umber walls, copper and ember accents, parchment-toned text, in dark by default with a
+parchment-light variant that follows your system (or the **Theme** control in the footer). Headings, the name and big numbers like
+life totals use Fraunces; everything you read and press uses Figtree. Both are bundled (SIL Open Font License, see
+`packages/web/src/fonts`), so the app still makes no request for fonts. Mana symbols are Scryfall's, hotlinked like card images; offline
+each one stays as a coloured disc with its letters.
+
+The logo (a tankard of beer, foam spilling over the rim) is drawn once in `brand/brewhall-mark.svg` (the mark) and
+`brand/brewhall-icon.svg` (the mark on its tile). `node scripts/make-icons.mjs` regenerates every icon, favicon and Android launcher and
+splash image from them (it needs `rsvg-convert` and ImageMagick). `SHOTS_DIR=some/folder npx playwright test e2e/shots.spec.ts` takes a
+tour of the app in dark and light, at desktop and phone size, for checking the design and for the website's pictures.
 
 ## Develop
 

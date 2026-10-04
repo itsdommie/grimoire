@@ -3,6 +3,7 @@ import type { Board, Card, CardDetail } from '@grimoire/shared';
 import { api } from './api';
 import { usd } from './CollectionView';
 import { PrintingsSection } from './Printings';
+import { ManaCost, ManaText } from './Mana';
 import { useBack } from './backstack';
 
 const FORMATS: Array<[string, string]> = [['commander', 'Commander'], ['brawl', 'Brawl'], ['standard', 'Standard'], ['pioneer', 'Pioneer'], ['modern', 'Modern'], ['legacy', 'Legacy'], ['vintage', 'Vintage'], ['pauper', 'Pauper']];
@@ -61,15 +62,15 @@ export function CardDetailDialog({ cardId, canAddToDeck, commanderFormat, onClos
             </div>
             <div className="cdbody">
               <h2>{card.name}</h2>
-              <p className="cdline"><span>{card.manaCost}</span> <span className="muted">· MV {card.cmc}</span></p>
+              <p className="cdline"><ManaCost cost={card.manaCost} /> <span className="muted">· MV {card.cmc}</span></p>
               <p className="cdtype">{card.typeLine}{card.power !== null && card.toughness !== null ? ` · ${card.power}/${card.toughness}` : ''}{card.loyalty ? ` · Loyalty ${card.loyalty}` : ''}</p>
-              <p className="cdtext">{card.oracleText}</p>
+              <p className="cdtext"><ManaText text={card.oracleText} /></p>
 
               <div className="cdlegal" aria-label="Format legality">
                 {FORMATS.map(([key, label]) => {
                   const status = card.legalities[key];
                   return (
-                    <span key={key} className={`legal ${status ?? 'not_legal'}`}>
+                    <span key={key} className={`legalchip ${status ?? 'not_legal'}`}>
                       <span aria-hidden>{status === 'legal' ? '✓' : status === 'banned' ? '✗' : status === 'restricted' ? '!' : '–'}</span> {label}: {status ? STATUS_LABEL[status] ?? status : 'Not legal'}
                     </span>
                   );

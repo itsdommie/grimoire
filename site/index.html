@@ -4,52 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Brewhall: a free, local-first Magic: The Gathering deck lab</title>
+  <meta property="og:title" content="Brewhall: brew your decks, keep your cards">
+  <meta property="og:description" content="A free, offline Magic: The Gathering deck lab for Windows, Linux and Android. No account, no subscription.">
+  <meta property="og:type" content="website">
   <meta name="description" content="Search every Magic card offline, build and analyse Commander decks, simulate your mana, track your collection and your games. Free, no account, for Windows, Linux and Android.">
-  <link rel="icon" href="img/icon.png">
-  <style>
-    :root { color-scheme: light dark; --bg: #fbfaf7; --panel: #ffffff; --ink: #1b1a22; --muted: #5d5b6b; --line: #e3e0ea; --accent: #6d4fd6; --accent-ink: #fff; --code: #f1eefb; }
-    @media (prefers-color-scheme: dark) { :root { --bg: #12131a; --panel: #1c1e29; --ink: #ecebf5; --muted: #a3a6bb; --line: #2a2d3d; --accent: #9d7cf4; --accent-ink: #12131a; --code: #151722; } }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-    a { color: var(--accent); }
-    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
-    header.top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 18px 0; }
-    header.top img { width: 40px; height: 40px; border-radius: 10px; }
-    header.top strong { font-size: 20px; letter-spacing: .2px; }
-    header.top nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 15px; }
-    .hero { padding: 36px 0 28px; display: grid; gap: 14px; }
-    .hero h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.1; margin: 0; letter-spacing: -.5px; }
-    .hero p.lead { font-size: 20px; color: var(--muted); max-width: 40em; margin: 0; }
-    .downloads { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; align-items: center; }
-    .btn { display: inline-flex; flex-direction: column; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); text-decoration: none; font-weight: 600; }
-    .btn small { font-weight: 400; color: var(--muted); font-size: 13px; }
-    .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-    .btn.primary small { color: inherit; opacity: .85; }
-    .btn:hover { filter: brightness(1.06); }
-    .note { color: var(--muted); font-size: 14px; margin: 4px 0 0; }
-    section { padding: 26px 0; }
-    h2 { font-size: 26px; margin: 0 0 14px; letter-spacing: -.2px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
-    .card h3 { margin: 0 0 6px; font-size: 17px; }
-    .card p { margin: 0; color: var(--muted); font-size: 15px; }
-    .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
-    .shots figure { margin: 0; }
-    .shots img { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line); display: block; }
-    .shots figcaption { color: var(--muted); font-size: 14px; margin-top: 6px; }
-    code, kbd { font-variant-ligatures: none; overflow-wrap: anywhere; background: var(--code); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
-    ol, ul { padding-left: 1.2em; } li { margin: 6px 0; }
-    details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 10px 0; }
-    summary { cursor: pointer; font-weight: 600; }
-    footer { border-top: 1px solid var(--line); margin-top: 28px; padding: 22px 0 40px; color: var(--muted); font-size: 14px; }
-    footer p { margin: 8px 0; }
-  </style>
+  <meta name="theme-color" content="#15100c">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+  <link rel="stylesheet" href="brewhall.css">
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <img src="img/icon.png" alt="" width="40" height="40">
-    <strong>Brewhall</strong>
+    <a class="brand" href="./" aria-label="Brewhall, home"><img src="img/mark.svg" alt="" width="40" height="40"><strong><span class="b1">Brew</span><span class="b2">hall</span></strong></a>
     <nav aria-label="Site">
       <a href="#features">Features</a><a href="#install">Install</a><a href="#privacy">Privacy</a>
       <a href="https://github.com/itsdommie/grimoire">Source</a>
@@ -58,16 +25,25 @@
 
   <main>
     <div class="hero">
-      <h1>A free Magic: The Gathering deck lab that lives on your computer.</h1>
-      <p class="lead">Search every card, build and analyse Commander decks, simulate your mana, track your collection and your games. No account, no subscription, no paywall.</p>
-      <div class="downloads" id="downloads">
-        <a class="btn primary" id="dl-primary" href="https://github.com/itsdommie/grimoire/releases/latest">Download Brewhall<small>Windows and Linux</small></a>
-        <a class="btn" id="dl-windows" href="https://github.com/itsdommie/grimoire/releases/latest">Windows installer<small>.exe</small></a>
-        <a class="btn" id="dl-appimage" href="https://github.com/itsdommie/grimoire/releases/latest">Linux AppImage<small>runs anywhere</small></a>
-        <a class="btn" id="dl-deb" href="https://github.com/itsdommie/grimoire/releases/latest">Linux .deb<small>Debian / Ubuntu</small></a>
-        <a class="btn" id="dl-android" href="https://github.com/itsdommie/grimoire/releases" hidden>Android<small>APK</small></a>
+      <div>
+        <p class="kicker">Free, offline, yours</p>
+        <h1>Brew your decks. <em>Keep your cards.</em></h1>
+        <p class="lead">A free Magic: The Gathering deck lab that lives on your computer. Search every card, build and analyse Commander decks, simulate your mana, track your collection and your games. No account, no subscription, no paywall.</p>
+        <div class="downloads" id="downloads">
+          <a class="btn primary" id="dl-primary" href="https://github.com/itsdommie/grimoire/releases/latest">Download Brewhall<small>Windows and Linux</small></a>
+          <a class="btn" id="dl-windows" href="https://github.com/itsdommie/grimoire/releases/latest">Windows installer<small>.exe</small></a>
+          <a class="btn" id="dl-appimage" href="https://github.com/itsdommie/grimoire/releases/latest">Linux AppImage<small>runs anywhere</small></a>
+          <a class="btn" id="dl-deb" href="https://github.com/itsdommie/grimoire/releases/latest">Linux .deb<small>Debian / Ubuntu</small></a>
+          <a class="btn" id="dl-android" href="https://github.com/itsdommie/grimoire/releases" hidden>Android<small>APK</small></a>
+        </div>
+        <p class="note" id="version-note">All versions are on the <a href="https://github.com/itsdommie/grimoire/releases">releases page</a>. Free and open source (MIT).</p>
       </div>
-      <p class="note" id="version-note">All versions are on the <a href="https://github.com/itsdommie/grimoire/releases">releases page</a>. Free and open source (MIT).</p>
+      <figure>
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="img/hero-light.webp">
+          <img src="img/hero-dark.webp" width="1500" height="938" alt="Brewhall's card search beside an open Commander deck, with mana symbols and a progress meter">
+        </picture>
+      </figure>
     </div>
 
     <section id="features" aria-labelledby="features-h">
@@ -90,9 +66,12 @@
     <section aria-labelledby="shots-h">
       <h2 id="shots-h">A look inside</h2>
       <div class="shots">
-        <figure><img src="img/analysis.png" width="380" height="800" loading="lazy" alt="The Analysis tab: findings, a mana curve chart, colour pips and land sources"><figcaption>Analysis: what your deck is short on.</figcaption></figure>
-        <figure><img src="img/simulate.png" width="380" height="800" loading="lazy" alt="The Simulate tab: opening-hand land chart, mana development lines and commander timing"><figcaption>Simulation: how reliably your mana works.</figcaption></figure>
-        <figure><img src="img/play.png" width="640" height="500" loading="lazy" alt="The Play tab: four players with life totals and counters"><figcaption>Play: life, counters and commander damage at the table.</figcaption></figure>
+        <figure><img src="img/analysis.webp" width="1100" height="688" loading="lazy" alt="The Analysis tab: findings, a mana curve chart and colour sources beside the card search"><figcaption>Analysis: what your deck is short on, and why.</figcaption></figure>
+        <figure><img src="img/simulate.webp" width="1100" height="688" loading="lazy" alt="The Simulate tab: opening-hand land chart and mana development lines"><figcaption>Simulation: how reliably your mana works, over thousands of games.</figcaption></figure>
+        <figure><img src="img/sets.webp" width="1100" height="688" loading="lazy" alt="The Sets tab: every set with how much of it you own"><figcaption>Sets: how much of each you own, and what the rest would cost.</figcaption></figure>
+        <figure><img src="img/collection.webp" width="1100" height="688" loading="lazy" alt="The Collection tab in the light parchment theme, with your total value and commander ideas"><figcaption>Collection, in the light theme: what you own and what you could build.</figcaption></figure>
+        <figure><img src="img/play.webp" width="1100" height="688" loading="lazy" alt="The Play tab: four players with large life totals and counters"><figcaption>Play: life, counters and commander damage at the table.</figcaption></figure>
+        <figure><img src="img/phone.webp" width="796" height="844" loading="lazy" alt="The Android app: card search and the deck, with a bottom bar to switch between them"><figcaption>On your phone: the same app, with a card scanner.</figcaption></figure>
       </div>
     </section>
 

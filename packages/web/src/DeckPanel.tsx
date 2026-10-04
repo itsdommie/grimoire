@@ -7,6 +7,8 @@ import { AnalysisView } from './AnalysisView';
 import { SimulateView } from './SimulateView';
 import { SkipUsedToggle, usd } from './CollectionView';
 import { useBack } from './backstack';
+import { ManaCost } from './Mana';
+import { Icon } from './icons';
 
 const GROUPS = ['Creature', 'Planeswalker', 'Instant', 'Sorcery', 'Artifact', 'Enchantment', 'Battle', 'Land'] as const;
 
@@ -111,7 +113,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
       <span className="qty">{e.qty}</span>
       <button className="rname linklike" onClick={() => onOpenCard(e.card.id)} title={e.card.typeLine}>{e.card.name}</button>
       {haveCollection && board !== 'sideboard' && !isBasicLand(e.card) && availableTo(e.card) < e.qty && <span className="missing" title={skipUsed ? 'Not enough spare copies: the rest are in your other decks' : 'Not enough copies in your collection'} aria-label="Missing from collection">✗</span>}
-      <span className="cost">{e.card.manaCost}</span>
+      <span className="cost"><ManaCost cost={e.card.manaCost} /></span>
       <span className="actions">
         <button onClick={() => setQty(e, board, e.qty - 1)} aria-label={`Remove one ${e.card.name}`}>−</button>
         <button onClick={() => setQty(e, board, e.qty + 1)} aria-label={`Add one ${e.card.name}`}>+</button>
@@ -132,7 +134,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
           {decks.length === 0 && <option value="">No decks yet</option>}
           {decks.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.cardCount})</option>)}
         </select>
-        <button onClick={() => setNaming('new')}>New</button>
+        <button onClick={() => setNaming('new')}><Icon name="plus" size={15} />New</button>
         <button onClick={() => setShowImport(true)}>Import</button>
       </div>
 
@@ -142,6 +144,7 @@ export function DeckPanel({ decks, current, onSelect, onCreate, onDelete, onChan
             <h2 title="Rename" onClick={() => setNaming('rename')}>{deck.name}</h2>
             <span className={(rules.commander ? total === rules.deckSize : total >= rules.deckSize) ? 'count ok' : 'count'} title={rules.commander ? 'Cards including the commander' : 'Main deck cards (minimum 60)'}>{total}/{rules.deckSize}{rules.commander ? '' : '+'}</span>
           </div>
+          <div className={`deckmeter${(rules.commander ? total === rules.deckSize : total >= rules.deckSize) ? ' ok' : ''}`} style={{ '--pct': `${Math.min(100, Math.round((total / rules.deckSize) * 100))}%` } as React.CSSProperties} aria-hidden="true"><i /></div>
           <div className="deckbar">
             <label className="fmt">Format
               <select value={deck.format} aria-label="Format" onChange={(e) => void changeFormat(e.target.value as FormatId)}>
@@ -332,7 +335,7 @@ function SuggestionsPanel({ deckId, entries, commander, version, skipUsed, onSki
             {r.cards.map((c) => (
               <li key={c.id} className="row">
                 <button className="linklike rname" onClick={() => onOpenCard(c.id)}>{c.name}</button>
-                <span className="muted small">{c.manaCost}</span>
+                <span className="muted small"><ManaCost cost={c.manaCost} /></span>
                 <button onClick={() => onAdd(c)} aria-label={`Add ${c.name} to the deck`}>+ Deck</button>
               </li>
             ))}

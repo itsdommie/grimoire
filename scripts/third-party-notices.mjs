@@ -34,6 +34,13 @@ Data and models
 - Semantic search (optional, downloaded on request): BGE-small-en-v1.5 by BAAI (MIT), ONNX conversion by Xenova
   (https://huggingface.co/Xenova/bge-small-en-v1.5), run with ONNX Runtime Web (MIT, Microsoft).
 - Electron and Chromium licences are included in the application folder (LICENSE.electron.txt, LICENSES.chromium.html).
+- Mana symbols and set symbols are loaded directly from Scryfall's symbol set when online (they are never copied or altered).
+
+Fonts (bundled, SIL Open Font License 1.1: full text below)
+-----------------------------------------------------------
+- Fraunces, Copyright 2020 The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)
+- Figtree, Copyright 2022 The Figtree Project Authors (https://github.com/erikdkennedy/figtree)
+${['OFL-Fraunces.txt', 'OFL-Figtree.txt'].map((f) => `\n===== ${f.replace('OFL-', '').replace('.txt', '')} =====\n` + readFileSync(join('packages/web/src/fonts', f), 'utf8').trim()).join('\n')}
 
 npm packages (production dependencies)
 --------------------------------------

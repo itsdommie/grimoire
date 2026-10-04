@@ -9,7 +9,9 @@ test('card detail shows text, legality, rulings and function tags; tags search',
 
   const dialog = page.getByRole('dialog', { name: 'Sol Ring details' });
   await expect(dialog.getByRole('heading', { name: 'Sol Ring' })).toBeVisible();
-  await expect(dialog).toContainText('{T}: Add {C}{C}.');
+  await expect(dialog.locator('.cdtext')).toContainText('Add'); // (the {T} and {C} are symbols, each labelled with its own text)
+  await expect(dialog.locator('.cdtext').getByRole('img', { name: '{T}' })).toBeVisible();
+  await expect(dialog.locator('.cdtext').getByRole('img', { name: '{C}' })).toHaveCount(2);
   await expect(dialog.getByLabel('Format legality')).toContainText('Commander: Legal');
   await expect(dialog.getByRole('region', { name: 'Rulings' })).toContainText('No rulings for this card.'); // Sol Ring genuinely has none
   await expect(dialog.getByRole('link', { name: 'View on Scryfall' })).toHaveAttribute('href', /scryfall\.com/);

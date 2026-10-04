@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { DataStatus } from '@grimoire/shared';
 import { api } from './api';
+import { Logo } from './Logo';
 
 const mb = (n: number) => `${(n / 1e6).toFixed(1)} MB`;
 
@@ -48,8 +49,8 @@ export function DataSetup({ status, unreachable, onStart }: { status: DataStatus
   const pct = p?.phase === 'downloading' && p.total ? Math.min(100, ((p.received ?? 0) / p.total) * 100) : undefined;
   return (
     <div className="setup" role="main">
-      <h1>Brewhall</h1>
-      <p className="lead">A local-first Magic: The Gathering deck lab.</p>
+      <h1><Logo size={84} /></h1>
+      <p className="lead">Brew your decks, keep your cards.</p>
       <p>
         To get started, Brewhall needs the card database (about 25&nbsp;MB, from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>).
         It's downloaded once and stored on this computer, so searching and deck building work offline afterwards.
