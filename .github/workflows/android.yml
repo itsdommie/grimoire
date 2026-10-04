@@ -34,6 +34,13 @@ jobs:
         env:
           CHROMIUM_PATH: /usr/bin/google-chrome
         # build.mjs runs first so the browsers test exactly what the APK will contain
+      - name: Keep the test results when a test fails (screenshots and page snapshots)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-test-results
+          path: test-results/
+          if-no-files-found: ignore
       - name: Build the debug APK
         run: npm run apk -w @grimoire/mobile
       - uses: actions/upload-artifact@v4

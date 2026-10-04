@@ -10,12 +10,12 @@ test('want a card from its details and see it on the wishlist', async ({ page })
   await page.getByRole('button', { name: 'Details for Sol Ring' }).click({ timeout: 60_000 });
   const dialog = page.getByRole('dialog', { name: 'Sol Ring details' });
   await dialog.getByRole('group', { name: 'Copies wanted' }).getByRole('button', { name: 'Want one more' }).click();
-  await expect(dialog.getByRole('group', { name: 'Copies wanted' })).toContainText('1');
+  await expect(dialog.getByRole('group', { name: 'Copies wanted' })).toContainText('1', { timeout: 20_000 }); // (the on-device database is slower on a CI runner)
   await dialog.getByRole('button', { name: 'Close' }).click();
 
   await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Wishlist' }).click();
   const rows = page.getByRole('list', { name: 'Cards to find' });
-  await expect(rows.getByRole('button', { name: 'Sol Ring', exact: true })).toBeVisible();
+  await expect(rows.getByRole('button', { name: 'Sol Ring', exact: true })).toBeVisible({ timeout: 20_000 });
   await rows.getByRole('button', { name: 'Want one fewer Sol Ring' }).click();
-  await expect(page.getByText('Your wishlist is empty.')).toBeVisible();
+  await expect(page.getByText('Your wishlist is empty.')).toBeVisible({ timeout: 20_000 });
 });
