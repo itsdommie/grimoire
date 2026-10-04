@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import type { KeyStore } from './advisor.js';
 import { GoogleOAuth, type CodeFlow } from './googleOAuth.js';
-import { DRIVE_SCOPE, SyncAuthError } from './syncDrive.js';
+import { DRIVE_SCOPE, DriveStore, SyncAuthError } from './syncDrive.js';
 
 // The shared sign-in with a stand-in for the browser part, the way the phone uses it: a fixed redirect address, and a code handed back.
 const store = (canStore = true) => { const s = { value: null as string | null, canStore, get: () => s.value, set: async (v: string) => { s.value = v; }, clear: async () => { s.value = null; } }; return s as unknown as KeyStore & { value: string | null }; };
@@ -115,5 +115,23 @@ describe('the shared Google sign-in, with a phone-style browser part', () => {
     const auth = new GoogleOAuth({ client: CLIENT, store: slow, flow: fakeFlow().flow, fetchImpl: fakeGoogle(() => ({ body: grant() })).fetchImpl });
     await auth.signIn();
     expect(await auth.account()).toBe('phone@example.com');
+  });
+
+  it('calls the global fetch the way a browser insists on (not as a method of anything), for sign-in and for Drive', async () => {
+    const real = globalThis.fetch;
+    const seen: unknown[] = [];
+    // A browser's fetch throws "Illegal invocation" unless `this` is the window or nothing; mimic that.
+    globalThis.fetch = (function (this: unknown, input: string | URL | Request) {
+      seen.push(this);
+      if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation');
+      const url = String(input);
+      return Promise.resolve(url.includes('/token') ? Response.json(grant()) : Response.json({ files: [] }));
+    }) as typeof fetch;
+    try {
+      const auth = new GoogleOAuth({ client: CLIENT, store: store(), flow: fakeFlow().flow });
+      await auth.signIn();
+      await new DriveStore((force) => auth.accessToken(force)).read();
+      expect(seen.length).toBeGreaterThanOrEqual(2);
+    } finally { globalThis.fetch = real; }
   });
 });

@@ -14,7 +14,7 @@ export class SyncAuthError extends Error {}
 
 export class DriveStore implements SyncStore {
   /** `token(true)` must return a freshly refreshed access token (used once after a 401). */
-  constructor(private readonly token: (forceRefresh?: boolean) => Promise<string>, private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(private readonly token: (forceRefresh?: boolean) => Promise<string>, private readonly fetchImpl: typeof fetch = (input, init) => globalThis.fetch(input, init)) {} // not the bare `fetch`: called as a method it would get this object as `this`, which browsers reject
 
   private async call(url: string, init: RequestInit = {}): Promise<Response> {
     for (let attempt = 0; ; attempt++) {

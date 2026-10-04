@@ -48,7 +48,8 @@ export class GoogleOAuth implements SyncAuth {
   private readonly ep: NonNullable<GoogleOAuthOptions['endpoints']>;
   constructor(private readonly o: GoogleOAuthOptions) { this.ep = o.endpoints ?? GOOGLE_ENDPOINTS; }
 
-  private get fetch() { return this.o.fetchImpl ?? fetch; }
+  // Called as a method, a bare `fetch` gets this object as `this`, which browsers and workers reject ("Illegal invocation"; Node does not mind).
+  private get fetch(): typeof fetch { return this.o.fetchImpl ?? ((input, init) => globalThis.fetch(input, init)); }
   private now() { return (this.o.now ?? Date.now)(); }
   available(): boolean { return !!this.o.client?.clientId; }
 
