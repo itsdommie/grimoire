@@ -8,12 +8,9 @@ import { GoogleAuth } from '@grimoire/server/googleAuth';
 import { dbPathFor, openDb } from '@grimoire/server/db';
 import { startUpdater, updateMenuItems } from './updater';
 import { fileKeyStore, linuxPasswordStore } from './keyStore';
-import { adoptLegacyDataFolder } from './dataFolder';
 
 // Tests (and portable installs) can relocate all app data.
 if (process.env.GRIMOIRE_USER_DATA) app.setPath('userData', process.env.GRIMOIRE_USER_DATA);
-// The app used to be called Grimoire: keep everyone's decks and collection by adopting the old data folder under the new name.
-else app.setPath('userData', adoptLegacyDataFolder(app.getPath('userData'), 'Grimoire'));
 
 // Must be set before the app is ready: which keychain Chromium uses is decided once, at start.
 const passwordStore = linuxPasswordStore(process.platform, process.env, process.argv);
@@ -27,7 +24,7 @@ let mainWindow: BrowserWindow | undefined;
 function openLogStream() {
   const dir = join(app.getPath('userData'), 'logs');
   mkdirSync(dir, { recursive: true });
-  const file = join(dir, 'brewhall.log');
+  const file = join(dir, 'grimoire.log');
   try { if (statSync(file).size > 5_000_000) truncateSync(file, 0); } catch { /* no log yet */ }
   return createWriteStream(file, { flags: 'a' });
 }
@@ -82,7 +79,7 @@ async function startServer(): Promise<string> {
 function createWindow(origin: string) {
   const win = new BrowserWindow({
     width: 1400, height: 900, minWidth: 900, minHeight: 600,
-    title: 'Brewhall', backgroundColor: '#15100c', show: false, autoHideMenuBar: true,
+    title: 'Grimoire', backgroundColor: '#0e0c1c', show: false, autoHideMenuBar: true,
     webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true },
   });
   win.once('ready-to-show', () => win.show());
@@ -139,7 +136,7 @@ if (!app.requestSingleInstanceLock()) {
     try {
       mainWindow = createWindow(await startServer());
     } catch (err) {
-      console.error('Failed to start Brewhall:', err);
+      console.error('Failed to start Grimoire:', err);
       app.exit(1);
     }
   });

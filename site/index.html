@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Brewhall: a free, local-first Magic: The Gathering deck lab</title>
-  <meta property="og:title" content="Brewhall: brew your decks, keep your cards">
+  <title>Grimoire: a free, local-first Magic: The Gathering deck lab</title>
+  <meta property="og:title" content="Grimoire: a spellbook for every deck">
   <meta property="og:description" content="A free, offline Magic: The Gathering deck lab for Windows, Linux and Android. No account, no subscription.">
   <meta property="og:type" content="website">
   <meta name="description" content="Search every Magic card offline, build and analyse Commander decks, simulate your mana, track your collection and your games. Free, no account, for Windows, Linux and Android.">
-  <meta name="theme-color" content="#15100c">
+  <meta name="theme-color" content="#0e0c1c">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="brewhall.css">
+  <link rel="stylesheet" href="grimoire.css">
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="./" aria-label="Brewhall, home"><img src="img/mark.svg" alt="" width="40" height="40"><strong><span class="b1">Brew</span><span class="b2">hall</span></strong></a>
+    <a class="brand" href="./" aria-label="Grimoire, home"><img src="img/mark.svg" alt="" width="40" height="40"><strong>Grimoire</strong></a>
     <nav aria-label="Site">
       <a href="#features">Features</a><a href="#install">Install</a><a href="#privacy">Privacy</a>
       <a href="https://github.com/itsdommie/grimoire">Source</a>
@@ -27,10 +27,10 @@
     <div class="hero">
       <div>
         <p class="kicker">Free, offline, yours</p>
-        <h1>Brew your decks. <em>Keep your cards.</em></h1>
+        <h1>A spellbook for <em>every deck.</em></h1>
         <p class="lead">A free Magic: The Gathering deck lab that lives on your computer. Search every card, build and analyse Commander decks, simulate your mana, track your collection and your games. No account, no subscription, no paywall.</p>
         <div class="downloads" id="downloads">
-          <a class="btn primary" id="dl-primary" href="https://github.com/itsdommie/grimoire/releases/latest">Download Brewhall<small>Windows and Linux</small></a>
+          <a class="btn primary" id="dl-primary" href="https://github.com/itsdommie/grimoire/releases/latest">Download Grimoire<small>Windows and Linux</small></a>
           <a class="btn" id="dl-windows" href="https://github.com/itsdommie/grimoire/releases/latest">Windows installer<small>.exe</small></a>
           <a class="btn" id="dl-appimage" href="https://github.com/itsdommie/grimoire/releases/latest">Linux AppImage<small>runs anywhere</small></a>
           <a class="btn" id="dl-deb" href="https://github.com/itsdommie/grimoire/releases/latest">Linux .deb<small>Debian / Ubuntu</small></a>
@@ -41,7 +41,7 @@
       <figure>
         <picture>
           <source media="(prefers-color-scheme: light)" srcset="img/hero-light.webp">
-          <img src="img/hero-dark.webp" width="1500" height="938" alt="Brewhall's card search beside an open Commander deck, with mana symbols and a progress meter">
+          <img src="img/hero-dark.webp" width="1500" height="938" alt="Grimoire's card search beside an open Commander deck, with mana symbols and a progress meter">
         </picture>
       </figure>
     </div>
@@ -80,53 +80,53 @@
       <details open>
         <summary>Windows</summary>
         <ol>
-          <li>Download <strong>Brewhall-Setup-….exe</strong> and run it. It installs just for you and needs no administrator rights.</li>
-          <li>Windows may show <strong>"Windows protected your PC"</strong>, because Brewhall is a new, free app that isn't signed with a paid certificate. Choose <strong>More info</strong>, then <strong>Run anyway</strong>. You can check the code yourself, or the file's checksum on the releases page.</li>
-          <li>Open Brewhall. On first start it downloads the card database (about 25 MB) once.</li>
+          <li>Download <strong>Grimoire-Setup-….exe</strong> and run it. It installs just for you and needs no administrator rights.</li>
+          <li>Windows may show <strong>"Windows protected your PC"</strong>, because Grimoire is a new, free app that isn't signed with a paid certificate. Choose <strong>More info</strong>, then <strong>Run anyway</strong>. You can check the code yourself, or the file's checksum on the releases page.</li>
+          <li>Open Grimoire. On first start it downloads the card database (about 25 MB) once.</li>
         </ol>
       </details>
       <details>
         <summary>Linux (AppImage)</summary>
         <ol>
-          <li>Download <strong>Brewhall-….AppImage</strong>, make it executable (<code>chmod +x Brewhall-*.AppImage</code>, or tick "Allow executing as a program" in your file manager's properties) and double-click it.</li>
+          <li>Download <strong>Grimoire-….AppImage</strong>, make it executable (<code>chmod +x Grimoire-*.AppImage</code>, or tick "Allow executing as a program" in your file manager's properties) and double-click it.</li>
           <li>If it won't start on Ubuntu 24.04 or newer, run it once with <code>--no-sandbox</code>, or use the .deb instead.</li>
         </ol>
       </details>
       <details>
         <summary>Linux (.deb)</summary>
-        <ol><li>Download <strong>Brewhall-….deb</strong> and install it with your software centre, or <code>sudo apt install ./Brewhall-*.deb</code>. New versions are installed the same way.</li></ol>
+        <ol><li>Download <strong>Grimoire-….deb</strong> and install it with your software centre, or <code>sudo apt install ./Grimoire-*.deb</code>. New versions are installed the same way.</li></ol>
       </details>
       <details>
         <summary>Android</summary>
         <ol>
-          <li>On your phone, download <strong>Brewhall-….-android.apk</strong> from the Android button above (or the <a href="https://github.com/itsdommie/grimoire/releases">releases page</a>: look for the release called "Brewhall for Android") and open it.</li>
-          <li>Android asks you to allow installs from your browser or file manager, because Brewhall isn't on an app store. Allow it for this one install.</li>
-          <li>Open Brewhall. The card database is already inside the app, so it starts straight away. It keeps its card data up to date by itself, weekly, over Wi-Fi (on mobile data it only tells you an update is waiting).</li>
+          <li>On your phone, download <strong>Grimoire-….-android.apk</strong> from the Android button above (or the <a href="https://github.com/itsdommie/grimoire/releases">releases page</a>: look for the release called "Grimoire for Android") and open it.</li>
+          <li>Android asks you to allow installs from your browser or file manager, because Grimoire isn't on an app store. Allow it for this one install.</li>
+          <li>Open Grimoire. The card database is already inside the app, so it starts straight away. It keeps its card data up to date by itself, weekly, over Wi-Fi (on mobile data it only tells you an update is waiting).</li>
           <li>Optional: every release is signed with the same certificate. Its SHA-256 fingerprint is <code>a79ce007a065e32b8fb6120e2362295a009174061b529069c1b598c9550dbbd1</code>, and each release lists the file's checksum.</li>
         </ol>
         <p class="note">The app tells you when a newer version is out (a banner with a Download button). Your decks and collection are kept when you update. You can also follow the project with <a href="https://github.com/ImranR98/Obtainium">Obtainium</a>.</p>
       </details>
-      <p class="note">Windows and the Linux AppImage update themselves: Brewhall checks for new versions, downloads them in the background and asks before installing. You can turn that off in the Help menu.</p>
+      <p class="note">Windows and the Linux AppImage update themselves: Grimoire checks for new versions, downloads them in the background and asks before installing. You can turn that off in the Help menu.</p>
     </section>
 
     <section id="privacy" aria-labelledby="privacy-h">
       <h2 id="privacy-h">Privacy</h2>
-      <p>No account of ours, no tracking, no analytics. Everything you create stays on your device unless you turn on Sync. Brewhall contacts the internet only to:</p>
+      <p>No account of ours, no tracking, no analytics. Everything you create stays on your device unless you turn on Sync. Grimoire contacts the internet only to:</p>
       <ul>
         <li><strong>Scryfall</strong>, to download card data (once, then when you ask or an update appears) and to show card images.</li>
-        <li><strong>GitHub</strong>, to check for new versions of Brewhall (can be turned off).</li>
+        <li><strong>GitHub</strong>, to check for new versions of Grimoire (can be turned off).</li>
         <li><strong>Camera (Android only)</strong>: the scanner uses it only while the scanner screen is open. Card names are read on your phone and nothing is uploaded.</li>
         <li><strong>Hugging Face</strong>, once, only if you turn on semantic search, to download a 34 MB language model. Your searches are processed on your own device.</li>
-        <li><strong>Google Drive</strong>, only if you turn on the optional Sync with Google. Your decks, collection and wishlist are then kept in one small file in Brewhall's own hidden storage in <em>your</em> Drive, which only Brewhall can open (it cannot see your other files). Brewhall has no server and sees none of it; you can turn it off, delete the file or revoke access at any time. Syncing through a folder you choose (such as one Dropbox keeps in step) is the alternative, with no Google involved.</li>
+        <li><strong>Google Drive</strong>, only if you turn on the optional Sync with Google. Your decks, collection and wishlist are then kept in one small file in Grimoire's own hidden storage in <em>your</em> Drive, which only Grimoire can open (it cannot see your other files). Grimoire has no server and sees none of it; you can turn it off, delete the file or revoke access at any time. Syncing through a folder you choose (such as one Dropbox keeps in step) is the alternative, with no Google involved.</li>
         <li><strong>Anthropic</strong>, only if you turn on the optional Advisor by adding your own API key. Then your questions, and the cards and deck the advisor looks at to answer them, are sent to Anthropic, which bills your account. Your key is kept in your device's keychain and goes nowhere else.</li>
       </ul>
     </section>
   </main>
 
   <footer>
-    <p>Brewhall is free, open source software under the <a href="https://github.com/itsdommie/grimoire/blob/main/LICENSE">MIT licence</a>. <a href="https://github.com/itsdommie/grimoire">Source code</a> · <a href="https://github.com/itsdommie/grimoire/issues">Report a problem</a> · <a href="code-signing.html">Code signing policy</a></p>
-    <p>Brewhall is unofficial Fan Content permitted under the Fan Content Policy. Not approved or endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Magic: The Gathering is a trademark of Wizards of the Coast LLC.</p>
-    <p>Card data, rulings, tags and images are provided by <a href="https://scryfall.com">Scryfall</a>. Brewhall does not host or alter card images.</p>
+    <p>Grimoire is free, open source software under the <a href="https://github.com/itsdommie/grimoire/blob/main/LICENSE">MIT licence</a>. <a href="https://github.com/itsdommie/grimoire">Source code</a> · <a href="https://github.com/itsdommie/grimoire/issues">Report a problem</a> · <a href="code-signing.html">Code signing policy</a></p>
+    <p>Grimoire is unofficial Fan Content permitted under the Fan Content Policy. Not approved or endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Magic: The Gathering is a trademark of Wizards of the Coast LLC.</p>
+    <p>Card data, rulings, tags and images are provided by <a href="https://scryfall.com">Scryfall</a>. Grimoire does not host or alter card images.</p>
   </footer>
 </div>
 

@@ -1,4 +1,4 @@
-// Deck formats Brewhall can build and validate. Commander is a 100-card singleton format with a command zone; the others are
+// Deck formats Grimoire can build and validate. Commander is a 100-card singleton format with a command zone; the others are
 // 60-card constructed formats with a 15-card sideboard and up to four copies of a card.
 
 export const FORMAT_IDS = ['commander', 'standard', 'pioneer', 'modern', 'legacy', 'vintage', 'pauper'] as const;

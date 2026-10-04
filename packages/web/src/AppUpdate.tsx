@@ -6,7 +6,7 @@ const DISMISSED = 'grimoire.appUpdateDismissed';
 const read = (): string | null => { try { return localStorage.getItem(DISMISSED); } catch { return null; } };
 
 /**
- * "A newer Brewhall is out." Only the Android app has a way to check (it isn't on a store, so it looks at the project's releases
+ * "A newer Grimoire is out." Only the Android app has a way to check (it isn't on a store, so it looks at the project's releases
  * itself). Dismissing it hides that version; the next version shows it again.
  */
 export function AppUpdateBanner({ check }: { check: () => Promise<Update | null> }) {
@@ -19,7 +19,7 @@ export function AppUpdateBanner({ check }: { check: () => Promise<Update | null>
   if (!update) return null;
   return (
     <div className="appupdate" role="status">
-      <span><strong>Brewhall {update.version}</strong> is available.</span>
+      <span><strong>Grimoire {update.version}</strong> is available.</span>
       <a className="btn" href={update.url} target="_blank" rel="noreferrer">Download</a>
       {update.page && <a href={update.page} target="_blank" rel="noreferrer">What's new</a>}
       <button onClick={() => { try { localStorage.setItem(DISMISSED, update.version); } catch { /* ignore */ } setUpdate(null); }} aria-label="Dismiss">×</button>

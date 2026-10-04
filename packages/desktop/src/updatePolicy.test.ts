@@ -6,7 +6,7 @@ const base: UpdateContext = { platform: 'win32', appImage: undefined, isPackaged
 describe('updatesSupported', () => {
   it('works for the Windows installer and Linux AppImage only', () => {
     expect(updatesSupported(base)).toBe(true);
-    expect(updatesSupported({ ...base, platform: 'linux', appImage: '/tmp/Brewhall.AppImage' })).toBe(true);
+    expect(updatesSupported({ ...base, platform: 'linux', appImage: '/tmp/Grimoire.AppImage' })).toBe(true);
     expect(updatesSupported({ ...base, platform: 'linux' })).toBe(false); // a .deb install
     expect(updatesSupported({ ...base, platform: 'darwin' })).toBe(false);
   });

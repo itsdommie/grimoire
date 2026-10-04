@@ -80,7 +80,7 @@ function SyncSetupDialog({ status, onClose, onConnected }: { status: SyncStatus;
         <p className="hint">Keeps your <strong>decks, collection and wishlist</strong> the same on every device that is set up this way. Changes made on one show up on the others within minutes. Nothing else is shared (not your Anthropic key, card data or settings), and you can turn it off at any time.</p>
 
         <h3>Google</h3>
-        <p className="muted small">Sign in with Google and Brewhall keeps one small file in its own hidden storage in your Google Drive, which only Brewhall can open: it can't see or change your other Drive files. You can delete it from Google Drive's settings (Manage apps) whenever you like.</p>
+        <p className="muted small">Sign in with Google and Grimoire keeps one small file in its own hidden storage in your Google Drive, which only Grimoire can open: it can't see or change your other Drive files. You can delete it from Google Drive's settings (Manage apps) whenever you like.</p>
         {status.googleSupported
           ? <p><button className="primary" disabled={busy !== null} onClick={() => void go('google')}>{busy === 'google' ? 'Finish signing in in your browser…' : 'Sign in with Google'}</button></p>
           : <p className="muted">Google sign-in isn't set up in this build yet.</p>}
@@ -88,10 +88,10 @@ function SyncSetupDialog({ status, onClose, onConnected }: { status: SyncStatus;
         {status.folderSupported && (
           <>
             <h3>A shared folder</h3>
-            <p className="muted small">Already use Dropbox, Syncthing, Nextcloud or similar? Choose a folder it keeps in step between your computers and Brewhall will keep its file there. No account needed.</p>
+            <p className="muted small">Already use Dropbox, Syncthing, Nextcloud or similar? Choose a folder it keeps in step between your computers and Grimoire will keep its file there. No account needed.</p>
             <form onSubmit={(e) => { e.preventDefault(); if (path.trim()) void go('folder'); }}>
               <div className="deckbar">
-                <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/home/you/Dropbox/Brewhall" aria-label="Folder path" spellCheck={false} />
+                <input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/home/you/Dropbox/Grimoire" aria-label="Folder path" spellCheck={false} />
                 <button type="submit" disabled={busy !== null || !path.trim()}>{busy === 'folder' ? 'Connecting…' : 'Use this folder'}</button>
               </div>
             </form>

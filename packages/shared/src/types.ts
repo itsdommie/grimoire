@@ -305,8 +305,7 @@ export interface WishlistReport {
 
 /** Everything the user created, in a form that survives card-data updates (cards are referenced by oracle id, with names as a fallback). */
 export interface UserDataBackup {
-  /** 'grimoire' on backups made before the app was renamed (still read). */
-  app: 'brewhall' | 'grimoire';
+  app: 'grimoire';
   /** Backup format version, independent of the database schema. */
   version: 1;
   exportedAt: string;

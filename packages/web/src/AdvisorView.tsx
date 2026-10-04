@@ -32,14 +32,14 @@ function KeySetup({ status, onChange }: { status: AdvisorStatus; onChange: (s: A
     <section className="advisorsetup" aria-label="Set up the advisor">
       <h2>Advisor <span className="muted small">(optional)</span></h2>
       <p>Ask Claude about your decks: what to cut, what you're short on, what you already own that fits. It can only suggest cards it has looked up in your card database, so they are real and legal in the deck's format.</p>
-      <p className="muted small">This is the one part of Brewhall that uses the internet for something other than card data. It needs your own Anthropic API key (<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">get one here</a>); Anthropic bills usage to your account. Your questions, and the cards and deck the advisor looks at to answer them, are sent to Anthropic. Nothing else is: not your collection as a whole, not your files.</p>
+      <p className="muted small">This is the one part of Grimoire that uses the internet for something other than card data. It needs your own Anthropic API key (<a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">get one here</a>); Anthropic bills usage to your account. Your questions, and the cards and deck the advisor looks at to answer them, are sent to Anthropic. Nothing else is: not your collection as a whole, not your files.</p>
       {status.canStore ? (
         <form onSubmit={(e) => { e.preventDefault(); if (key.trim()) void save(); }} className="deckbar">
           <input type="password" autoComplete="off" spellCheck={false} placeholder="sk-ant-…" aria-label="Anthropic API key" value={key} onChange={(e) => setKey(e.target.value)} />
           <button className="primary" disabled={busy || !key.trim()}>Save key</button>
         </form>
       ) : (
-        <p className="warning">This device has no keychain to protect a saved key, so Brewhall won't store one. Start Brewhall with the <code>ANTHROPIC_API_KEY</code> environment variable set instead.</p>
+        <p className="warning">This device has no keychain to protect a saved key, so Grimoire won't store one. Start Grimoire with the <code>ANTHROPIC_API_KEY</code> environment variable set instead.</p>
       )}
       {status.canStore && <p className="muted small">The key is encrypted with this device's secure storage (the operating system's keychain), stays on this device, and is never shown again.</p>}
       {error && <p className="error" role="alert">{error}</p>}

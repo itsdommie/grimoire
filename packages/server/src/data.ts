@@ -12,7 +12,7 @@ import { snapshotPrices } from './pricewatch.js';
 
 // Scryfall asks for a descriptive User-Agent and an Accept header on every API request.
 const HEADERS = {
-  'User-Agent': 'Brewhall/0.1 (open-source MTG deck lab)',
+  'User-Agent': 'Grimoire/0.1 (open-source MTG deck lab)',
   Accept: 'application/json;q=0.9,*/*;q=0.8',
 };
 const MANIFEST_URL = 'https://api.scryfall.com/bulk-data';

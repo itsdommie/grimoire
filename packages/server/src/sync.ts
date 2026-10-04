@@ -23,7 +23,7 @@ export interface SyncItem {
   /** null: it was deleted at `at`. */
   value: Record<string, unknown> | null;
 }
-export interface SyncSnapshot { app: 'brewhall-sync'; version: 1; writtenAt: string; device: string; items: SyncItem[] }
+export interface SyncSnapshot { app: 'grimoire-sync'; version: 1; writtenAt: string; device: string; items: SyncItem[] }
 
 const MAX_QTY = 9999;
 const MAX_ITEMS = 500_000;
@@ -55,7 +55,7 @@ export function exportItems(db: Db): SyncItem[] {
 }
 
 export function exportSnapshot(db: Db, device: string, now = new Date()): SyncSnapshot {
-  return { app: 'brewhall-sync', version: 1, writtenAt: now.toISOString(), device, items: exportItems(db) };
+  return { app: 'grimoire-sync', version: 1, writtenAt: now.toISOString(), device, items: exportItems(db) };
 }
 
 // ------------------------------------------------------------------------------------------------------------------------- merging
@@ -116,14 +116,14 @@ export class SyncFormatError extends Error {}
 export function parseSnapshot(text: string, now = new Date()): { snapshot: SyncSnapshot; dropped: number } {
   let raw: unknown;
   try { raw = JSON.parse(text); } catch { throw new SyncFormatError("The sync file isn't readable (it is not valid JSON)."); }
-  if (!isObj(raw) || raw.app !== 'brewhall-sync') throw new SyncFormatError("That file isn't a Brewhall sync file.");
-  if (raw.version !== 1) throw new SyncFormatError(`That sync file is from a newer Brewhall (format ${String(raw.version)}). Update this app, then sync again.`);
+  if (!isObj(raw) || raw.app !== 'grimoire-sync') throw new SyncFormatError("That file isn't a Grimoire sync file.");
+  if (raw.version !== 1) throw new SyncFormatError(`That sync file is from a newer Grimoire (format ${String(raw.version)}). Update this app, then sync again.`);
   if (!Array.isArray(raw.items)) throw new SyncFormatError('The sync file is missing its items.');
-  if (raw.items.length > MAX_ITEMS) throw new SyncFormatError('The sync file is too large to be a Brewhall sync file.');
+  if (raw.items.length > MAX_ITEMS) throw new SyncFormatError('The sync file is too large to be a Grimoire sync file.');
   const ceiling = new Date(now.getTime() + FUTURE_SLACK_MS).toISOString();
   const items: SyncItem[] = [];
   for (const r of raw.items) { const i = cleanItem(r, ceiling); if (i) items.push(i); }
-  return { snapshot: { app: 'brewhall-sync', version: 1, writtenAt: typeof raw.writtenAt === 'string' ? raw.writtenAt : '', device: typeof raw.device === 'string' ? raw.device.slice(0, 64) : '', items }, dropped: raw.items.length - items.length };
+  return { snapshot: { app: 'grimoire-sync', version: 1, writtenAt: typeof raw.writtenAt === 'string' ? raw.writtenAt : '', device: typeof raw.device === 'string' ? raw.device.slice(0, 64) : '', items }, dropped: raw.items.length - items.length };
 }
 
 // ----------------------------------------------------------------------------------------------------------------- applying to the database

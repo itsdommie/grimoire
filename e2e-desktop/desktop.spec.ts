@@ -37,7 +37,7 @@ test.describe.serial('desktop app', () => {
     const app = await launch(userData);
     const page = await app.firstWindow();
 
-    await expect(page).toHaveTitle('Brewhall');
+    await expect(page).toHaveTitle('Grimoire');
     await expect(page.getByText(/needs the card database/)).toBeVisible();
     await page.getByRole('button', { name: 'Download card data' }).click();
     await expect(page.getByPlaceholder(/Search/)).toBeVisible();

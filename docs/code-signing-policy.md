@@ -1,14 +1,14 @@
 # Code signing policy
 
-Brewhall's Windows installer is code-signed so that Windows can verify who built it and that it hasn't been tampered with.
+Grimoire's Windows installer is code-signed so that Windows can verify who built it and that it hasn't been tampered with.
 
 > Free code signing provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
 
 ## What is signed
 
-Only the Windows installer (`Brewhall-Setup-<version>.exe`) and the Brewhall application executable inside it, built from the
+Only the Windows installer (`Grimoire-Setup-<version>.exe`) and the Grimoire application executable inside it, built from the
 source code in this repository by the [Release workflow](../.github/workflows/release.yml) on GitHub-hosted runners. Nothing
-built anywhere else is submitted for signing. Third-party libraries and the Electron runtime that Brewhall bundles keep their own
+built anywhere else is submitted for signing. Third-party libraries and the Electron runtime that Grimoire bundles keep their own
 signatures and licences (see `THIRD_PARTY_NOTICES.txt`).
 
 Linux packages (`.AppImage`, `.deb`) are not signed with this certificate. Their checksums are published in the release's
@@ -36,17 +36,17 @@ only after they have been reviewed and agreed to these rules.
 
 ## Privacy
 
-Brewhall does not collect, store or transmit personal data about its users. It has no accounts, analytics or telemetry. Your decks
+Grimoire does not collect, store or transmit personal data about its users. It has no accounts, analytics or telemetry. Your decks
 and collection stay on your computer. The app contacts only these services, to do what you ask of it:
 
 - **Scryfall** (card data and card images),
 - **Wizards of the Coast** (the Comprehensive Rules text),
-- **GitHub** (checking for new versions of Brewhall; can be turned off in the Help menu),
+- **GitHub** (checking for new versions of Grimoire; can be turned off in the Help menu),
 - **Hugging Face** (once, and only if you turn on semantic search, to download a language model).
 
 Code signing itself does not involve any user data.
 
 ## Reporting a problem
 
-If you believe a Brewhall release is malicious or was signed in error, open an issue at
+If you believe a Grimoire release is malicious or was signed in error, open an issue at
 <https://github.com/itsdommie/grimoire/issues> (or use GitHub's private vulnerability reporting for security problems).

@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'io.github.itsdommie.grimoire',
-  appName: 'Brewhall',
+  appName: 'Grimoire',
   webDir: 'dist',
   backgroundColor: '#12131a', // the app is dark: no white flash or white status bar behind it
   android: { allowMixedContent: false },

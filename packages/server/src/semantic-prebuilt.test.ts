@@ -24,7 +24,7 @@ describe('index file format', () => {
     expect(() => decodeIndex(gz, { model: 'm1', dims: 128 })).toThrow(/dimensions/);
   });
   it('rejects garbage, truncation, trailing data and bad ids', () => {
-    expect(() => decodeIndex(gzipSync(Buffer.from('not an index at all')), opts)).toThrow(/Not a Brewhall/);
+    expect(() => decodeIndex(gzipSync(Buffer.from('not an index at all')), opts)).toThrow(/Not a Grimoire/);
     expect(() => decodeIndex(Buffer.from('plain bytes'), opts)).toThrow();
     const raw = (b: Buffer) => gzipSync(b);
     const gunzipped = (gz: Buffer) => require('node:zlib').gunzipSync(gz) as Buffer;

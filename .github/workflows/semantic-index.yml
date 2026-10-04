@@ -33,5 +33,5 @@ jobs:
         run: |
           gh release view semantic-index >/dev/null 2>&1 || gh release create semantic-index \
             --prerelease --latest=false --title "Semantic index (rolling)" \
-            --notes "Pre-built card embeddings used by Brewhall's optional semantic search. Rebuilt weekly by the Semantic index workflow. Not an application release."
+            --notes "Pre-built card embeddings used by Grimoire's optional semantic search. Rebuilt weekly by the Semantic index workflow. Not an application release."
           gh release upload semantic-index "$RUNNER_TEMP"/index/* --clobber

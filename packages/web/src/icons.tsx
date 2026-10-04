@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-// A small set of line icons, drawn for Brewhall on a 24-unit grid (1.75 stroke, round caps) so they sit together. They take the colour of
+// A small set of line icons, drawn for Grimoire on a 24-unit grid (1.75 stroke, round caps) so they sit together. They take the colour of
 // the text around them, and are decoration: the words next to them carry the meaning (so they are hidden from screen readers).
 const P: Record<string, ReactNode> = {
   // a card with the same diamond as the logo

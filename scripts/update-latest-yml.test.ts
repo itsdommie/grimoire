@@ -8,30 +8,30 @@ import { sha512Base64, updateLatestYml } from './update-latest-yml.mjs';
 
 const YML = `version: 0.1.1
 files:
-  - url: Brewhall-Setup-0.1.1.exe
+  - url: Grimoire-Setup-0.1.1.exe
     sha512: OLDHASH==
     size: 111
-path: Brewhall-Setup-0.1.1.exe
+path: Grimoire-Setup-0.1.1.exe
 sha512: OLDHASH==
 releaseDate: '2026-10-03T01:44:01.582Z'
 `;
 
 describe('update-latest-yml', () => {
   it('rewrites the checksum and size everywhere the installer appears, and nothing else', () => {
-    const out = updateLatestYml(YML, 'Brewhall-Setup-0.1.1.exe', 'NEWHASH==', 222);
+    const out = updateLatestYml(YML, 'Grimoire-Setup-0.1.1.exe', 'NEWHASH==', 222);
     expect(out).toBe(`version: 0.1.1
 files:
-  - url: Brewhall-Setup-0.1.1.exe
+  - url: Grimoire-Setup-0.1.1.exe
     sha512: NEWHASH==
     size: 222
-path: Brewhall-Setup-0.1.1.exe
+path: Grimoire-Setup-0.1.1.exe
 sha512: NEWHASH==
 releaseDate: '2026-10-03T01:44:01.582Z'
 `);
   });
   it('leaves other files in the feed alone', () => {
     const feed = YML.replace('files:\n', 'files:\n  - url: other.exe\n    sha512: KEEP==\n    size: 5\n');
-    const out = updateLatestYml(feed, 'Brewhall-Setup-0.1.1.exe', 'NEWHASH==', 222);
+    const out = updateLatestYml(feed, 'Grimoire-Setup-0.1.1.exe', 'NEWHASH==', 222);
     expect(out).toContain('url: other.exe\n    sha512: KEEP==\n    size: 5');
   });
   it('refuses to guess when the installer is not in the feed', () => {

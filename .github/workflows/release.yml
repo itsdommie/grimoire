@@ -57,10 +57,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $installer = (Get-ChildItem release\Brewhall-Setup-*.exe | Select-Object -First 1).FullName
+          $installer = (Get-ChildItem release\Grimoire-Setup-*.exe | Select-Object -First 1).FullName
           Start-Process -FilePath $installer -ArgumentList '/S' -Wait
-          $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Brewhall.exe | Select-Object -First 1).FullName
-          if (-not $exe) { throw 'Brewhall.exe was not installed' }
+          $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Grimoire.exe | Select-Object -First 1).FullName
+          if (-not $exe) { throw 'Grimoire.exe was not installed' }
           Write-Host "Installed at $exe"
           $env:GRIMOIRE_EXE = $exe
           npx playwright test -c playwright.desktop.config.ts
@@ -78,7 +78,7 @@ jobs:
           cat > notes.md <<NOTES
           ## Install
 
-          - **Windows:** run \`Brewhall-Setup-*.exe\`. If Windows shows "Windows protected your PC", choose *More info* then *Run anyway* (the app isn't signed with a paid certificate yet).
+          - **Windows:** run \`Grimoire-Setup-*.exe\`. If Windows shows "Windows protected your PC", choose *More info* then *Run anyway* (the app isn't signed with a paid certificate yet).
           - **Linux:** make the \`.AppImage\` executable and run it, or install the \`.deb\`.
 
           Windows and the AppImage update themselves from here. First launch downloads the card database (about 25 MB) once.

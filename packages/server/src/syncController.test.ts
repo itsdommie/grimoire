@@ -90,7 +90,7 @@ describe('connecting a folder', () => {
   it('does not stay connected if the first sync fails, and says why', async () => {
     const db = openDb(':memory:'), dir = tmpDir();
     writeFileSync(join(dir, SYNC_FILE_NAME), '{"somebody":"elses file"}');
-    await expect(make(db).connectFolder(dir)).rejects.toThrow(/isn't a Brewhall sync file/);
+    await expect(make(db).connectFolder(dir)).rejects.toThrow(/isn't a Grimoire sync file/);
     expect(await make(db).status()).toMatchObject({ provider: null, folderPath: null });
   });
 

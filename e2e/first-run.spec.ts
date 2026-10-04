@@ -4,7 +4,7 @@ const search = (page: import('@playwright/test').Page) => page.getByPlaceholder(
 
 test('first run shows the setup screen, imports the card data, then the app works', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Brewhall' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Grimoire' })).toBeVisible();
   await expect(page.getByText(/needs the card database/)).toBeVisible();
   await expect(page.getByPlaceholder(/Search/)).toHaveCount(0);
 

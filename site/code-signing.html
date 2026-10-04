@@ -3,27 +3,27 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Code signing policy · Brewhall</title>
-  <meta name="description" content="How Brewhall's Windows installer is code-signed, who can approve a signing request, and what data the app handles.">
-  <meta name="theme-color" content="#15100c">
+  <title>Code signing policy · Grimoire</title>
+  <meta name="description" content="How Grimoire's Windows installer is code-signed, who can approve a signing request, and what data the app handles.">
+  <meta name="theme-color" content="#0e0c1c">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="apple-touch-icon" href="img/apple-touch-icon.png">
-  <link rel="stylesheet" href="brewhall.css">
+  <link rel="stylesheet" href="grimoire.css">
 </head>
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="./" aria-label="Brewhall, home"><img src="img/mark.svg" alt="" width="40" height="40"><strong><span class="b1">Brew</span><span class="b2">hall</span></strong></a>
+    <a class="brand" href="./" aria-label="Grimoire, home"><img src="img/mark.svg" alt="" width="40" height="40"><strong>Grimoire</strong></a>
     <nav aria-label="Site"><a href="./">Home</a><a href="https://github.com/itsdommie/grimoire">Source</a></nav>
   </header>
   <main>
     <section>
       <h1>Code signing policy</h1>
-      <p>Brewhall's Windows installer is code-signed so that Windows can verify who built it and that it hasn't been tampered with.</p>
+      <p>Grimoire's Windows installer is code-signed so that Windows can verify who built it and that it hasn't been tampered with.</p>
       <p class="card"><strong>Free code signing provided by <a href="https://signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>.</strong></p>
 
       <h2>What is signed</h2>
-      <p>Only the Windows installer (<code>Brewhall-Setup-&lt;version&gt;.exe</code>) and the Brewhall application executable inside it, built from the
+      <p>Only the Windows installer (<code>Grimoire-Setup-&lt;version&gt;.exe</code>) and the Grimoire application executable inside it, built from the
       <a href="https://github.com/itsdommie/grimoire">source code in the repository</a> by the
       <a href="https://github.com/itsdommie/grimoire/blob/main/.github/workflows/release.yml">Release workflow</a> on GitHub-hosted runners. Nothing built anywhere else is submitted for signing.
       Bundled third-party libraries and the Electron runtime keep their own signatures and licences. Linux packages are not signed with this certificate; their checksums
@@ -47,17 +47,17 @@
       </ol>
 
       <h2 id="privacy">Privacy</h2>
-      <p>Brewhall does not collect, store or transmit personal data about its users. It has no accounts, analytics or telemetry. Your decks and collection stay on your computer.
+      <p>Grimoire does not collect, store or transmit personal data about its users. It has no accounts, analytics or telemetry. Your decks and collection stay on your computer.
       The app contacts only: <strong>Scryfall</strong> (card data and images), <strong>Wizards of the Coast</strong> (the Comprehensive Rules text),
       <strong>GitHub</strong> (checking for new versions; can be turned off in the Help menu) and, once and only if you turn on semantic search,
       <strong>Hugging Face</strong> (a language model download). Code signing itself involves no user data.</p>
 
       <h2>Reporting a problem</h2>
-      <p>If you believe a Brewhall release is malicious or was signed in error, <a href="https://github.com/itsdommie/grimoire/issues">open an issue</a>, or use GitHub's private vulnerability reporting for security problems.</p>
+      <p>If you believe a Grimoire release is malicious or was signed in error, <a href="https://github.com/itsdommie/grimoire/issues">open an issue</a>, or use GitHub's private vulnerability reporting for security problems.</p>
     </section>
   </main>
   <footer>
-    <p>Brewhall is free, open source software under the <a href="https://github.com/itsdommie/grimoire/blob/main/LICENSE">MIT licence</a>. Unofficial Fan Content, not approved or endorsed by Wizards of the Coast.</p>
+    <p>Grimoire is free, open source software under the <a href="https://github.com/itsdommie/grimoire/blob/main/LICENSE">MIT licence</a>. Unofficial Fan Content, not approved or endorsed by Wizards of the Coast.</p>
   </footer>
 </div>
 </body>

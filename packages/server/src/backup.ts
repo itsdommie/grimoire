@@ -26,7 +26,7 @@ export function exportUserData(db: Db): UserDataBackup {
     .map((c) => ({ id: c.card_id, name: nameOf(c.card_id), qty: c.qty, ...(prints.has(c.card_id) ? { prints: prints.get(c.card_id)! } : {}) }));
   const wishlist = (db.prepare('SELECT card_id, want FROM wishlist ORDER BY card_id').all() as unknown as Array<{ card_id: string; want: number }>)
     .map((w) => ({ id: w.card_id, name: nameOf(w.card_id), want: w.want }));
-  return { app: 'brewhall', version: 1, exportedAt: new Date().toISOString(), decks, collection, ...(wishlist.length > 0 ? { wishlist } : {}) };
+  return { app: 'grimoire', version: 1, exportedAt: new Date().toISOString(), decks, collection, ...(wishlist.length > 0 ? { wishlist } : {}) };
 }
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -34,8 +34,8 @@ const posInt = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v
 
 /** Check the shape of an uploaded backup, with errors a person can act on. */
 export function parseBackup(raw: unknown): UserDataBackup {
-  if (!isObj(raw) || (raw.app !== 'brewhall' && raw.app !== 'grimoire')) throw new BadRequestError("This doesn't look like a Brewhall backup file.");
-  if (raw.version !== 1) throw new BadRequestError(`This backup is version ${String(raw.version)}, which this version of Brewhall can't read.`);
+  if (!isObj(raw) || raw.app !== 'grimoire') throw new BadRequestError("This doesn't look like a Grimoire backup file.");
+  if (raw.version !== 1) throw new BadRequestError(`This backup is version ${String(raw.version)}, which this version of Grimoire can't read.`);
   if (!Array.isArray(raw.decks) || !Array.isArray(raw.collection)) throw new BadRequestError('The backup is missing its decks or collection.');
   for (const d of raw.decks) {
     if (!isObj(d) || typeof d.name !== 'string' || !Array.isArray(d.cards)) throw new BadRequestError('A deck in the backup is malformed.');

@@ -33,7 +33,7 @@ jobs:
         run: |
           gh release view card-printings >/dev/null 2>&1 || gh release create card-printings \
             --prerelease --latest=false --title "Card printings (rolling)" \
-            --notes "Every paper printing of every card, used by Brewhall's scanner and imports. Rebuilt weekly by the Card printings workflow. Not an application release."
+            --notes "Every paper printing of every card, used by Grimoire's scanner and imports. Rebuilt weekly by the Card printings workflow. Not an application release."
           # The big file first, then the manifest that points to it, so a reader never sees a manifest whose file isn't there yet.
           gh release upload card-printings "$RUNNER_TEMP"/printings/card-printings.json.gz --clobber
           gh release upload card-printings "$RUNNER_TEMP"/printings/card-printings.json --clobber

@@ -41,7 +41,7 @@ export function SemanticFooter({ status, onEnable, onCancel, onRemove }: { statu
         <progress value={value ?? 0} max={max || 1} aria-label="Semantic search setup progress" />
         {' '}{p?.phase === 'downloading' ? `Downloading ${p.what === 'index' ? 'the card index' : 'the language model'}… ${mb(p.received ?? 0)} of ${mb(p.total ?? 0)}` : `Indexing cards… ${(p?.done ?? 0).toLocaleString()} of ${(p?.of ?? 0).toLocaleString()}`}
         {' · '}<button className="linklike" onClick={onCancel}>Cancel</button>
-        <span className="muted"> You can keep using Brewhall meanwhile.</span>
+        <span className="muted"> You can keep using Grimoire meanwhile.</span>
       </>
     );
   } else if (status.state === 'ready') {

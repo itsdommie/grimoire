@@ -115,7 +115,7 @@ describe('replacing the card data', () => {
     expect(() => applyCardData(device, dbPath)).toThrow(/damaged \(2 cards\)/); // the default floor refuses a tiny pool
     const newer = new DatabaseSync(dbPath);
     newer.exec(`PRAGMA user_version = ${SCHEMA_VERSION + 1}`); newer.close();
-    expect(() => applyCardData(device, dbPath, { minCards: 1 })).toThrow(/newer version of Brewhall/);
+    expect(() => applyCardData(device, dbPath, { minCards: 1 })).toThrow(/newer version of Grimoire/);
     const empty = join(dir, 'empty.db');
     new DatabaseSync(empty).close();
     expect(() => applyCardData(device, empty, { minCards: 1 })).toThrow(/isn't card data/);

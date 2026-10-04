@@ -55,8 +55,8 @@ function fakeDrive(opts: { validToken?: () => string } = {}) {
     const json = (o: unknown) => Response.json(o);
     if (method === 'GET' && url.pathname === '/drive/v3/files') {
       expect(url.searchParams.get('spaces')).toBe('appDataFolder');
-      expect(url.searchParams.get('q')).toContain("name = 'brewhall-sync.json'");
-      const hit = files.filter((f) => f.name === 'brewhall-sync.json').sort((a, b) => a.created - b.created).slice(0, 1);
+      expect(url.searchParams.get('q')).toContain("name = 'grimoire-sync.json'");
+      const hit = files.filter((f) => f.name === 'grimoire-sync.json').sort((a, b) => a.created - b.created).slice(0, 1);
       return json({ files: hit.map((f) => ({ id: f.id, version: String(f.version) })) });
     }
     const m = /^\/(?:upload\/)?drive\/v3\/files\/([^/]+)$/.exec(url.pathname) as RegExpExecArray | null;
@@ -132,7 +132,7 @@ describe('Google Drive as the sync file\'s home', () => {
   it('uses the older file if two devices created one at the same moment', async () => {
     const d = fakeDrive(), store = new DriveStore(async () => 'tok', d.fetchImpl);
     await store.write('first', null);
-    d.files.push({ id: 'dup', name: 'brewhall-sync.json', parents: ['appDataFolder'], content: 'second', version: 9, created: 99 });
+    d.files.push({ id: 'dup', name: 'grimoire-sync.json', parents: ['appDataFolder'], content: 'second', version: 9, created: 99 });
     expect((await store.read())!.text).toBe('first');
   });
 });

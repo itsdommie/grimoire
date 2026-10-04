@@ -23,7 +23,7 @@ test('back up, wipe, and restore decks and collection', async ({ page }, testInf
 
   // Back up.
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Back up to a file' }).click()]);
-  expect(download.suggestedFilename()).toMatch(/^brewhall-backup-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(download.suggestedFilename()).toMatch(/^grimoire-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const file = testInfo.outputPath('backup.json');
   await download.saveAs(file);
   const backup = JSON.parse(await readFile(file, 'utf8'));
@@ -41,7 +41,7 @@ test('back up, wipe, and restore decks and collection', async ({ page }, testInf
   const junk = join(tmpdir(), 'not-a-backup.json');
   await writeFile(junk, '{"hello": "world"}');
   await dialog.locator('input[type=file]').setInputFiles(junk);
-  await expect(dialog.getByRole('alert')).toContainText("doesn't look like a Brewhall backup");
+  await expect(dialog.getByRole('alert')).toContainText("doesn't look like a Grimoire backup");
   await expect(dialog.getByRole('button', { name: 'Restore', exact: true })).toBeDisabled();
 
   // The real one: preview counts, replace needs an explicit confirmation.

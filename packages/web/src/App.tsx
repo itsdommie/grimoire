@@ -277,7 +277,7 @@ export function App() {
           <p><SyncFooter onError={setError} onChanged={async () => { const list = await api.listDecks(); setDecks(list); const keep = current && list.some((d) => d.id === current.deck.id) ? current.deck.id : list[0]?.id; if (keep !== undefined) await open(keep); else setCurrent(null); await collectionChanged(); }} /></p>
           <p><BackupControls onError={setError} onRestored={async () => { const list = await api.listDecks(); setDecks(list); if (list[0]) await open(list[0].id); else setCurrent(null); await collectionChanged(); }} /></p>
           Card data and images from <a href="https://scryfall.com" target="_blank" rel="noreferrer">Scryfall</a>. Magic: The Gathering is © Wizards of the Coast.
-          Brewhall is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.
+          Grimoire is unofficial, non-commercial fan content and is not approved or endorsed by Wizards of the Coast.
         </footer>
       </div>
       {view !== 'play' && view !== 'rules' && <DeckPanel

@@ -274,7 +274,7 @@ export function createRouter({ db, data, semantic, advisor: advisorOptions, sync
   // ----------------------------------------------------------------- backup
   on('GET', '/api/backup', () => {
     const stamp = new Date().toISOString().slice(0, 10);
-    return reply(200, JSON.stringify(exportUserData(db), null, 1), { type: 'application/json; charset=utf-8', headers: { 'Content-Disposition': `attachment; filename="brewhall-backup-${stamp}.json"` } });
+    return reply(200, JSON.stringify(exportUserData(db), null, 1), { type: 'application/json; charset=utf-8', headers: { 'Content-Disposition': `attachment; filename="grimoire-backup-${stamp}.json"` } });
   });
   on('POST', '/api/backup/restore', ({ body }) => reply(201, restoreUserData(db, body?.data, body?.mode === 'replace' ? 'replace' : 'merge')));
 
