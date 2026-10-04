@@ -8,7 +8,7 @@ import { DRIVE_SCOPE, SyncAuthError } from './syncDrive.js';
 // Signing in to Google from the desktop app, the way Google asks installed apps to do it: open the person's own browser (never an embedded
 // one), let them sign in and agree there, and receive Google's answer on a one-off address on this computer. PKCE and a random `state`
 // make sure the answer belongs to this sign-in and cannot be replayed or forged by another page. Only the "drive.appdata" permission is
-// requested (Grimoire's own hidden storage in Drive; none of the person's other files), plus their email just to show which account.
+// requested (Brewhall's own hidden storage in Drive; none of the person's other files), plus their email just to show which account.
 
 export interface GoogleClient { clientId: string; /** Google issues one for desktop apps; it is not confidential. */ clientSecret?: string }
 
@@ -27,7 +27,7 @@ export interface GoogleAuthOptions {
 
 const ENDPOINTS = { auth: 'https://accounts.google.com/o/oauth2/v2/auth', token: 'https://oauth2.googleapis.com/token', revoke: 'https://oauth2.googleapis.com/revoke' };
 const b64url = (b: Buffer) => b.toString('base64url');
-const PAGE = (title: string, body: string) => `<!doctype html><meta charset="utf-8"><title>Grimoire</title><body style="font:16px system-ui;max-width:32em;margin:15vh auto;padding:0 1em;text-align:center"><h1>${title}</h1><p>${body}</p></body>`;
+const PAGE = (title: string, body: string) => `<!doctype html><meta charset="utf-8"><title>Brewhall</title><body style="font:16px system-ui;max-width:32em;margin:15vh auto;padding:0 1em;text-align:center"><h1>${title}</h1><p>${body}</p></body>`;
 
 interface Saved { refreshToken: string; email: string }
 interface TokenResponse { access_token?: string; expires_in?: number; refresh_token?: string; scope?: string; id_token?: string; error?: string; error_description?: string }
@@ -60,15 +60,15 @@ export class GoogleAuth implements SyncAuth {
 
   async signIn(): Promise<void> {
     if (!this.available()) throw new Error('Google sign-in is not set up in this build.');
-    if (!this.o.store.canStore) throw new Error('No keychain is available to protect your Google sign-in, so Grimoire will not store it. Install and unlock a keyring (such as GNOME Keyring or KeePassXC), then try again.');
+    if (!this.o.store.canStore) throw new Error('No keychain is available to protect your Google sign-in, so Brewhall will not store it. Install and unlock a keyring (such as GNOME Keyring or KeePassXC), then try again.');
     const verifier = b64url(randomBytes(48));
     const state = b64url(randomBytes(16));
     const { code, redirectUri } = await this.waitForCode(state, b64url(createHash('sha256').update(verifier).digest()));
     const t = await this.tokenCall({ grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: redirectUri });
     if (!t.ok || !t.body.access_token) throw new Error(`Google didn't complete the sign-in${t.body.error_description ? `: ${t.body.error_description}` : ''}.`);
     // Google lets people untick individual permissions on the consent screen: without this one there is nowhere to keep the file.
-    if (!(t.body.scope ?? '').split(' ').includes(DRIVE_SCOPE)) throw new Error('Grimoire needs permission to keep its sync file in its own storage in your Google Drive. Sign in again and leave that box ticked.');
-    if (!t.body.refresh_token) throw new Error("Google didn't allow Grimoire to stay signed in. Remove Grimoire under Google Account > Security > Third-party access, then sign in again.");
+    if (!(t.body.scope ?? '').split(' ').includes(DRIVE_SCOPE)) throw new Error('Brewhall needs permission to keep its sync file in its own storage in your Google Drive. Sign in again and leave that box ticked.');
+    if (!t.body.refresh_token) throw new Error("Google didn't allow Brewhall to stay signed in. Remove Brewhall under Google Account > Security > Third-party access, then sign in again.");
     this.o.store.set(JSON.stringify({ refreshToken: t.body.refresh_token, email: emailFrom(t.body.id_token) } satisfies Saved));
     this.access = { token: t.body.access_token, expires: this.now() + (t.body.expires_in ?? 3600) * 1000 };
   }
@@ -89,11 +89,11 @@ export class GoogleAuth implements SyncAuth {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1');
         if (url.pathname !== '/callback') { res.writeHead(404).end(); return; }
         const reply = (status: number, html: string) => res.writeHead(status, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).end(html);
-        if (url.searchParams.get('state') !== state) { reply(400, PAGE('That did not work', 'This sign-in link did not come from Grimoire. You can close this tab.')); return; } // not ours: keep waiting for the real one
+        if (url.searchParams.get('state') !== state) { reply(400, PAGE('That did not work', 'This sign-in link did not come from Brewhall. You can close this tab.')); return; } // not ours: keep waiting for the real one
         const error = url.searchParams.get('error');
         const code = url.searchParams.get('code');
-        if (error || !code) { reply(200, PAGE('Not signed in', 'You can close this tab and go back to Grimoire.')); finish(new Error(error === 'access_denied' ? 'Signing in to Google was cancelled.' : `Google sign-in failed${error ? ` (${error})` : ''}.`)); return; }
-        reply(200, PAGE('You are signed in', 'You can close this tab and go back to Grimoire.'));
+        if (error || !code) { reply(200, PAGE('Not signed in', 'You can close this tab and go back to Brewhall.')); finish(new Error(error === 'access_denied' ? 'Signing in to Google was cancelled.' : `Google sign-in failed${error ? ` (${error})` : ''}.`)); return; }
+        reply(200, PAGE('You are signed in', 'You can close this tab and go back to Brewhall.'));
         finish(null, code);
       });
       server.on('error', (e) => finish(new Error(`Couldn't start the sign-in: ${e.message}`)));

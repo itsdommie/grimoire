@@ -58,14 +58,14 @@ describe('merging', () => {
 });
 
 describe('reading a file from another device', () => {
-  const file = (items: unknown[], extra: object = {}) => JSON.stringify({ app: 'grimoire-sync', version: 1, writtenAt: t(1), device: 'd', items, ...extra });
+  const file = (items: unknown[], extra: object = {}) => JSON.stringify({ app: 'brewhall-sync', version: 1, writtenAt: t(1), device: 'd', items, ...extra });
   const NOW = new Date('2026-03-10T00:00:00.000Z');
 
-  it('refuses things that are not sync files, and files from a newer Grimoire, with a message a person can act on', () => {
+  it('refuses things that are not sync files, and files from a newer Brewhall, with a message a person can act on', () => {
     expect(() => parseSnapshot('not json')).toThrow(SyncFormatError);
-    expect(() => parseSnapshot('{"app":"other"}')).toThrow(/isn't a Grimoire sync file/);
-    expect(() => parseSnapshot(file([], { version: 2 }))).toThrow(/newer Grimoire/);
-    expect(() => parseSnapshot('{"app":"grimoire-sync","version":1}')).toThrow(/missing its items/);
+    expect(() => parseSnapshot('{"app":"other"}')).toThrow(/isn't a Brewhall sync file/);
+    expect(() => parseSnapshot(file([], { version: 2 }))).toThrow(/newer Brewhall/);
+    expect(() => parseSnapshot('{"app":"brewhall-sync","version":1}')).toThrow(/missing its items/);
   });
 
   it('drops items that are malformed instead of trusting them, and says how many', () => {

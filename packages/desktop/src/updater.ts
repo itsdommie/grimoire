@@ -38,17 +38,17 @@ export function startUpdater(): void {
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.on('update-not-available', () => {
-    if (manualCheck) void dialog.showMessageBox({ type: 'info', message: "You're up to date", detail: `Grimoire ${app.getVersion()} is the latest version.` });
+    if (manualCheck) void dialog.showMessageBox({ type: 'info', message: "You're up to date", detail: `Brewhall ${app.getVersion()} is the latest version.` });
     manualCheck = false;
   });
   autoUpdater.on('update-available', (info) => {
-    if (manualCheck) void dialog.showMessageBox({ type: 'info', message: `Downloading Grimoire ${info.version}`, detail: "It downloads in the background. You'll be asked before it installs." });
+    if (manualCheck) void dialog.showMessageBox({ type: 'info', message: `Downloading Brewhall ${info.version}`, detail: "It downloads in the background. You'll be asked before it installs." });
     manualCheck = false;
   });
   autoUpdater.on('update-downloaded', async (info) => {
     const { response } = await dialog.showMessageBox({
       type: 'info', buttons: ['Restart and install', 'Later'], defaultId: 0, cancelId: 1,
-      message: `Grimoire ${info.version} is ready to install`, detail: 'Your decks and collection are kept. It will also install the next time you quit.',
+      message: `Brewhall ${info.version} is ready to install`, detail: 'Your decks and collection are kept. It will also install the next time you quit.',
     });
     if (response === 0) autoUpdater.quitAndInstall();
   });

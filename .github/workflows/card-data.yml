@@ -38,7 +38,7 @@ jobs:
         run: |
           gh release view card-data >/dev/null 2>&1 || gh release create card-data \
             --prerelease --latest=false --title "Card data (rolling)" \
-            --notes "Card data for Grimoire's Android app. Rebuilt weekly by the Card data workflow. Not an application release."
+            --notes "Card data for Brewhall's Android app. Rebuilt weekly by the Card data workflow. Not an application release."
           # The big file first, then the manifest that points to it, so a reader never sees a manifest whose file isn't there yet.
           gh release upload card-data "$RUNNER_TEMP"/card-data/card-data.db.gz --clobber
           gh release upload card-data "$RUNNER_TEMP"/card-data/card-data.json --clobber

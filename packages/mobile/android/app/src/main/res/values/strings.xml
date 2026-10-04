@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Grimoire</string>
-    <string name="title_activity_main">Grimoire</string>
+    <string name="app_name">Brewhall</string>
+    <string name="title_activity_main">Brewhall</string>
     <string name="package_name">io.github.itsdommie.grimoire</string>
     <string name="custom_url_scheme">io.github.itsdommie.grimoire</string>
 </resources>

@@ -3,7 +3,7 @@ import { getCardByName, searchCards, type Order, type SemanticRanker } from './c
 import { getDeck } from './decks.js';
 import type { Db } from './schema.js';
 
-// The optional Claude advisor. A chat panel whose model can only reach Grimoire's own card database through a few tools, so every card it
+// The optional Claude advisor. A chat panel whose model can only reach Brewhall's own card database through a few tools, so every card it
 // suggests is a real one, checked for legality against the format. It needs the user's own Anthropic API key, which lives in a KeyStore
 // (the desktop app's is the operating system's keychain) and goes nowhere except to api.anthropic.com, in a header. Nothing else about
 // the user is sent: only the conversation, and what the tools return.
@@ -30,7 +30,7 @@ export function keyFromEnvironment(store: KeyStore | null, env: Record<string, s
   return {
     canStore: !!store?.canStore,
     get: () => store?.get() ?? fromEnv(),
-    set: (k) => { if (!store?.canStore) throw new AdvisorError(409, 'This copy of Grimoire has nowhere safe to keep a key. Set the ANTHROPIC_API_KEY environment variable instead.'); return store.set(k); },
+    set: (k) => { if (!store?.canStore) throw new AdvisorError(409, 'This copy of Brewhall has nowhere safe to keep a key. Set the ANTHROPIC_API_KEY environment variable instead.'); return store.set(k); },
     clear: () => store?.clear(),
     source: () => (store?.get() ? 'stored' : fromEnv() ? 'environment' : null),
   };
@@ -58,10 +58,10 @@ const MAX_CHARS = 8000;
 const LETTERS = ['W', 'U', 'B', 'R', 'G'];
 const letters = (mask: number) => LETTERS.filter((_, i) => mask & (1 << i)).join('') || 'C';
 
-const SYSTEM = `You are the deck advisor inside Grimoire, a Magic: The Gathering deck builder. The person talking to you is building or tuning decks.
+const SYSTEM = `You are the deck advisor inside Brewhall, a Magic: The Gathering deck builder. The person talking to you is building or tuning decks.
 
 How you work:
-- Your only source of cards is the Grimoire card database, reached through your tools. Never suggest a card you have not seen in a tool result in this conversation, and never state a card's text, cost or legality from memory: look it up.
+- Your only source of cards is the Brewhall card database, reached through your tools. Never suggest a card you have not seen in a tool result in this conversation, and never state a card's text, cost or legality from memory: look it up.
 - Respect the deck's format (Commander by default) and colour identity. Use f:<format> in searches so illegal cards never come up, and id<=<colours> to stay inside a commander's colours.
 - When a deck is open, call get_deck first to see it, its problems and its analysis, then search for fixes. The person's collection is searchable too: owned:>=1 finds cards they have, and spare:>=1 finds copies not already in another deck. Prefer owned cards when they ask what they can build or afford.
 - Be concrete and brief: a short answer with specific card names, each with one reason. Put card names in **bold**. Say plainly when you can't find something good rather than padding.

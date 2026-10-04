@@ -5,7 +5,7 @@ import { SyncConflict, type SyncStore } from './sync.js';
 // Drive, and they can clear it from Drive's settings. Platform-neutral: plain `fetch`, so the phone uses it too.
 
 export const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
-const FILE_NAME = 'grimoire-sync.json';
+const FILE_NAME = 'brewhall-sync.json';
 const API = 'https://www.googleapis.com/drive/v3/files';
 const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
 
@@ -23,7 +23,7 @@ export class DriveStore implements SyncStore {
       if (res.status === 401) throw new SyncAuthError('Google has signed this device out. Sign in again to keep syncing.');
       if (res.status === 403) {
         const body = await res.text().catch(() => '');
-        if (/insufficientPermissions|insufficient authentication scopes/i.test(body)) throw new SyncAuthError('Grimoire was not allowed to use its storage in your Google Drive. Sign in again and allow it.');
+        if (/insufficientPermissions|insufficient authentication scopes/i.test(body)) throw new SyncAuthError('Brewhall was not allowed to use its storage in your Google Drive. Sign in again and allow it.');
         throw new Error(`Google Drive refused the request (${/quota|rate/i.test(body) ? 'too many requests, try again shortly' : 'HTTP 403'}).`);
       }
       if (!res.ok) throw new Error(`Google Drive error (HTTP ${res.status}).`);

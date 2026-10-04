@@ -106,7 +106,7 @@ export function Scanner({ recognizer, deck, onClose, onError }: {
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
       } catch (e) {
         const name = (e as DOMException).name;
-        setCameraError(name === 'NotAllowedError' ? 'Camera access was denied. Allow it for Grimoire in your phone’s settings, then try again.' : name === 'NotFoundError' ? 'No camera was found.' : `The camera could not be started (${(e as Error).message}).`);
+        setCameraError(name === 'NotAllowedError' ? 'Camera access was denied. Allow it for Brewhall in your phone’s settings, then try again.' : name === 'NotFoundError' ? 'No camera was found.' : `The camera could not be started (${(e as Error).message}).`);
         return;
       }
       const el = video.current;

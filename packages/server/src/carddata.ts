@@ -52,7 +52,7 @@ export function applyCardData(db: Db, freshPath: string, opts: { minCards?: numb
   db.exec(`ATTACH DATABASE ${quote(freshPath)} AS fresh`);
   try {
     const freshSchema = (db.prepare('PRAGMA fresh.user_version').get() as { user_version: number }).user_version;
-    if (freshSchema > SCHEMA_VERSION) throw new Error('This card data needs a newer version of Grimoire.');
+    if (freshSchema > SCHEMA_VERSION) throw new Error('This card data needs a newer version of Brewhall.');
     if (!columnsOf(db, 'fresh', 'cards')) throw new Error("That file isn't card data.");
     const cards = (db.prepare('SELECT count(*) AS n FROM fresh.cards').get() as { n: number }).n;
     if (cards < minCards) throw new Error(`That card data looks damaged (${cards} cards).`);

@@ -28,10 +28,19 @@ beforeEach(async () => {
   importCollection(db, '3 Sol Ring\n1 Cultivate', 'replace');
 });
 
+describe('backups made before the app was renamed', () => {
+  it('are still recognised and restored, and anything else is still refused', async () => {
+    const target = await freshDb();
+    const old = { app: 'grimoire', version: 1, exportedAt: '', decks: [{ name: 'From the Grimoire days', format: 'commander', cards: [] }], collection: [{ id: 'o-sol', name: 'Sol Ring', qty: 2 }] };
+    expect(restoreUserData(target, old, 'merge')).toMatchObject({ decks: 1, collectionCopies: 2 });
+    expect(() => parseBackup({ ...old, app: 'someone-else' })).toThrow(/doesn't look like a Brewhall backup/);
+  });
+});
+
 describe('export / restore', () => {
   it('round-trips decks and collection into a fresh database', async () => {
     const backup = exportUserData(db);
-    expect(backup).toMatchObject({ app: 'grimoire', version: 1 });
+    expect(backup).toMatchObject({ app: 'brewhall', version: 1 });
     expect(backup.decks.map((d) => d.name)).toEqual(['Elves', 'Empty deck']);
     expect(JSON.parse(JSON.stringify(backup))).toEqual(backup); // plain JSON
 
@@ -76,8 +85,8 @@ describe('export / restore', () => {
 
 describe('parseBackup', () => {
   it.each([
-    [null, /doesn't look like a Grimoire backup/],
-    [{ app: 'other' }, /doesn't look like a Grimoire backup/],
+    [null, /doesn't look like a Brewhall backup/],
+    [{ app: 'other' }, /doesn't look like a Brewhall backup/],
     [{ app: 'grimoire', version: 2, decks: [], collection: [] }, /version 2/],
     [{ app: 'grimoire', version: 1, decks: 'x' }, /missing its decks or collection/],
     [{ app: 'grimoire', version: 1, decks: [{ name: 5, cards: [] }], collection: [] }, /deck in the backup is malformed/],
@@ -91,7 +100,7 @@ describe('backup API', () => {
   it('downloads a JSON file and restores it', async () => {
     const app = buildServer({ db, dataDir: '/x', logger: false });
     const res = await app.inject({ method: 'GET', url: '/api/backup' });
-    expect(res.headers['content-disposition']).toMatch(/attachment; filename="grimoire-backup-\d{4}-\d{2}-\d{2}\.json"/);
+    expect(res.headers['content-disposition']).toMatch(/attachment; filename="brewhall-backup-\d{4}-\d{2}-\d{2}\.json"/);
     const data = JSON.parse(res.body);
     const restored = await app.inject({ method: 'POST', url: '/api/backup/restore', payload: { data, mode: 'replace' } });
     expect(restored.statusCode).toBe(201);

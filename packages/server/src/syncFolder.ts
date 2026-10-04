@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { SyncConflict, type SyncStore } from './sync.js';
 
 // A folder as the place the sync file lives. Point it at a folder that Dropbox, Syncthing, Nextcloud or similar already keeps in step
-// between your computers and Grimoire needs no account of its own. Desktop only (it needs the file system).
+// between your computers and Brewhall needs no account of its own. Desktop only (it needs the file system).
 
-export const SYNC_FILE_NAME = 'grimoire-sync.json';
+export const SYNC_FILE_NAME = 'brewhall-sync.json';
 
 export class FolderStore implements SyncStore {
   readonly file: string;
@@ -16,7 +16,7 @@ export class FolderStore implements SyncStore {
   check(): void {
     if (!existsSync(this.dir) || !statSync(this.dir).isDirectory()) throw new Error(`The folder ${this.dir} doesn't exist.`);
     const probe = join(this.dir, `.grimoire-write-test-${process.pid}`);
-    try { writeFileSync(probe, ''); rmSync(probe); } catch { throw new Error(`Grimoire can't write to ${this.dir}.`); }
+    try { writeFileSync(probe, ''); rmSync(probe); } catch { throw new Error(`Brewhall can't write to ${this.dir}.`); }
   }
 
   /**

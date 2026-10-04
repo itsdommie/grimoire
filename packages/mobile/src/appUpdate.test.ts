@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkForAppUpdate, isNewer, newestAndroidUpdate, parseVersion } from './appUpdate';
 
-const release = (tag: string, extra: object = {}) => ({ tag_name: tag, html_url: `https://example/${tag}`, assets: [{ name: `Grimoire-${tag.replace('android-v', '')}-android.apk`, browser_download_url: `https://example/${tag}.apk` }, { name: 'x.apk.sha256', browser_download_url: 'https://example/sha' }], ...extra });
+const release = (tag: string, extra: object = {}) => ({ tag_name: tag, html_url: `https://example/${tag}`, assets: [{ name: `Brewhall-${tag.replace('android-v', '')}-android.apk`, browser_download_url: `https://example/${tag}.apk` }, { name: 'x.apk.sha256', browser_download_url: 'https://example/sha' }], ...extra });
 
 describe('versions', () => {
   it('parses plain dotted versions only', () => {

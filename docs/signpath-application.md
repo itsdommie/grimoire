@@ -12,7 +12,7 @@ Apply at <https://signpath.org> ("Apply for free code signing"). Everything belo
 
 ## Project
 
-- **Project name:** Grimoire
+- **Project name:** Brewhall
 - **Project URL / download page:** <https://itsdommie.github.io/grimoire/>
 - **Source repository:** <https://github.com/itsdommie/grimoire>
 - **Latest release:** <https://github.com/itsdommie/grimoire/releases/latest>
@@ -22,7 +22,7 @@ Apply at <https://signpath.org> ("Apply for free code signing"). Everything belo
 
 ## Description
 
-Grimoire is a free, open-source desktop application for Magic: The Gathering players on Windows and Linux. It searches the whole
+Brewhall is a free, open-source desktop application for Magic: The Gathering players on Windows and Linux. It searches the whole
 card pool offline, builds and validates decks (Commander and the 60-card constructed formats), analyses mana bases, simulates
 draws, tracks a card collection, shows the Comprehensive Rules, and provides a life/commander-damage tracker. It stores everything
 locally, has no accounts or telemetry, and downloads card data from Scryfall and rules text from Wizards of the Coast.
@@ -32,7 +32,7 @@ under Wizards of the Coast's Fan Content Policy and is not commercial.
 
 ## What we would sign
 
-The Windows NSIS installer (`Grimoire-Setup-<version>.exe`), and the `Grimoire.exe` application executable inside it. Both are
+The Windows NSIS installer (`Brewhall-Setup-<version>.exe`), and the `Brewhall.exe` application executable inside it. Both are
 built from this repository only.
 
 ## Build and release process (trusted build system)

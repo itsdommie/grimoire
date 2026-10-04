@@ -1,4 +1,4 @@
-# Grimoire
+# Brewhall
 
 A local-first Magic: The Gathering deck lab, packaged as a desktop app for **Windows and Linux**. See [PLAN.md](PLAN.md).
 
@@ -7,24 +7,24 @@ A local-first Magic: The Gathering deck lab, packaged as a desktop app for **Win
 Download the latest version from the **[website](https://itsdommie.github.io/grimoire/)** or the
 **[releases page](https://github.com/itsdommie/grimoire/releases/latest)**:
 
-- **Windows:** `Grimoire-Setup-<version>.exe` (installs just for you, no administrator rights). Windows may say "Windows protected
+- **Windows:** `Brewhall-Setup-<version>.exe` (installs just for you, no administrator rights). Windows may say "Windows protected
   your PC" because the app isn't signed with a paid certificate: choose *More info*, then *Run anyway*.
-- **Linux:** `Grimoire-<version>-x86_64.AppImage` (make it executable and run it) or `Grimoire-<version>-amd64.deb`.
+- **Linux:** `Brewhall-<version>-x86_64.AppImage` (make it executable and run it) or `Brewhall-<version>-amd64.deb`.
 
-On first launch Grimoire downloads the card database from [Scryfall](https://scryfall.com) (~25 MB) once, then works offline.
+On first launch Brewhall downloads the card database from [Scryfall](https://scryfall.com) (~25 MB) once, then works offline.
 Windows and the AppImage update themselves (Help → Check for updates; it can be switched off). Your decks and card data live in
 the app's user-data folder (Help → Open data folder).
 
 *Troubleshooting (Linux):* on distros that restrict unprivileged user namespaces (e.g. Ubuntu 24.04+), the AppImage may need
-`--no-sandbox`; the `.deb` sets up the Chromium sandbox properly. Logs are in `<data folder>/logs/grimoire.log`.
+`--no-sandbox`; the `.deb` sets up the Chromium sandbox properly. Logs are in `<data folder>/logs/brewhall.log`.
 
 ## Privacy
 
-No account, no analytics, no tracking. Grimoire contacts only: Scryfall (card data and images), GitHub (update checks, which can be
+No account, no analytics, no tracking. Brewhall contacts only: Scryfall (card data and images), GitHub (update checks, which can be
 turned off, and the ready-made semantic index and card data updates), and, only if you enable semantic search, Hugging Face (a 34 MB
 model, once). If you also set up the optional **Advisor** with your own API key, your questions and the cards and deck it looks up
 to answer them go to Anthropic, and only then. If you turn on the optional **Sync** (below), your decks, collection and wishlist are
-copied to your own Google Drive (a hidden folder only Grimoire can open) or to a folder you choose, and only then. Otherwise what you
+copied to your own Google Drive (a hidden folder only Brewhall can open) or to a folder you choose, and only then. Otherwise what you
 create stays on your computer.
 
 ## Code signing
@@ -78,7 +78,7 @@ opponent, monarch, turn order, undo, dice and coin. The game is kept across rest
 ## Your data
 
 Decks and your collection live in the app's data folder (Help → Open data folder). **Back up to a file** in the footer saves them
-to one JSON file; **Restore from a file…** brings them back (adding to what you have, or replacing it). Grimoire also keeps a small
+to one JSON file; **Restore from a file…** brings them back (adding to what you have, or replacing it). Brewhall also keeps a small
 copy of your decks and collection in a `backups` folder before it upgrades its database.
 
 ## Search by meaning (optional)
@@ -95,13 +95,13 @@ Keep your **decks, collection and wishlist** the same on every device (say the d
 devices** in the footer. Nothing else is shared: not your Anthropic key, the card data or your settings. It is off until you set it
 up, and **Turn off** stops it again (your data stays where it is).
 
-- **Google.** Sign in with Google (in your own browser) and Grimoire keeps one small file in its own hidden storage in your Google
-  Drive (`drive.appdata`). Only Grimoire can open that storage: the permission it asks for gives no access to your other Drive files, and
-  the file doesn't count against what you see in Drive. You can delete it from Google Drive's settings (Manage apps) or revoke Grimoire
+- **Google.** Sign in with Google (in your own browser) and Brewhall keeps one small file in its own hidden storage in your Google
+  Drive (`drive.appdata`). Only Brewhall can open that storage: the permission it asks for gives no access to your other Drive files, and
+  the file doesn't count against what you see in Drive. You can delete it from Google Drive's settings (Manage apps) or revoke Brewhall
   under your Google Account's security settings at any time. Your sign-in is kept in the operating system's keychain, like the
-  Advisor's key; where there is none, Grimoire refuses to keep it. Grimoire has no server and sees none of this.
+  Advisor's key; where there is none, Brewhall refuses to keep it. Brewhall has no server and sees none of this.
 - **A shared folder** (desktop). Already use Dropbox, Syncthing, Nextcloud or similar? Choose a folder it keeps in step between your
-  computers and Grimoire keeps its file there. No account needed.
+  computers and Brewhall keeps its file there. No account needed.
 
 How changes combine: each deck, card count and wishlist entry remembers when it last changed, and deletions are remembered for 90
 days, so a card removed on one device is removed on the others. Two devices are merged by keeping the **newest change to each
@@ -116,9 +116,9 @@ For Google sync to be available in a build, the app needs its Google client id: 
 ## Advisor (optional)
 
 The **Advisor** tab is a chat with Claude about your decks. It sends your questions off your computer (Sync is the only other feature that sends anything), so it is off
-until you paste your own [Anthropic API key](https://console.anthropic.com/settings/keys) (Anthropic bills your account; Grimoire
+until you paste your own [Anthropic API key](https://console.anthropic.com/settings/keys) (Anthropic bills your account; Brewhall
 adds no charge and has no server). The key is encrypted with the operating system's keychain (Windows, or GNOME/KDE on Linux; on
-Android the Keystore) and is never shown again. Where there is no keychain, Grimoire refuses to store it and the
+Android the Keystore) and is never shown again. Where there is no keychain, Brewhall refuses to store it and the
 `ANTHROPIC_API_KEY` environment variable works instead.
 
 Claude cannot make cards up: it reaches your card database only through three tools (search with Scryfall-style syntax, look up a
@@ -136,7 +136,7 @@ colour-source numbers are a calibrated hypergeometric estimate, not Frank Karste
 
 ## Android
 
-**Install.** Download `Grimoire-<version>-android.apk` from the release called "Grimoire for Android" (Android releases are tagged
+**Install.** Download `Brewhall-<version>-android.apk` from the release called "Brewhall for Android" (Android releases are tagged
 `android-v<version>`; they are never marked "latest", which the desktop updater reads) and open it on your phone. Android asks you to
 allow installs from your browser or file manager once, because the app isn't on a store. Every release is signed with the same key;
 its certificate SHA-256 is in `packages/mobile/signing-sha256.txt` and each release lists the file's checksum. The app shows a banner
@@ -193,7 +193,7 @@ own. Decks stay card-level. Printing data (about 4 MB) is downloaded with the ca
 
 **Building a new deck without breaking up the others.** A collection export usually leaves out the cards sitting in built decks, so
 a deck has an **Add to collection** button (and an import option) that adds its cards to your owned counts as a separate step. Then
-tick **Skip copies already in my decks** and Grimoire counts *spare copies*: copies you own minus copies in decks. With 5 Sol Rings
+tick **Skip copies already in my decks** and Brewhall counts *spare copies*: copies you own minus copies in decks. With 5 Sol Rings
 in the collection and 4 decks each running one, there is still one spare, so Sol Ring can still be suggested. The choice applies to
 "Only cards I own" in search (`spare>=1` works in queries too), the deck's missing-cards report and "What can I build?". The deck you
 are building doesn't count against itself, and a Commander deck's maybeboard holds no copies.
@@ -222,7 +222,7 @@ restores.
 
 ## Price watch
 
-Scryfall only publishes today's prices, so Grimoire keeps its own record: it notes the price of every card you own, want or use in a
+Scryfall only publishes today's prices, so Brewhall keeps its own record: it notes the price of every card you own, want or use in a
 deck whenever that price changes (when the app starts, when you open the panel, and after each card update). **Price watch**, at the top
 of the Collection and Wishlist tabs, then shows the risers and fallers over 7, 30 or 90 days, ranked by what the change means for you
 (the change times the copies you own, or still need), and what the cards you own are worth now compared with then. It starts empty
@@ -262,9 +262,9 @@ receives, and requests with a non-loopback `Host` header are rejected, so other 
 
 ## Legal
 
-Grimoire is MIT licensed (see [LICENSE](LICENSE)); notices for its dependencies ship with the app (`THIRD_PARTY_NOTICES.txt`).
+Brewhall is MIT licensed (see [LICENSE](LICENSE)); notices for its dependencies ship with the app (`THIRD_PARTY_NOTICES.txt`).
 Card data, rulings, tags and images are from [Scryfall](https://scryfall.com) (images are hotlinked, never re-hosted).
 
-Grimoire is unofficial Fan Content permitted under the Fan Content Policy. Not approved or endorsed by Wizards. Portions of the
+Brewhall is unofficial Fan Content permitted under the Fan Content Policy. Not approved or endorsed by Wizards. Portions of the
 materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Magic: The Gathering is a trademark of Wizards of
 the Coast LLC.

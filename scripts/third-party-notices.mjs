@@ -21,15 +21,15 @@ for (const dir of paths) {
   seen.set(key, { name: pkg.name, version: pkg.version, license, repo: typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url ?? '', text });
 }
 
-const header = `Grimoire third-party notices
+const header = `Brewhall third-party notices
 =============================
 
-Grimoire itself is MIT licensed (see LICENSE). It includes or uses the following.
+Brewhall itself is MIT licensed (see LICENSE). It includes or uses the following.
 
 Data and models
 ---------------
 - Card data, rulings and Oracle Tags: Scryfall (https://scryfall.com), used under its data terms. Card images are loaded directly
-  from Scryfall and are never copied or altered. Magic: The Gathering is (c) Wizards of the Coast LLC; Grimoire is unofficial
+  from Scryfall and are never copied or altered. Magic: The Gathering is (c) Wizards of the Coast LLC; Brewhall is unofficial
   fan content and is not approved or endorsed by Wizards of the Coast.
 - Semantic search (optional, downloaded on request): BGE-small-en-v1.5 by BAAI (MIT), ONNX conversion by Xenova
   (https://huggingface.co/Xenova/bge-small-en-v1.5), run with ONNX Runtime Web (MIT, Microsoft).

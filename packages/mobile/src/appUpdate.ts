@@ -1,5 +1,5 @@
 /**
- * Telling the person a newer Grimoire is out. The app isn't on a store, so it looks at this project's GitHub releases itself (the
+ * Telling the person a newer Brewhall is out. The app isn't on a store, so it looks at this project's GitHub releases itself (the
  * API allows web pages to read it). Android releases are the ones tagged `android-v<version>`; desktop releases share the repository
  * and are ignored here.
  */

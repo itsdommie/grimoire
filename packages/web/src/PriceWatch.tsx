@@ -26,7 +26,7 @@ function MoverRows({ title, rows, onOpenCard }: { title: string; rows: PriceMove
 }
 
 /**
- * How the prices of the cards you own, want or use in decks have moved. Scryfall only gives today's price, so Grimoire notes each card's
+ * How the prices of the cards you own, want or use in decks have moved. Scryfall only gives today's price, so Brewhall notes each card's
  * price as it changes and this fills in over time. `scope` narrows it to the collection or the wishlist.
  */
 export function PriceWatch({ scope, version, onOpenCard }: { scope: 'all' | 'collection' | 'wishlist'; version: number; onOpenCard: (id: string) => void }) {
@@ -52,7 +52,7 @@ export function PriceWatch({ scope, version, onOpenCard }: { scope: 'all' | 'col
         {WINDOWS.map((d) => <button key={d} className={days === d ? 'active' : ''} aria-pressed={days === d} onClick={() => setDays(d)}>{d} days</button>)}
       </span>
       {report.since === null || moved === 0
-        ? <p className="muted small">{report.since === null ? 'Not watching any prices yet.' : `Watching ${report.tracked.toLocaleString()} ${report.tracked === 1 ? 'card' : 'cards'} since ${report.since}. Nothing has moved in this time yet.`} Scryfall only publishes today's prices, so Grimoire notes each card's price as it changes and this fills in as they do.</p>
+        ? <p className="muted small">{report.since === null ? 'Not watching any prices yet.' : `Watching ${report.tracked.toLocaleString()} ${report.tracked === 1 ? 'card' : 'cards'} since ${report.since}. Nothing has moved in this time yet.`} Scryfall only publishes today's prices, so Brewhall notes each card's price as it changes and this fills in as they do.</p>
         : (
           <>
             {scope !== 'wishlist' && report.valueThen > 0 && <p className="statline">The cards you own are worth about <strong>{usd(report.valueNow)}</strong>, {change === 0 ? 'the same as' : <><strong>{signed(change)}</strong> from</>} {usd(report.valueThen)} {days} days ago{report.since && report.since > new Date(Date.now() - days * 864e5).toISOString().slice(0, 10) ? <span className="muted small"> (watched since {report.since})</span> : null}.</p>}

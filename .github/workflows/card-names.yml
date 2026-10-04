@@ -32,5 +32,5 @@ jobs:
         run: |
           gh release view card-names >/dev/null 2>&1 || gh release create card-names \
             --prerelease --latest=false --title "Card names (rolling)" \
-            --notes "Alternate card names used by Grimoire's imports and search. Rebuilt weekly by the Card names workflow. Not an application release."
+            --notes "Alternate card names used by Brewhall's imports and search. Rebuilt weekly by the Card names workflow. Not an application release."
           gh release upload card-names "$RUNNER_TEMP"/names/card-names.json --clobber

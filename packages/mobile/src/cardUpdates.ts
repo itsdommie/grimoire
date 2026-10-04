@@ -83,7 +83,7 @@ export class CardUpdater {
     const manifest = await this.fetchManifest();
     this.d.setMeta('card_data_checked_at', new Date().toISOString());
     if (!manifest) { this.upToDate = true; return; } // nothing published yet
-    if (manifest.schema > SCHEMA_VERSION || manifest.dataVersion > DATA_VERSION_FOR_UPDATES) throw new Error('This card data needs a newer version of Grimoire. Update the app first.');
+    if (manifest.schema > SCHEMA_VERSION || manifest.dataVersion > DATA_VERSION_FOR_UPDATES) throw new Error('This card data needs a newer version of Brewhall. Update the app first.');
     const have = this.d.meta('bulk_updated_at');
     if (have && manifest.version <= have) { this.upToDate = true; return; }
     // The app's own check doesn't spend someone's mobile data on a big download; it says one is waiting. Asking for it yourself does.

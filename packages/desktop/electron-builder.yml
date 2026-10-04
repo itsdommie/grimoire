@@ -1,6 +1,6 @@
 appId: app.grimoire.desktop
-productName: Grimoire
-executableName: grimoire
+productName: Brewhall
+executableName: brewhall
 copyright: "Unofficial fan content. Magic: The Gathering is (c) Wizards of the Coast. Card data from Scryfall."
 publish:
   provider: github
@@ -19,7 +19,7 @@ extraResources:
   - from: ../web/dist
     to: web
   - from: ../../LICENSE
-    to: LICENSE.grimoire.txt
+    to: LICENSE.brewhall.txt
   - from: build/THIRD_PARTY_NOTICES.txt
     to: THIRD_PARTY_NOTICES.txt
   - from: build/ort
@@ -31,7 +31,7 @@ linux:
   icon: build/icon.png
   target: [AppImage, deb]
   category: Game
-  maintainer: Grimoire contributors <grimoire@localhost>
+  maintainer: Brewhall contributors <brewhall@localhost>
   synopsis: "Local-first Magic - The Gathering deck lab"
   artifactName: ${productName}-${version}-${arch}.${ext}
 

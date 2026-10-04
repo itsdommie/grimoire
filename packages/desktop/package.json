@@ -1,11 +1,11 @@
 {
   "name": "@grimoire/desktop",
-  "productName": "Grimoire",
+  "productName": "Brewhall",
   "private": true,
   "version": "0.6.0",
   "type": "commonjs",
   "description": "A local-first Magic: The Gathering deck lab",
-  "author": "Grimoire contributors",
+  "author": "Brewhall contributors",
   "homepage": "https://scryfall.com",
   "main": "dist/main.cjs",
   "scripts": {

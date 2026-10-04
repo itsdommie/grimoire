@@ -11,7 +11,7 @@ export function BackupControls({ onRestored, onError }: { onRestored: () => void
     try {
       const text = await api.backupText();
       const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-      const a = Object.assign(document.createElement('a'), { href: url, download: `grimoire-backup-${new Date().toISOString().slice(0, 10)}.json` });
+      const a = Object.assign(document.createElement('a'), { href: url, download: `brewhall-backup-${new Date().toISOString().slice(0, 10)}.json` });
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) { onError((e as Error).message); }
@@ -41,9 +41,9 @@ function RestoreDialog({ onClose, onRestored, onError }: { onClose: () => void; 
     setData(null); setFileProblem(null);
     try {
       const parsed = JSON.parse(await file.text()) as UserDataBackup;
-      if (parsed?.app !== 'grimoire' || !Array.isArray(parsed.decks) || !Array.isArray(parsed.collection)) throw new Error('not a backup');
+      if ((parsed?.app !== 'brewhall' && parsed?.app !== 'grimoire') || !Array.isArray(parsed.decks) || !Array.isArray(parsed.collection)) throw new Error('not a backup');
       setData(parsed);
-    } catch { setFileProblem("That doesn't look like a Grimoire backup file."); }
+    } catch { setFileProblem("That doesn't look like a Brewhall backup file."); }
   };
 
   const submit = async () => {

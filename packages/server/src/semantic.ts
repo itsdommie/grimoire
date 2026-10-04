@@ -13,7 +13,7 @@ import type { Db } from './schema.js';
 
 export { HashingEmbedder, MODEL, NOT_SET_UP, quantise, type Embedder, type ModelFile, type ModelSpec, type SemanticDeps } from './semantic-core.js';
 
-const USER_AGENT = 'Grimoire/0.1 (open-source MTG deck lab)';
+const USER_AGENT = 'Brewhall/0.1 (open-source MTG deck lab)';
 
 export class OrtEmbedder extends CoreOrtEmbedder {
   /** `ortDir` is the folder holding ort.node.min.mjs and the .wasm files (shipped with the desktop app); without it the installed package is used. */

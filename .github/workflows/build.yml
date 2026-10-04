@@ -51,10 +51,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $installer = (Get-ChildItem release\Grimoire-Setup-*.exe | Select-Object -First 1).FullName
+          $installer = (Get-ChildItem release\Brewhall-Setup-*.exe | Select-Object -First 1).FullName
           Start-Process -FilePath $installer -ArgumentList '/S' -Wait
-          $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Grimoire.exe | Select-Object -First 1).FullName
-          if (-not $exe) { throw 'Grimoire.exe was not installed' }
+          $exe = (Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter Brewhall.exe | Select-Object -First 1).FullName
+          if (-not $exe) { throw 'Brewhall.exe was not installed' }
           Write-Host "Installed at $exe"
           $env:GRIMOIRE_EXE = $exe
           npx playwright test -c playwright.desktop.config.ts

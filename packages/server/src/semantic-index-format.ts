@@ -34,7 +34,7 @@ export function manifestUsable(m: PrebuiltManifest, expected: { model: string; d
 
 /** Parse and validate a decompressed index. Anything inconsistent is rejected: a bad file must never poison the local index. */
 export function decodeIndexRaw(raw: Uint8Array, expected: { model: string; dims: number }): IndexRow[] {
-  if (raw.length < 13 || ascii(raw, 0, 4) !== MAGIC) throw new Error('Not a Grimoire semantic index');
+  if (raw.length < 13 || ascii(raw, 0, 4) !== MAGIC) throw new Error('Not a Brewhall semantic index');
   const view = new DataView(raw.buffer, raw.byteOffset, raw.byteLength);
   const dims = view.getUint32(4, true);
   const count = view.getUint32(8, true);
