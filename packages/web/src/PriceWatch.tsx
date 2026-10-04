@@ -38,7 +38,10 @@ export function PriceWatch({ scope, version, onOpenCard }: { scope: 'all' | 'col
     api.prices(days, scope, c.signal).then((r) => { setReport(r); setFailed(false); }).catch((e: Error) => { if (e.name !== 'AbortError') setFailed(true); });
     return () => c.abort();
   }, [days, scope, version]);
-  if (failed || !report) return null;
+  if (failed) return null;
+  // While the first answer is on its way the panel holds its place, so the list below it does not jump down when it arrives
+  // (a click aimed at a button just under it could otherwise land on whatever the layout has moved to).
+  if (!report) return <details className="pricewatch" aria-busy="true"><summary>Price watch <span className="muted small">· checking…</span></summary></details>;
 
   const moved = report.up.length + report.down.length;
   const change = report.valueNow - report.valueThen;

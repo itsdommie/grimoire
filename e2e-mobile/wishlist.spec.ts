@@ -16,6 +16,8 @@ test('want a card from its details and see it on the wishlist', async ({ page })
   await page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name: 'Wishlist' }).click();
   const rows = page.getByRole('list', { name: 'Cards to find' });
   await expect(rows.getByRole('button', { name: 'Sol Ring', exact: true })).toBeVisible({ timeout: 20_000 });
+  // The Price watch panel above the list fills in once its answer arrives: let the page settle before aiming at a button below it.
+  await expect(page.locator('.pricewatch summary')).not.toContainText('checking…', { timeout: 20_000 });
   await rows.getByRole('button', { name: 'Want one fewer Sol Ring' }).click();
   await expect(page.getByText('Your wishlist is empty.')).toBeVisible({ timeout: 20_000 });
 });

@@ -275,7 +275,8 @@ footer .linklike { font-size: inherit; }
 .row .cost { display: inline-flex; color: var(--muted); font-size: 11px; white-space: nowrap; }
 .row .actions { display: none; gap: 2px; }
 .row:hover .actions, .row:focus-within .actions { display: flex; }
-.row:hover .cost, .row:focus-within .cost { display: none; }
+/* (only a row that has action buttons swaps its cost for them: elsewhere, such as the wishlist, the cost stays, and nothing may move under the pointer) */
+.row:has(> .actions):hover .cost, .row:has(> .actions):focus-within .cost { display: none; }
 .row .actions button { padding: 0 7px; min-width: 24px; font-size: 13px; line-height: 22px; border-radius: var(--r-sm); }
 .row .missing { color: var(--warn); font-size: 12px; }
 .empty { color: var(--muted); font-size: 13.5px; padding: 6px 0; }
