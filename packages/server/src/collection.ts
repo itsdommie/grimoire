@@ -75,7 +75,7 @@ export function setOwned(db: Db, cardId: string, qty: number): void {
 }
 
 /** After the card's total went down: copies with a known printing can't outnumber the total, so the oldest records give way first. */
-function trimPrints(db: Db, cardId: string, total: number): void {
+export function trimPrints(db: Db, cardId: string, total: number): void {
   let excess = (db.prepare('SELECT COALESCE(SUM(qty), 0) AS n FROM collection_prints WHERE card_id = ?').get(cardId) as { n: number }).n - total;
   if (excess <= 0) return;
   const rows = db.prepare('SELECT printing_id, finish, qty FROM collection_prints WHERE card_id = ? ORDER BY updated_at ASC, printing_id, finish').all(cardId) as Array<{ printing_id: string; finish: Finish; qty: number }>;
